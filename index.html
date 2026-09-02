@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>지하철 실시간 위치 조회1</title>
+    <title>지하철 실시간 위치 조회</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -112,6 +112,36 @@
             }, 500);
         }
 
+        // 403 방지를 위한 다중 프록시 호출 함수 (순차적 우회)
+        async function fetchWithProxyFallback(targetUrl) {
+            const proxies = [
+                url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+                url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+                url => `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`
+            ];
+
+            let lastError = null;
+
+            for (let i = 0; i < proxies.length; i++) {
+                try {
+                    const proxyUrl = proxies[i](targetUrl);
+                    const response = await fetch(proxyUrl);
+                    
+                    if (response.ok) {
+                        const text = await response.text();
+                        // 반환된 데이터가 JSON 형식인지 검증
+                        const data = JSON.parse(text);
+                        return data;
+                    }
+                } catch (err) {
+                    lastError = err;
+                    console.warn(`프록시 ${i + 1}번 실패, 다음 우회 서버 시도 중...`);
+                }
+            }
+
+            throw new Error(lastError ? lastError.message : '모든 우회 서버 통신에 실패했습니다.');
+        }
+
         async function fetchData() {
             const apiKey = document.getElementById('apiKey').value.trim();
             const lineName = document.getElementById('lineName').value;
@@ -141,19 +171,10 @@
             const progressPromise = simulateProgress(1500);
 
             try {
-                // 매뉴얼에 따라 TYPE을 json으로 설정하여 호출
                 const apiUrl = `http://swopenapi.seoul.go.kr/api/subway/${apiKey}/json/realtimePosition/0/100/${encodeURIComponent(lineName)}`;
                 
-                // 광고 차단기에 덜 걸리는 가장 안정적인 corsproxy.io 우회 사용
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`;
-
-                const response = await fetch(proxyUrl);
-                
-                if (!response.ok) {
-                    throw new Error(`네트워크 차단 또는 서버 응답 오류 (HTTP ${response.status})`);
-                }
-
-                const data = await response.json();
+                // 다중 프록시 우회 호출
+                const data = await fetchWithProxyFallback(apiUrl);
                 await progressPromise; 
 
                 if (data.RESULT && data.RESULT.CODE !== 'INFO-000') {
@@ -167,7 +188,7 @@
                 }
 
                 if (!data.realtimePosition || !data.realtimePosition.row) {
-                    throw new Error('데이터 형식이 올바르지 않거나 운행 중인 열차가 없습니다.');
+                    throw new Error('데이터 형식이 올바르지 않거나 현재 운행 중인 열차가 없습니다.');
                 }
 
                 renderTable(data.realtimePosition.row);
@@ -178,8 +199,8 @@
                 completeProgress(); 
                 
                 let errorMessage = err.message;
-                if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
-                    errorMessage = '브라우저 보안이나 광고 차단기(AdBlock)가 요청을 막았습니다. <b>시크릿 모드(새 개인 창)</b>로 접속하시거나 차단기를 잠시 꺼주세요.';
+                if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Unexpected token')) {
+                    errorMessage = '네트워크 응답 형식이 올바르지 않거나 인증키가 유효하지 않습니다. API 키 값을 다시 한번 확인해 주세요.';
                 }
 
                 errorText.innerHTML = `데이터를 가져오는 중 문제가 발생했습니다.<br><span class="text-red-900 font-semibold">${errorMessage}</span>`;
@@ -196,7 +217,6 @@
             const resultBody = document.getElementById('resultBody');
             resultBody.innerHTML = '';
             
-            // 매뉴얼에 따른 상태코드
             const getStatus = (code) => {
                 switch(code) {
                     case '0': return '<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-sm font-bold">진입</span>';
@@ -209,7 +229,6 @@
 
             const getDirection = (code) => code === '0' ? '상행/내선' : '하행/외선';
 
-            // 매뉴얼에 따른 급행 및 막차 여부 확인 함수 추가
             const getSpecialStatus = (directCode, lastCarCode) => {
                 let badges = '';
                 if (directCode === '1') badges += '<span class="px-2 py-1 bg-red-500 text-white rounded-md text-xs font-bold mr-1">급행</span>';
