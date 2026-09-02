@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>지하철 실시간 열차 위치 조회</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f3f4f6; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-5xl mx-auto bg-white p-6 md:p-10 rounded-2xl shadow-lg">
+        <h1 class="text-2xl md:text-3xl font-bold text-center mb-8 text-blue-600">
+            🚇 지하철 실시간 열차 위치 조회
+        </h1>
+        
+        <div class="flex flex-col md:flex-row gap-4 mb-8">
+            <input type="text" id="apiKey" placeholder="발급받은 API 키를 입력하세요" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+            
+            <select id="lineName" class="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+                <option value="1호선">1호선</option>
+                <option value="2호선">2호선</option>
+                <option value="3호선">3호선</option>
+                <option value="4호선">4호선</option>
+                <option value="5호선">5호선</option>
+                <option value="6호선">6호선</option>
+                <option value="7호선">7호선</option>
+                <option value="8호선">8호선</option>
+                <option value="9호선">9호선</option>
+                <option value="수인분당선">수인분당선</option>
+                <option value="경의중앙선">경의중앙선</option>
+                <option value="신분당선">신분당선</option>
+            </select>
+            
+            <button onclick="fetchData()" class="px-8 py-3 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-600 transition duration-200 shadow-md">
+                조회하기
+            </button>
+        </div>
+
+        <div id="loading" class="hidden text-center text-blue-500 font-semibold my-6">데이터를 불러오는 중입니다... 잠시만 기다려주세요.</div>
+        <div id="error" class="hidden text-center text-red-500 font-semibold my-6"></div>
+        
+        <div class="overflow-x-auto rounded-lg border border-gray-200">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200 text-gray-700">
+                        <th class="p-4 whitespace-nowrap">열차번호</th>
+                        <th class="p-4 whitespace-nowrap">행선지</th>
+                        <th class="p-4 whitespace-nowrap">상/하행</th>
+                        <th class="p-4 whitespace-nowrap">현재 위치</th>
+                        <th class="p-4 whitespace-nowrap">상태</th>
+                        <th class="p-4 whitespace-nowrap">업데이트 시간</th>
+                    </tr>
+                </thead>
+                <tbody id="resultBody" class="text-gray-600">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function fetchData() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const lineName = document.getElementById('lineName').value;
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const resultBody = document.getElementById('resultBody');
+
+            // 초기화
+            error.classList.add('hidden');
+            resultBody.innerHTML = '';
+
+            if (!apiKey) {
+                error.textContent = 'API 키를 입력해주세요.';
+                error.classList.remove('hidden');
+                return;
+            }
+
+            loading.classList.remove('hidden');
+
+            try {
+                // 1. 원본 API 주소 (HTTP)
+                const apiUrl = `http://swopenapi.seoul.go.kr/api/subway/${apiKey}/json/realtimePosition/0/100/${encodeURIComponent(lineName)}`;
+                
+                // 2. GitHub Pages(HTTPS)에서 HTTP 호출을 허용하기 위한 프록시 서버 경유 URL 구축
+                // CORS 및 Mixed Content 에러 방지를 위해 필수적입니다.
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
+
+                const response = await fetch(proxyUrl);
+                
+                if (!response.ok) {
+                    throw new Error('네트워크 응답이 올바르지 않습니다.');
+                }
+
+                // 프록시 서버에서 반환한 JSON 내부에 실제 API 결과(contents)가 들어있습니다.
+                const proxyData = await response.json();
+                const data = JSON.parse(proxyData.contents);
+
+                loading.classList.add('hidden');
+
+                if (data.realtimePosition && data.realtimePosition.row) {
+                    renderTable(data.realtimePosition.row);
+                } else {
+                    const errorMsg = data.RESULT?.MESSAGE || '데이터가 없습니다. API 키나 호선을 확인하세요.';
+                    error.innerHTML = `데이터를 불러오지 못했습니다.<br>(${errorMsg})`;
+                    error.classList.remove('hidden');
+                }
+            } catch (err) {
+                loading.classList.add('hidden');
+                error.textContent = `오류가 발생했습니다: ${err.message}`;
+                error.classList.remove('hidden');
+            }
+        }
+
+        function renderTable(rows) {
+            const resultBody = document.getElementById('resultBody');
+            
+            // 열차 상태 코드 변환 함수
+            const getStatus = (code) => {
+                switch(code) {
+                    case '0': return '<span class="text-blue-500 font-bold">진입</span>';
+                    case '1': return '<span class="text-green-500 font-bold">도착</span>';
+                    case '2': return '<span class="text-orange-500 font-bold">출발</span>';
+                    case '3': return '<span class="text-gray-500 font-bold">전역출발</span>';
+                    default: return code;
+                }
+            };
+
+            // 상/하행 변환 함수
+            const getDirection = (code) => code === '0' ? '상행/내선' : '하행/외선';
+
+            rows.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-100 hover:bg-gray-50 transition duration-150';
+                
+                tr.innerHTML = `
+                    <td class="p-4">${row.trainNo}</td>
+                    <td class="p-4 font-semibold text-gray-800">${row.statnTnm}행</td>
+                    <td class="p-4">${getDirection(row.updnLine)}</td>
+                    <td class="p-4 font-bold text-blue-700">${row.statnNm}</td>
+                    <td class="p-4">${getStatus(row.trainSttus)}</td>
+                    <td class="p-4 text-sm text-gray-400">${row.recptnDt}</td>
+                `;
+                resultBody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+</html>
