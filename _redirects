@@ -1,0 +1,1 @@
+/api/* http://swopenapi.seoul.go.kr/api/subway/:splat 200
