@@ -11,8 +11,8 @@
     <header class="topbar">
       <div class="logo">🚇 서울 지하철 관제</div>
       <div class="controls">
-        <input type="text" id="apiKeyInput" placeholder="API 키 입력" value="sample">
-        <select id="lineSelect">
+        <input type="text" id="apiKeyInput" placeholder="API 키 입력" value="sample" aria-label="API 키 입력">
+        <select id="lineSelect" aria-label="노선 선택">
           <option value="1호선">1호선</option>
           <option value="2호선" selected>2호선</option>
           <option value="3호선">3호선</option>
@@ -31,7 +31,6 @@
     <main class="main-content" id="mainContent">
       <div class="map-instruction">역을 터치하면 상세 정보 및 가로 지도가 열립니다.</div>
       <div class="vertical-map-container" id="vMapContainer">
-        <!-- 상하행 선로 간격을 크게 넓힘 -->
         <div class="v-track-line v-up-line"></div>
         <div class="v-track-line v-down-line"></div>
         <div id="vStationNodes" class="v-station-nodes"></div>
