@@ -1,148 +1,67 @@
 :root {
-  --bg-color: #f8f9fa;
-  --panel-bg: #ffffff;
-  --text-main: #111111;
-  --text-muted: #666666;
-  --border-color: #e2e8f0;
-  --line-color: #009D3E;
-  --train-up: #ef4444;
-  --train-down: #3b82f6;
-  --accent: #0071e3;
-  --v-spacing: 90px;
-  --h-spacing: 100px;
+  --bg-color: #f8f9fa; --panel-bg: #ffffff;
+  --text-main: #111111; --text-muted: #666666;
+  --border-color: #e2e8f0; --line-color: #009D3E;
+  --train-up: #ef4444; --train-down: #3b82f6;
+  --accent: #0071e3; --v-spacing: 90px; --h-spacing: 100px;
 }
-
 * { box-sizing: border-box; }
-body {
-  margin: 0; padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: var(--bg-color); color: var(--text-main);
-  height: 100vh; overflow: hidden;
-}
-
+body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-main); height: 100vh; overflow: hidden; }
 .app-container { display: flex; flex-direction: column; height: 100vh; position: relative; }
-
-/* 상단 컨트롤 바 */
-.topbar {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 14px; background: var(--panel-bg);
-  border-bottom: 1px solid var(--border-color); z-index: 10; gap: 8px;
-}
+.topbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--panel-bg); border-bottom: 1px solid var(--border-color); z-index: 10; gap: 8px; }
 .logo { font-size: 15px; font-weight: 700; white-space: nowrap; }
 .controls { display: flex; gap: 6px; align-items: center; flex: 1; justify-content: flex-end; }
 .controls input { width: 90px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 12px; outline: none; }
 .controls select { padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-color); font-weight: 600; font-size: 12px; outline: none; }
-
-/* 메인: 세로 지도 영역 */
-.main-content {
-  flex: 1; background: #0f172a; overflow-y: auto; overflow-x: hidden;
-  position: relative; padding: 20px 0 60px 0;
-}
-.map-instruction {
-  text-align: center; color: #94a3b8; font-size: 12px; margin-bottom: 20px;
-}
-
-.vertical-map-container {
-  position: relative; margin: 0 auto; width: 140px; 
-}
+.main-content { flex: 1; background: #0f172a; overflow-y: auto; overflow-x: hidden; position: relative; padding: 20px 0 60px 0; }
+.map-instruction { text-align: center; color: #94a3b8; font-size: 12px; margin-bottom: 20px; }
+.vertical-map-container { position: relative; margin: 0 auto; width: 140px; }
 .v-track-line { position: absolute; top: 0; bottom: 0; width: 4px; background: #334155; border-radius: 2px; }
-.v-up-line { left: 40px; }
-.v-down-line { left: 96px; }
-
+.v-up-line { left: 40px; } .v-down-line { left: 96px; }
 .v-station-nodes { position: absolute; top: 0; left: 0; width: 100%; }
-.v-station-node {
-  position: absolute; left: 68px; transform: translateX(-50%);
-  width: 16px; height: 16px; background: #1e293b;
-  border: 3px solid var(--line-color); border-radius: 50%;
-  cursor: pointer; z-index: 5; transition: transform 0.2s;
-}
+.v-station-node { position: absolute; left: 68px; transform: translateX(-50%); width: 16px; height: 16px; background: #1e293b; border: 3px solid var(--line-color); border-radius: 50%; cursor: pointer; z-index: 5; transition: transform 0.2s; }
 .v-station-node:hover { transform: translateX(-50%) scale(1.3); background: #fff; }
-.v-station-name {
-  position: absolute; left: 30px; top: 50%; transform: translateY(-50%);
-  font-size: 13px; font-weight: 700; color: #f8fafc; white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-}
-
+.v-station-name { position: absolute; left: 30px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 700; color: #f8fafc; white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
 .v-trains-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; }
-.v-train {
-  position: absolute; width: 34px; height: 18px; border-radius: 4px;
-  color: white; font-size: 9px; font-weight: bold; display: flex; justify-content: center; align-items: center;
-  transition: top 1s cubic-bezier(0.25, 1, 0.5, 1); box-shadow: 0 0 8px rgba(0,0,0,0.6);
-}
-.v-train.up { left: 25px; background: var(--train-up); }
-.v-train.down { left: 81px; background: var(--train-down); }
+.v-train { position: absolute; width: 34px; height: 18px; border-radius: 4px; color: white; font-size: 9px; font-weight: bold; display: flex; justify-content: center; align-items: center; transition: top 1s cubic-bezier(0.25, 1, 0.5, 1); box-shadow: 0 0 8px rgba(0,0,0,0.6); }
+.v-train.up { left: 25px; background: var(--train-up); } .v-train.down { left: 81px; background: var(--train-down); }
 .v-train-status { position: absolute; left: 40px; font-size: 9px; color: #cbd5e1; white-space: nowrap; }
-
-/* 100% 독립 팝업 */
-.full-popup {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background: white; z-index: 100; display: flex; flex-direction: column;
-}
+.full-popup { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 100; display: flex; flex-direction: column; }
 .full-popup.hidden { display: none; }
-
-.popup-header {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 12px 16px; border-bottom: 1px solid var(--border-color); background: var(--panel-bg);
-}
+.popup-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border-color); background: var(--panel-bg); }
 .popup-stn-name { font-size: 18px; font-weight: 700; margin-left: 6px; }
 .badge { background: var(--line-color); color: white; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
 .close-btn { background: #e2e8f0; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
-
-/* 팝업 최상단: 가로 지도 영역 */
-.h-map-area {
-  height: 120px; position: relative; background: #0f172a;
-  display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
-  border-bottom: 2px solid var(--line-color);
-}
-.h-track-scroll-container {
-  flex: 1; overflow-x: auto; overflow-y: hidden; display: flex; align-items: center; padding: 0 20px; scrollbar-width: none;
-}
+.h-map-area { height: 120px; position: relative; background: #0f172a; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; border-bottom: 2px solid var(--line-color); }
+.h-track-scroll-container { flex: 1; overflow-x: auto; overflow-y: hidden; display: flex; align-items: center; padding: 0 20px; scrollbar-width: none; }
 .h-track-scroll-container::-webkit-scrollbar { display: none; }
-
 .h-track-wrapper { position: relative; height: 100px; display: flex; align-items: center; }
 .h-track-line { position: absolute; left: 0; right: 0; height: 3px; background: #334155; border-radius: 2px; }
-.h-up-line { top: 35px; }
-.h-down-line { top: 65px; }
-
+.h-up-line { top: 35px; } .h-down-line { top: 65px; }
 .h-station-nodes { position: relative; display: flex; gap: var(--h-spacing); z-index: 2; }
 .h-station-node { position: relative; width: 14px; height: 14px; background: #1e293b; border: 2px solid var(--line-color); border-radius: 50%; flex-shrink: 0; }
 .h-station-name { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 600; white-space: nowrap; color: #cbd5e1; }
-
 .h-trains-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
-.h-train {
-  position: absolute; width: 34px; height: 18px; border-radius: 4px;
-  color: white; font-size: 9px; font-weight: bold; display: flex; justify-content: center; align-items: center;
-  transition: left 1s cubic-bezier(0.25, 1, 0.5, 1); transform: translateX(-50%); box-shadow: 0 0 6px rgba(0,0,0,0.6);
-}
-.h-train.up { top: 27px; background: var(--train-up); }
-.h-train.down { top: 57px; background: var(--train-down); }
+.h-train { position: absolute; width: 34px; height: 18px; border-radius: 4px; color: white; font-size: 9px; font-weight: bold; display: flex; justify-content: center; align-items: center; transition: left 1s cubic-bezier(0.25, 1, 0.5, 1); transform: translateX(-50%); box-shadow: 0 0 6px rgba(0,0,0,0.6); }
+.h-train.up { top: 27px; background: var(--train-up); } .h-train.down { top: 57px; background: var(--train-down); }
 .h-train-status { position: absolute; top: -14px; font-size: 9px; color: #94a3b8; white-space: nowrap; }
-
-/* 팝업 본문 */
 .popup-body { padding: 16px; overflow-y: auto; flex: 1; background: var(--bg-color); }
 .info-section { margin-bottom: 20px; background: white; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid var(--border-color); }
 .info-section h3 { font-size: 14px; color: var(--text-main); margin: 0 0 12px 0; }
-
 .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .stat-box { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); }
 .stat-title { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
 .stat-value { font-size: 16px; font-weight: 700; color: var(--text-main); }
-
 .arrival-split { display: flex; gap: 10px; align-items: flex-start; }
 .arr-col { flex: 1; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); }
 .arr-col h4 { margin: 0 0 10px 0; font-size: 12px; text-align: center; color: var(--text-muted); }
 .arr-item, .tt-item { background: white; padding: 8px; border-radius: 6px; margin-bottom: 6px; border: 1px solid var(--border-color); border-left: 4px solid #ccc; font-size: 12px; }
 .arr-item.up, .tt-item.up { border-left-color: var(--train-up); }
 .arr-item.down, .tt-item.down { border-left-color: var(--train-down); }
-
 .arr-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .arr-time { color: #dc2626; font-weight: 700; font-size: 13px; }
 .arr-desc { font-size: 11px; color: var(--text-muted); }
-
-/* 열차 등급 배지 */
 .exp-badge { color: white; font-size: 9px; padding: 2px 4px; border-radius: 4px; font-weight: bold; }
-.exp-normal { background: #64748b; }
-.exp-express { background: #eab308; color: #000; }
-.exp-special { background: #ef4444; }
-
+.exp-normal { background: #64748b; } .exp-express { background: #eab308; color: #000; } .exp-special { background: #ef4444; }
 .loading-text { color: var(--text-muted); font-size: 12px; font-style: italic; margin-bottom: 10px; }
-.tt-list { max-height: 200px; overflow-y: auto; }
+.tt-list { max-height: 250px; overflow-y: auto; }
