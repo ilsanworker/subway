@@ -160,11 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-
-  /* =========================================================
-     기본 설정
-  ========================================================= */
-
   const getApiKey = () => {
     const input = document.getElementById('apiKeyInput');
 
@@ -175,27 +170,29 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
 
+  /* =========================================================
+     API
+  ========================================================= */
+
   const isLocal =
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
     window.location.hostname === '';
 
 
-  /*
-   * Netlify 배포
-   *
-   * /api/sw/*   → swopenapi.seoul.go.kr/api/subway/:splat
-   * /api/open/* → openapi.seoul.go.kr:8088/:splat
-   */
-
   const BASE_SW = isLocal
     ? 'http://swopenapi.seoul.go.kr/api/subway'
     : '/api/sw';
+
 
   const BASE_OPEN = isLocal
     ? 'http://openapi.seoul.go.kr:8088'
     : '/api/open';
 
+
+  /* =========================================================
+     상태
+  ========================================================= */
 
   let currentLine = '2호선';
   let currentStation = '';
@@ -203,21 +200,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let refreshInterval = null;
   let popupRefreshTimer = null;
 
-  /*
-   * 현재 fetch 요청 세대 번호
-   *
-   * 노선을 빠르게 바꾸면 이전 API 요청이 늦게 도착해서
-   * 새 노선 화면에 옛날 데이터를 뿌리는 문제가 생길 수 있다.
-   */
-  let requestGeneration = 0;
-
-  /*
-   * 팝업 요청 번호
-   *
-   * 팝업을 닫은 뒤 이전 요청이 도착해 DOM을 수정하는 문제 방지
-   */
-  let popupGeneration = 0;
-
+  let mapRequestId = 0;
+  let popupRequestId = 0;
 
   const V_SPACING = 110;
   const H_SPACING = 120;
@@ -290,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   /* =========================================================
-     유틸
+     기본 유틸
   ========================================================= */
 
   function escapeHtml(value) {
@@ -300,12 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
-  }
-
-
-  function safeDomId(value) {
-    return String(value ?? '')
-      .replace(/[^a-zA-Z0-9_-]/g, '_');
   }
 
 
@@ -320,46 +298,57 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
-  function getStationIndex(stations, apiStationName) {
+  function getStationIndex(stations, name) {
     const target =
-      normalizeStationName(apiStationName);
+      normalizeStationName(name);
 
     if (!target) return -1;
 
 
-    /*
-     * 1차: 완전 일치
-     */
-    let index = stations.findIndex(
-      station =>
-        normalizeStationName(station) === target
-    );
+    let index =
+      stations.findIndex(
+        station =>
+          normalizeStationName(station) === target
+      );
+
 
     if (index !== -1) {
       return index;
     }
 
 
-    /*
-     * 2차: 포함 관계
-     */
-    index = stations.findIndex(station => {
-      const stationName =
-        normalizeStationName(station);
+    index =
+      stations.findIndex(station => {
 
-      return (
-        stationName.includes(target) ||
-        target.includes(stationName)
-      );
-    });
+        const value =
+          normalizeStationName(station);
+
+        return (
+          value.includes(target) ||
+          target.includes(value)
+        );
+      });
 
 
     return index;
   }
 
 
+  function safeId(value) {
+    return String(value)
+      .replace(/[^a-zA-Z0-9_-]/g, '_');
+  }
+
+
+  /* =========================================================
+     요일
+  ========================================================= */
+
   function getWeekTag() {
-    const day = new Date().getDay();
+
+    const day =
+      new Date().getDay();
+
 
     if (day === 6) {
       return {
@@ -368,12 +357,14 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
 
+
     if (day === 0) {
       return {
         tag: '3',
         name: '휴일(일요일) 기준'
       };
     }
+
 
     return {
       tag: '1',
@@ -382,11 +373,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
-  function timeToSeconds(timeStr) {
-    if (!timeStr) return 0;
+  /* =========================================================
+     시간
+  ========================================================= */
+
+  function timeToSeconds(time) {
+
+    if (!time) return 0;
+
 
     const parts =
-      String(timeStr).split(':');
+      String(time).split(':');
+
 
     let hour =
       parseInt(parts[0], 10) || 0;
@@ -397,13 +395,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const second =
       parseInt(parts[2], 10) || 0;
 
+
     /*
-     * 서울 지하철 시간표는
-     * 새벽 1~3시를 25~27시로 표시하는 경우가 있다.
+     * 지하철 시간표의
+     * 01:xx~03:xx를 25:xx~27:xx로 취급
      */
     if (hour < 4) {
       hour += 24;
     }
+
 
     return (
       hour * 3600 +
@@ -414,13 +414,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   function getCurrentScheduleSeconds() {
-    const now = new Date();
 
-    let hour = now.getHours();
+    const now =
+      new Date();
+
+
+    let hour =
+      now.getHours();
+
 
     if (hour < 4) {
       hour += 24;
     }
+
 
     return (
       hour * 3600 +
@@ -430,7 +436,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
-  function getStatusText(status) {
+  /* =========================================================
+     실시간 열차 상태
+  ========================================================= */
+
+  function getTrainStatusText(status) {
+
     const map = {
       '0': '진입',
       '1': '도착',
@@ -438,38 +449,17 @@ document.addEventListener('DOMContentLoaded', () => {
       '3': '전역출발'
     };
 
-    return map[String(status)] || '운행중';
+
+    return (
+      map[String(status)] ||
+      '운행중'
+    );
   }
 
 
   function isUpDirection(value) {
-    /*
-     * 실시간 위치 API
-     *
-     * 0 = 상행/내선
-     * 1 = 하행/외선
-     */
+
     return String(value) === '0';
-  }
-
-
-  function getTrainKey(train, line) {
-    /*
-     * trainNo만 쓰면 번호 형식이 다른 열차가 충돌할 수 있다.
-     *
-     * line ID + 방향 + trainNo까지 묶어서
-     * DOM에서 유일한 ID를 만든다.
-     */
-    const lineId =
-      String(train.subwayId || line.id);
-
-    const trainNo =
-      String(train.trainNo || '').trim();
-
-    const direction =
-      String(train.updnLine ?? '');
-
-    return `${lineId}-${direction}-${trainNo}`;
   }
 
 
@@ -479,25 +469,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function initMaps(lineName) {
 
-    /*
-     * 기존 interval 제거
-     */
     if (refreshInterval) {
       clearInterval(refreshInterval);
       refreshInterval = null;
     }
 
 
-    /*
-     * 진행 중인 이전 요청 무효화
-     */
-    requestGeneration++;
+    mapRequestId++;
 
 
-    currentLine = lineName;
+    currentLine =
+      lineName;
+
 
     const data =
       lineData[currentLine];
+
 
     if (!data) return;
 
@@ -509,11 +496,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     /*
-     * 세로 지도
+     * 세로
      */
 
     vStationNodes.innerHTML = '';
     vTrainsContainer.innerHTML = '';
+
 
     vMapContainer.style.height =
       `${Math.max(
@@ -522,40 +510,46 @@ document.addEventListener('DOMContentLoaded', () => {
       ) * V_SPACING + 60}px`;
 
 
-    data.stations.forEach((station, idx) => {
+    data.stations.forEach(
+      (station, index) => {
 
-      const node =
-        document.createElement('div');
-
-      node.className =
-        'v-station-node';
-
-      node.style.top =
-        `${idx * V_SPACING}px`;
-
-      node.innerHTML = `
-        <div class="v-station-name">
-          ${escapeHtml(station)}
-        </div>
-      `;
+        const node =
+          document.createElement('div');
 
 
-      node.addEventListener(
-        'click',
-        () => openFullPopup(station)
-      );
+        node.className =
+          'v-station-node';
 
 
-      vStationNodes.appendChild(node);
-    });
+        node.style.top =
+          `${index * V_SPACING}px`;
+
+
+        node.innerHTML = `
+          <div class="v-station-name">
+            ${escapeHtml(station)}
+          </div>
+        `;
+
+
+        node.addEventListener(
+          'click',
+          () => openFullPopup(station)
+        );
+
+
+        vStationNodes.appendChild(node);
+      }
+    );
 
 
     /*
-     * 가로 지도
+     * 가로
      */
 
     hStationNodes.innerHTML = '';
     hTrainsContainer.innerHTML = '';
+
 
     hTrackWrapper.style.width =
       `${Math.max(
@@ -564,36 +558,36 @@ document.addEventListener('DOMContentLoaded', () => {
       ) * H_SPACING + 60}px`;
 
 
-    data.stations.forEach((station, idx) => {
+    data.stations.forEach(
+      (station, index) => {
 
-      const node =
-        document.createElement('div');
-
-      node.className =
-        'h-station-node';
-
-      node.style.left =
-        `${idx * H_SPACING}px`;
-
-      node.innerHTML = `
-        <div class="h-station-name">
-          ${escapeHtml(station)}
-        </div>
-      `;
-
-      hStationNodes.appendChild(node);
-    });
+        const node =
+          document.createElement('div');
 
 
-    /*
-     * 즉시 한 번 실행
-     */
+        node.className =
+          'h-station-node';
+
+
+        node.style.left =
+          `${index * H_SPACING}px`;
+
+
+        node.innerHTML = `
+          <div class="h-station-name">
+            ${escapeHtml(station)}
+          </div>
+        `;
+
+
+        hStationNodes.appendChild(node);
+      }
+    );
+
+
     fetchTrainPositions();
 
 
-    /*
-     * 10초마다 실시간 위치 갱신
-     */
     refreshInterval =
       setInterval(
         fetchTrainPositions,
@@ -608,14 +602,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function fetchTrainPositions() {
 
-    const lineAtRequest =
+    const requestLine =
       currentLine;
 
-    const generationAtRequest =
-      requestGeneration;
+    const requestId =
+      mapRequestId;
+
 
     const line =
-      lineData[lineAtRequest];
+      lineData[requestLine];
+
 
     if (!line) return;
 
@@ -625,7 +621,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const url =
         `${BASE_SW}/${getApiKey()}/json/` +
         `realtimePosition/0/100/` +
-        `${encodeURIComponent(lineAtRequest)}`;
+        `${encodeURIComponent(requestLine)}`;
 
 
       const res =
@@ -646,28 +642,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
       /*
-       * 노선을 변경했다면
-       * 이 응답은 폐기
+       * 노선 변경 후 이전 응답이면 버림
        */
       if (
-        lineAtRequest !== currentLine ||
-        generationAtRequest !== requestGeneration
+        requestLine !== currentLine ||
+        requestId !== mapRequestId
       ) {
         return;
       }
 
 
-      /*
-       * 서울 API 자체 오류
-       */
       if (
         data.RESULT &&
         data.RESULT.CODE &&
         data.RESULT.CODE !== 'INFO-000'
       ) {
-
         console.warn(
-          '실시간 위치 API 오류:',
           data.RESULT.CODE,
           data.RESULT.MESSAGE
         );
@@ -677,285 +667,240 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
       const trains =
-        Array.isArray(data.realtimePositionList)
+        Array.isArray(
+          data.realtimePositionList
+        )
           ? data.realtimePositionList
           : [];
 
 
-      const stations =
-        line.stations;
-
-
-      const activeTrainKeys =
+      const activeKeys =
         new Set();
 
 
       trains.forEach(train => {
 
         /*
-         * subwayId가 존재한다면
-         * 현재 노선과 반드시 비교
+         * 현재 노선 ID와 다른 열차 제거
          */
         if (
           train.subwayId &&
-          String(train.subwayId) !== String(line.id)
+          String(train.subwayId) !==
+          String(line.id)
         ) {
           return;
         }
 
 
         const trainNo =
-          String(train.trainNo || '').trim();
+          String(
+            train.trainNo || ''
+          ).trim();
 
 
-        if (!trainNo) {
-          return;
-        }
+        if (!trainNo) return;
 
 
         const stationIndex =
           getStationIndex(
-            stations,
+            line.stations,
             train.statnNm
           );
 
 
-        /*
-         * API에서 존재하지 않는 역 이름
-         */
         if (stationIndex === -1) {
-
-          console.warn(
-            `[${lineAtRequest}] 역 매칭 실패:`,
-            train.statnNm,
-            train
-          );
-
           return;
         }
 
 
         const isUp =
-          isUpDirection(train.updnLine);
+          isUpDirection(
+            train.updnLine
+          );
 
 
-        const directionMultiplier =
+        const direction =
           isUp ? 1 : -1;
 
 
         const status =
-          String(train.trainSttus ?? '');
+          String(
+            train.trainSttus ?? ''
+          );
 
 
         let offset = 0;
 
 
-        /*
-         * 진입
-         */
         if (status === '0') {
           offset =
-            -35 * directionMultiplier;
+            -35 * direction;
         }
 
-        /*
-         * 도착
-         */
         else if (status === '1') {
           offset = 0;
         }
 
-        /*
-         * 출발
-         */
         else if (status === '2') {
           offset =
-            35 * directionMultiplier;
+            35 * direction;
         }
 
-        /*
-         * 전역출발
-         */
         else if (status === '3') {
           offset =
-            -35 * directionMultiplier;
+            -35 * direction;
         }
 
 
-        const finalVTop =
-          stationIndex * V_SPACING + offset;
+        const trainKey =
+          `${line.id}-${train.updnLine}-${trainNo}`;
 
 
-        const finalHLeft =
-          stationIndex * H_SPACING + offset;
+        const domKey =
+          safeId(trainKey);
+
+
+        activeKeys.add(domKey);
 
 
         /*
-         * 중요:
-         *
-         * trainNo만 ID로 사용하지 않음.
-         *
-         * 예:
-         * K2254
-         * 8254
-         *
-         * 서로 다른 열차가 같은 DOM을 공유하지 않도록 한다.
+         * 세로
          */
-        const trainKey =
-          getTrainKey(train, line);
 
-
-        activeTrainKeys.add(trainKey);
-
-
-        const safeKey =
-          safeDomId(trainKey);
-
-
-        /* =========================
-           세로 열차
-        ========================= */
-
-        let vTrainEl =
+        let vEl =
           document.getElementById(
-            `v-train-${safeKey}`
+            `v-train-${domKey}`
           );
 
 
-        if (!vTrainEl) {
+        if (!vEl) {
 
-          vTrainEl =
+          vEl =
             document.createElement('div');
 
-          vTrainEl.id =
-            `v-train-${safeKey}`;
+          vEl.id =
+            `v-train-${domKey}`;
 
-          vTrainsContainer.appendChild(
-            vTrainEl
-          );
+          vTrainsContainer.appendChild(vEl);
         }
 
 
-        vTrainEl.className =
-          `v-train ${isUp ? 'up' : 'down'}`;
+        vEl.className =
+          `v-train ${
+            isUp ? 'up' : 'down'
+          }`;
 
 
-        vTrainEl.innerHTML = `
+        vEl.innerHTML = `
           <span>
             ${escapeHtml(trainNo)}
           </span>
 
           <div class="v-train-status">
             ${escapeHtml(
-              getStatusText(status)
+              getTrainStatusText(status)
             )}
           </div>
         `;
 
 
-        vTrainEl.style.top =
-          `${finalVTop}px`;
+        vEl.style.top =
+          `${
+            stationIndex * V_SPACING +
+            offset
+          }px`;
 
 
-        /* =========================
-           가로 열차
-        ========================= */
+        /*
+         * 가로
+         */
 
-        let hTrainEl =
+        let hEl =
           document.getElementById(
-            `h-train-${safeKey}`
+            `h-train-${domKey}`
           );
 
 
-        if (!hTrainEl) {
+        if (!hEl) {
 
-          hTrainEl =
+          hEl =
             document.createElement('div');
 
-          hTrainEl.id =
-            `h-train-${safeKey}`;
+          hEl.id =
+            `h-train-${domKey}`;
 
-          hTrainsContainer.appendChild(
-            hTrainEl
-          );
+          hTrainsContainer.appendChild(hEl);
         }
 
 
-        hTrainEl.className =
-          `h-train ${isUp ? 'up' : 'down'}`;
+        hEl.className =
+          `h-train ${
+            isUp ? 'up' : 'down'
+          }`;
 
 
-        hTrainEl.innerHTML = `
+        hEl.innerHTML = `
           <span>
             ${escapeHtml(trainNo)}
           </span>
 
           <div class="h-train-status">
             ${escapeHtml(
-              getStatusText(status)
+              getTrainStatusText(status)
             )}
           </div>
         `;
 
 
-        hTrainEl.style.left =
-          `${finalHLeft}px`;
+        hEl.style.left =
+          `${
+            stationIndex * H_SPACING +
+            offset
+          }px`;
       });
 
 
       /*
-       * API에서 사라진 열차 제거
+       * 사라진 열차 삭제
        */
 
       Array.from(
         vTrainsContainer.children
-      ).forEach(child => {
+      ).forEach(el => {
 
         const key =
-          child.id.replace(
+          el.id.replace(
             'v-train-',
             ''
           );
 
 
-        if (
-          !activeTrainKeys.has(
-            key
-          )
-        ) {
-          child.remove();
+        if (!activeKeys.has(key)) {
+          el.remove();
         }
       });
 
 
       Array.from(
         hTrainsContainer.children
-      ).forEach(child => {
+      ).forEach(el => {
 
         const key =
-          child.id.replace(
+          el.id.replace(
             'h-train-',
             ''
           );
 
 
-        if (
-          !activeTrainKeys.has(
-            key
-          )
-        ) {
-          child.remove();
+        if (!activeKeys.has(key)) {
+          el.remove();
         }
       });
 
     } catch (error) {
 
-      /*
-       * 사용자 화면에는 오류를 크게 표시하지 않고
-       * console에서 확인할 수 있도록 한다.
-       */
       console.error(
-        `[${lineAtRequest}] 실시간 열차 위치 조회 실패:`,
+        '실시간 열차 위치 오류:',
         error
       );
     }
@@ -972,10 +917,11 @@ document.addEventListener('DOMContentLoaded', () => {
       station;
 
 
-    popupGeneration++;
+    popupRequestId++;
 
-    const currentPopupGeneration =
-      popupGeneration;
+
+    const requestId =
+      popupRequestId;
 
 
     fullPopup.classList.remove(
@@ -992,15 +938,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     /*
-     * 로딩 표시
+     * 로딩
      */
+
     document
       .getElementById('arrLoading')
       ?.classList.remove('hidden');
 
+
     document
       .getElementById('statLoading')
       ?.classList.remove('hidden');
+
 
     document
       .getElementById('ttLoading')
@@ -1009,6 +958,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     timeRideNum.textContent =
       '-';
+
 
     timeAlightNum.textContent =
       '-';
@@ -1022,8 +972,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     /*
-     * 기존 팝업 interval 제거
+     * 기존 팝업 타이머 제거
      */
+
     if (popupRefreshTimer) {
 
       clearInterval(
@@ -1035,24 +986,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     /*
-     * 최초 데이터 로드
+     * 즉시 조회
      */
+
     fetchStationDetails(
       station,
       false,
-      currentPopupGeneration
+      requestId
     );
 
 
-    /*
-     * 열차 위치도 즉시 갱신
-     */
     fetchTrainPositions();
 
 
     /*
-     * 팝업 실시간 정보 5초 갱신
+     * 5초마다 실시간 갱신
      */
+
     popupRefreshTimer =
       setInterval(() => {
 
@@ -1072,13 +1022,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
 
-        /*
-         * 다른 역을 열었으면
-         * 이전 interval이 건드리지 못하게 함
-         */
         if (
-          currentPopupGeneration !==
-          popupGeneration
+          requestId !== popupRequestId
         ) {
           return;
         }
@@ -1087,7 +1032,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchStationDetails(
           station,
           true,
-          currentPopupGeneration
+          requestId
         );
 
       }, 5000);
@@ -1095,206 +1040,156 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   /* =========================================================
-     실시간 도착 정보
+     실시간 도착정보
   ========================================================= */
 
   async function fetchArrivalInfo(
     station,
-    key,
-    line,
-    popupRequestGeneration
+    requestId
   ) {
 
-    const arrRes =
-      await fetch(
-        `${BASE_SW}/${key}/json/` +
-        `realtimeStationArrival/0/30/` +
-        `${encodeURIComponent(station)}`,
-        {
-          cache: 'no-store'
-        }
-      );
+    const line =
+      lineData[currentLine];
 
 
-    if (!arrRes.ok) {
+    const url =
+      `${BASE_SW}/${getApiKey()}/json/` +
+      `realtimeStationArrival/0/30/` +
+      `${encodeURIComponent(station)}`;
+
+
+    const res =
+      await fetch(url, {
+        cache: 'no-store'
+      });
+
+
+    if (!res.ok) {
       throw new Error(
-        `Arrival HTTP ${arrRes.status}`
+        `Arrival HTTP ${res.status}`
       );
     }
 
 
-    const arrData =
-      await arrRes.json();
+    const data =
+      await res.json();
 
 
-    /*
-     * 현재 팝업 요청이 아니면 폐기
-     */
     if (
-      popupRequestGeneration !==
-      popupGeneration
+      requestId !== popupRequestId
     ) {
       return;
     }
 
 
     if (
-      arrData.RESULT &&
-      arrData.RESULT.CODE &&
-      arrData.RESULT.CODE !== 'INFO-000'
+      data.RESULT &&
+      data.RESULT.CODE &&
+      data.RESULT.CODE !== 'INFO-000'
     ) {
-
       throw new Error(
-        `${arrData.RESULT.CODE}: ${
-          arrData.RESULT.MESSAGE || ''
+        `${data.RESULT.CODE}: ${
+          data.RESULT.MESSAGE || ''
         }`
       );
     }
 
 
-    const arrivalList =
+    const list =
       Array.isArray(
-        arrData.realtimeArrivalList
+        data.realtimeArrivalList
       )
-        ? arrData.realtimeArrivalList
+        ? data.realtimeArrivalList
         : [];
 
 
     /*
+     * 현재 노선만
+     *
      * 중요:
-     *
-     * 기존 코드에서는 노선 필터가 실패하면
-     * 전체 데이터를 다시 사용했음.
-     *
-     * 그러면 환승역에서 다른 노선 열차가 섞일 수 있다.
-     *
-     * 이제는 반드시 현재 노선만 사용한다.
+     * subwayId가 일치하지 않으면
+     * 환승역에서 다른 노선 데이터를 섞지 않는다.
      */
-    const targetLineId =
+
+    const targetId =
       String(line.id);
 
 
     const filtered =
-      arrivalList.filter(train => {
-
-        return (
-          String(train.subwayId || '') ===
-          targetLineId
-        );
-      });
+      list.filter(train =>
+        String(
+          train.subwayId || ''
+        ) === targetId
+      );
 
 
     /*
-     * 만약 subwayId가 없는 특수 API 응답이라면
-     * 현재 노선 이름으로 한 번 더 판단
+     * 도착순 정렬
      */
-    let usableList =
-      filtered;
 
+    filtered.sort((a, b) => {
 
-    if (
-      usableList.length === 0 &&
-      arrivalList.length > 0
-    ) {
+      function weight(train) {
 
-      const lineName =
-        currentLine;
-
-
-      const alternative =
-        arrivalList.filter(train => {
-
-          const trainLine =
-            String(
-              train.trainLineNm || ''
-            );
-
-          const recptn =
-            String(
-              train.recptnDt || ''
-            );
-
-
-          return (
-            trainLine.includes(lineName) ||
-            recptn.includes(lineName)
+        const msg =
+          String(
+            train.arvlMsg2 || ''
           );
-        });
 
 
-      /*
-       * 확실하게 현재 노선이라고 판단할 수 있는
-       * 데이터가 있을 때만 사용
-       */
-      if (alternative.length > 0) {
-        usableList =
-          alternative;
-      }
-    }
+        if (
+          msg.includes('도착')
+        ) {
+          return 0;
+        }
 
 
-    /*
-     * 도착 우선 정렬
-     */
-    usableList.sort((a, b) => {
-
-      const getPriority =
-        train => {
-
-          const msg =
-            String(
-              train.arvlMsg2 || ''
-            );
+        if (
+          msg.includes('진입')
+        ) {
+          return 1;
+        }
 
 
-          if (
-            msg.includes('도착') ||
-            msg.includes('진입')
-          ) {
-            return 0;
-          }
+        const sec =
+          parseInt(
+            train.barvlDt,
+            10
+          );
 
 
-          const sec =
+        if (
+          Number.isFinite(sec) &&
+          sec >= 0
+        ) {
+          return 10 + sec;
+        }
+
+
+        const match =
+          msg.match(
+            /\[(\d+)\]번째 전역/
+          );
+
+
+        if (match) {
+          return (
+            1000 +
             parseInt(
-              train.barvlDt,
+              match[1],
               10
-            );
+            )
+          );
+        }
 
 
-          if (
-            Number.isFinite(sec) &&
-            sec >= 0
-          ) {
-            return sec + 10;
-          }
-
-
-          const match =
-            msg.match(
-              /\[(\d+)\]번째 전역/
-            );
-
-
-          if (match) {
-
-            return (
-              1000 +
-              parseInt(
-                match[1],
-                10
-              )
-            );
-          }
-
-
-          return 5000;
-        };
+        return 5000;
+      }
 
 
       return (
-        getPriority(a) -
-        getPriority(b)
+        weight(a) -
+        weight(b)
       );
     });
 
@@ -1303,26 +1198,159 @@ document.addEventListener('DOMContentLoaded', () => {
     let downHtml = '';
 
 
-    usableList.forEach(train => {
+    filtered.forEach(train => {
+
+      const isUp =
+        train.updnLine === '상행' ||
+        train.updnLine === '내선' ||
+        String(train.updnLine) === '0';
+
 
       /*
-       * 상행 / 내선
+       * =====================================================
+       * 몇 번째 전역
+       * =====================================================
        */
-      const direction =
+
+      const rawMsg2 =
         String(
-          train.updnLine || ''
+          train.arvlMsg2 || ''
         );
 
 
-      const isUp =
-        direction === '상행' ||
-        direction === '내선' ||
-        direction === '0';
+      let stationCount =
+        '';
+
+
+      const stationMatch =
+        rawMsg2.match(
+          /\[(\d+)\]번째 전역/
+        );
+
+
+      if (stationMatch) {
+
+        stationCount =
+          `${stationMatch[1]}번째 전역 전`;
+      }
 
 
       /*
-       * 급행 / 특급
+       * =====================================================
+       * 도착 예정 시간
+       * =====================================================
        */
+
+      const barvlDt =
+        parseInt(
+          train.barvlDt,
+          10
+        );
+
+
+      let timeText =
+        rawMsg2 || '운행중';
+
+
+      if (
+        Number.isFinite(barvlDt) &&
+        barvlDt > 0
+      ) {
+
+        const min =
+          Math.floor(
+            barvlDt / 60
+          );
+
+
+        const sec =
+          barvlDt % 60;
+
+
+        timeText =
+          min > 0
+            ? `약 ${min}분 ${sec}초 후`
+            : `약 ${sec}초 후`;
+      }
+
+
+      /*
+       * =====================================================
+       * 현재 위치 + 상태
+       * =====================================================
+       */
+
+      const currentLocation =
+        String(
+          train.arvlMsg3 ||
+          train.statnNm ||
+          '운행중'
+        );
+
+
+      /*
+       * 실시간 도착 API에는
+       * trainSttus가 없는 경우가 많아서
+       * arvlMsg2를 이용해 상태를 추정한다.
+       */
+
+      let statusText =
+        '운행중';
+
+
+      if (
+        rawMsg2.includes('진입')
+      ) {
+
+        statusText =
+          '진입';
+
+      } else if (
+        rawMsg2.includes('도착')
+      ) {
+
+        statusText =
+          '도착';
+
+      } else if (
+        rawMsg2.includes('출발')
+      ) {
+
+        statusText =
+          '출발';
+
+      } else if (
+        rawMsg2.includes('전역출발')
+      ) {
+
+        statusText =
+          '전역출발';
+      }
+
+
+      /*
+       * 만약 arvlMsg2에 상태가 없으면
+       * trainSttus가 있는 경우 사용
+       */
+
+      if (
+        statusText === '운행중' &&
+        train.trainSttus !== undefined
+      ) {
+
+        statusText =
+          getTrainStatusText(
+            train.trainSttus
+          );
+      }
+
+
+      /*
+       * =====================================================
+       * 급행
+       * =====================================================
+       */
+
       let expressClass =
         'exp-normal';
 
@@ -1330,28 +1358,9 @@ document.addEventListener('DOMContentLoaded', () => {
         '일반';
 
 
-      const btrainStatus =
-        String(
-          train.btrainSttus || ''
-        );
-
-
-      const directAt =
-        String(
-          train.directAt || ''
-        );
-
-
-      const flFlag =
-        String(
-          train.FL_FLAG || ''
-        );
-
-
       if (
-        btrainStatus === '급행' ||
-        directAt === '1' ||
-        flFlag === '급행'
+        train.btrainSttus === '급행' ||
+        String(train.directAt) === '1'
       ) {
 
         expressClass =
@@ -1361,9 +1370,8 @@ document.addEventListener('DOMContentLoaded', () => {
           '급행';
 
       } else if (
-        btrainStatus === '특급' ||
-        directAt === '7' ||
-        flFlag === '특급'
+        train.btrainSttus === '특급' ||
+        String(train.directAt) === '7'
       ) {
 
         expressClass =
@@ -1375,98 +1383,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
       /*
-       * 도착 시간
+       * =====================================================
+       * 행선지
+       * =====================================================
        */
-      const rawMsg =
-        String(
-          train.arvlMsg2 || ''
-        );
-
-
-      let timeText =
-        rawMsg || '운행중';
-
-
-      /*
-       * [3]번째 전역
-       */
-      let stationCountText =
-        '';
-
-
-      const match =
-        rawMsg.match(
-          /\[(\d+)\]번째 전역/
-        );
-
-
-      if (match) {
-
-        stationCountText =
-          `${match[1]}번째 전역 전`;
-      }
-
-
-      /*
-       * barvlDt가 실제로 존재하면
-       * 초 단위로 표시
-       */
-      const sec =
-        parseInt(
-          train.barvlDt,
-          10
-        );
-
-
-      if (
-        Number.isFinite(sec) &&
-        sec > 0
-      ) {
-
-        const m =
-          Math.floor(
-            sec / 60
-          );
-
-        const s =
-          sec % 60;
-
-
-        timeText =
-          m > 0
-            ? `약 ${m}분 ${s}초 후`
-            : `약 ${s}초 후`;
-
-      } else if (
-        rawMsg.includes('진입') ||
-        rawMsg.includes('도착') ||
-        rawMsg.includes('출발')
-      ) {
-
-        timeText =
-          rawMsg;
-
-      } else if (
-        stationCountText
-      ) {
-
-        timeText =
-          stationCountText;
-      }
-
 
       const destination =
         escapeHtml(
           train.bstatnNm ||
+          train.statnTnm ||
           '방면'
         );
 
 
-      const currentLocation =
-        escapeHtml(
-          train.arvlMsg3 ||
-          '운행중'
-        );
+      /*
+       * =====================================================
+       * 현재 위치 표시
+       *
+       * 현재: 신촌 (도착)
+       * 현재: 홍대입구 (진입)
+       *
+       * 이렇게 표시
+       * =====================================================
+       */
+
+      const currentText =
+        `현재: ${currentLocation} (${statusText})`;
 
 
       const item = `
@@ -1489,15 +1431,23 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
 
           <div class="arr-desc">
+
             ${destination}행
+
             ${
-              stationCountText
+              stationCount
                 ? ` • ${escapeHtml(
-                    stationCountText
+                    stationCount
                   )}`
                 : ''
             }
-            (현재: ${currentLocation})
+
+            <br>
+
+            ${escapeHtml(
+              currentText
+            )}
+
           </div>
 
         </div>
@@ -1517,7 +1467,10 @@ document.addEventListener('DOMContentLoaded', () => {
       `
         <div
           class="arr-item"
-          style="border:none; text-align:center;"
+          style="
+            border:none;
+            text-align:center;
+          "
         >
           도착 대기 중인 열차 없음
         </div>
@@ -1529,7 +1482,10 @@ document.addEventListener('DOMContentLoaded', () => {
       `
         <div
           class="arr-item"
-          style="border:none; text-align:center;"
+          style="
+            border:none;
+            text-align:center;
+          "
         >
           도착 대기 중인 열차 없음
         </div>
@@ -1538,39 +1494,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   /* =========================================================
-     이용객 통계
-  ========================================================= */
-
-  async function fetchStatistics() {
-
-    /*
-     * 기존 코드의 랜덤 숫자는
-     * 실제 통계 API가 아니기 때문에 일단 유지하지 않는다.
-     *
-     * 실제 API가 연결될 때까지 '-' 표시.
-     */
-
-    timeRideNum.textContent =
-      '-';
-
-    timeAlightNum.textContent =
-      '-';
-  }
-
-
-  /* =========================================================
-     시간표 역 코드 찾기
+     역 코드 찾기
   ========================================================= */
 
   async function findStationCode(
     station,
-    key,
-    line,
-    popupRequestGeneration
+    requestId
   ) {
 
     const url =
-      `${BASE_OPEN}/${key}/json/` +
+      `${BASE_OPEN}/${getApiKey()}/json/` +
       `SearchInfoBySubwayNameService/1/50/` +
       `${encodeURIComponent(station)}`;
 
@@ -1583,7 +1516,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!res.ok) {
       throw new Error(
-        `StationInfo HTTP ${res.status}`
+        `Station Search HTTP ${res.status}`
       );
     }
 
@@ -1593,17 +1526,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     if (
-      popupRequestGeneration !==
-      popupGeneration
-    ) {
-      return null;
-    }
-
-
-    if (
-      data.RESULT &&
-      data.RESULT.CODE &&
-      data.RESULT.CODE !== 'INFO-000'
+      requestId !== popupRequestId
     ) {
       return null;
     }
@@ -1620,29 +1543,45 @@ document.addEventListener('DOMContentLoaded', () => {
         : [];
 
 
-    if (rows.length === 0) {
+    if (
+      rows.length === 0
+    ) {
       return null;
     }
 
 
-    const targetLineId =
-      String(line.id);
+    const line =
+      lineData[currentLine];
 
 
     /*
-     * 1순위: 정확한 subway ID
+     * 서울 API SearchInfoBySubwayNameService의
+     * LINE_NUM은 1002가 아니라
+     * "02호선" 같은 형태로 오는 경우가 있다.
+     *
+     * 그래서 subwayId와 직접 비교하지 않는다.
      */
-    let row =
-      rows.find(r =>
-        String(r.LINE_NUM || '') ===
-        targetLineId
-      );
+
+    let targetRows =
+      [];
 
 
-    /*
-     * 2순위: 노선 번호
-     */
-    if (!row) {
+    if (currentLine === 'GTX-A') {
+
+      targetRows =
+        rows.filter(row => {
+
+          const value =
+            JSON.stringify(row);
+
+
+          return (
+            value.includes('GTX-A') ||
+            value.includes('1032')
+          );
+        });
+
+    } else {
 
       const lineNumber =
         currentLine.replace(
@@ -1651,20 +1590,28 @@ document.addEventListener('DOMContentLoaded', () => {
         );
 
 
-      row =
-        rows.find(r => {
+      const padded =
+        lineNumber.padStart(
+          2,
+          '0'
+        );
+
+
+      targetRows =
+        rows.filter(row => {
 
           const lineNum =
             String(
-              r.LINE_NUM || ''
-            );
+              row.LINE_NUM || ''
+            ).trim();
 
 
           return (
-            lineNum === lineNumber ||
+            lineNum === `${padded}호선` ||
             lineNum === `${lineNumber}호선` ||
+            lineNum === lineNumber ||
             lineNum.includes(
-              lineNumber
+              `${padded}호선`
             )
           );
         });
@@ -1672,64 +1619,99 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     /*
-     * GTX-A
+     * 일치하는 노선이 있다면
+     * 그 노선의 역 코드만 사용
      */
+
     if (
-      !row &&
-      currentLine === 'GTX-A'
+      targetRows.length > 0
     ) {
 
-      row =
-        rows.find(r => {
-
-          const value =
-            JSON.stringify(r);
-
-          return (
-            value.includes('GTX-A') ||
-            value.includes('1032')
-          );
-        });
+      return (
+        targetRows[0].STATION_CD ||
+        null
+      );
     }
 
 
     /*
-     * 그래도 없으면
-     * 환승역에서 잘못된 노선 코드가 선택될 수 있으므로
-     * 첫 번째 데이터를 무작정 사용하지 않는다.
+     * 혹시 LINE_NUM 형식이 예상과 다른 경우
+     * 노선명을 JSON 전체에서 확인
      */
-    return row
-      ? row.STATION_CD
-      : null;
+
+    const fallback =
+      rows.find(row => {
+
+        const text =
+          JSON.stringify(row);
+
+
+        return text.includes(
+          currentLine
+        );
+      });
+
+
+    if (fallback) {
+
+      return (
+        fallback.STATION_CD ||
+        null
+      );
+    }
+
+
+    /*
+     * 마지막 fallback
+     *
+     * 단, 환승역에서 다른 노선을 잘못 잡을 수 있으므로
+     * 현재 노선이 1개만 존재할 때만 사용
+     */
+
+    if (
+      rows.length === 1
+    ) {
+
+      return (
+        rows[0].STATION_CD ||
+        null
+      );
+    }
+
+
+    return null;
   }
 
 
   /* =========================================================
-     시간표 조회
+     시간표
   ========================================================= */
 
   async function fetchTimetable(
     station,
-    key,
-    line,
-    popupRequestGeneration
+    requestId
   ) {
 
-    const weekInfo =
+    const week =
       getWeekTag();
 
 
     ttDateType.textContent =
-      weekInfo.name;
+      week.name;
 
 
     const stationCd =
       await findStationCode(
         station,
-        key,
-        line,
-        popupRequestGeneration
+        requestId
       );
+
+
+    if (
+      requestId !== popupRequestId
+    ) {
+      return;
+    }
 
 
     if (!stationCd) {
@@ -1738,9 +1720,12 @@ document.addEventListener('DOMContentLoaded', () => {
         `
           <div
             class="tt-item"
-            style="border:none; text-align:center;"
+            style="
+              border:none;
+              text-align:center;
+            "
           >
-            시간표 역 정보를 찾을 수 없음
+            시간표 정보를 찾을 수 없음
           </div>
         `;
 
@@ -1749,9 +1734,12 @@ document.addEventListener('DOMContentLoaded', () => {
         `
           <div
             class="tt-item"
-            style="border:none; text-align:center;"
+            style="
+              border:none;
+              text-align:center;
+            "
           >
-            시간표 역 정보를 찾을 수 없음
+            시간표 정보를 찾을 수 없음
           </div>
         `;
 
@@ -1760,24 +1748,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
+    const key =
+      getApiKey();
+
+
     /*
-     * 상행
+     * 상행 / 내선
      */
+
     const upUrl =
       `${BASE_OPEN}/${key}/json/` +
       `SearchSTTimeTableByIDService/1/500/` +
       `${encodeURIComponent(stationCd)}/` +
-      `${weekInfo.tag}/1/`;
+      `${week.tag}/1/`;
 
 
     /*
-     * 하행
+     * 하행 / 외선
      */
+
     const downUrl =
       `${BASE_OPEN}/${key}/json/` +
       `SearchSTTimeTableByIDService/1/500/` +
       `${encodeURIComponent(stationCd)}/` +
-      `${weekInfo.tag}/2/`;
+      `${week.tag}/2/`;
 
 
     const [
@@ -1798,7 +1792,7 @@ document.addEventListener('DOMContentLoaded', () => {
       !downRes.ok
     ) {
       throw new Error(
-        'Timetable HTTP error'
+        '시간표 API HTTP 오류'
       );
     }
 
@@ -1813,216 +1807,212 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     if (
-      popupRequestGeneration !==
-      popupGeneration
+      requestId !== popupRequestId
     ) {
       return;
     }
 
 
-    const upService =
-      upData.SearchSTTimeTableByIDService;
-
-
-    const downService =
-      downData.SearchSTTimeTableByIDService;
-
-
     const upRows =
-      upService &&
-      Array.isArray(upService.row)
-        ? upService.row
+      Array.isArray(
+        upData
+          ?.SearchSTTimeTableByIDService
+          ?.row
+      )
+        ? upData.SearchSTTimeTableByIDService.row
         : [];
 
 
     const downRows =
-      downService &&
-      Array.isArray(downService.row)
-        ? downService.row
+      Array.isArray(
+        downData
+          ?.SearchSTTimeTableByIDService
+          ?.row
+      )
+        ? downData.SearchSTTimeTableByIDService.row
         : [];
 
 
-    const currentSecs =
+    const nowSeconds =
       getCurrentScheduleSeconds();
 
 
-    const renderTimetable =
-      (rows, isUp) => {
+    function renderTimetable(
+      rows,
+      isUp
+    ) {
 
-        /*
-         * 시간표 시간 추출
-         */
-        const validTrains =
-          rows
-            .filter(row => {
+      const valid =
+        rows
+          .filter(row => {
 
-              const time =
-                row.ARRIVETIME ||
-                row.ARRIVAL_TIME ||
-                row.DEPTIME ||
-                '';
+            const time =
+              row.ARRIVETIME ||
+              row.LEFTTIME ||
+              '';
 
 
-              return (
-                timeToSeconds(time) >=
-                currentSecs
-              );
-            })
-            .sort((a, b) => {
-
-              const aTime =
-                a.ARRIVETIME ||
-                a.ARRIVAL_TIME ||
-                a.DEPTIME ||
-                '';
+            if (!time) {
+              return false;
+            }
 
 
-              const bTime =
-                b.ARRIVETIME ||
-                b.ARRIVAL_TIME ||
-                b.DEPTIME ||
-                '';
+            return (
+              timeToSeconds(time) >=
+              nowSeconds
+            );
+          })
+          .sort((a, b) => {
+
+            const aTime =
+              a.ARRIVETIME ||
+              a.LEFTTIME ||
+              '';
 
 
-              return (
-                timeToSeconds(aTime) -
-                timeToSeconds(bTime)
-              );
-            })
-            .slice(0, 10);
+            const bTime =
+              b.ARRIVETIME ||
+              b.LEFTTIME ||
+              '';
+
+
+            return (
+              timeToSeconds(aTime) -
+              timeToSeconds(bTime)
+            );
+          })
+          .slice(0, 10);
+
+
+      if (
+        valid.length === 0
+      ) {
+
+        return `
+          <div
+            class="tt-item"
+            style="
+              border:none;
+              text-align:center;
+            "
+          >
+            금일 운행 종료
+          </div>
+        `;
+      }
+
+
+      let html = '';
+
+
+      valid.forEach(row => {
+
+        const rawTime =
+          row.ARRIVETIME ||
+          row.LEFTTIME ||
+          '';
+
+
+        const displayTime =
+          String(rawTime)
+            .substring(0, 5);
+
+
+        let expClass =
+          'exp-normal';
+
+        let expText =
+          '일반';
+
+
+        const express =
+          String(
+            row.EXPRESS_YN || ''
+          );
+
+
+        const flag =
+          String(
+            row.FL_FLAG || ''
+          );
 
 
         if (
-          validTrains.length === 0
+          express === 'G' ||
+          express === 'D' ||
+          express === 'E' ||
+          flag === '급행'
         ) {
 
-          return `
-            <div
-              class="tt-item"
-              style="border:none; text-align:center;"
-            >
-              금일 운행 종료
-            </div>
-          `;
+          expClass =
+            'exp-express';
+
+          expText =
+            '급행';
+
+        } else if (
+          express === 'S' ||
+          flag === '특급'
+        ) {
+
+          expClass =
+            'exp-special';
+
+          expText =
+            '특급';
         }
 
 
-        let html = '';
+        const destination =
+          row.SUBWAYENAME ||
+          row.SUBWAYSNAME ||
+          row.DESTSTATION ||
+          '방면';
 
 
-        validTrains.forEach(row => {
+        html += `
+          <div
+            class="tt-item ${
+              isUp ? 'up' : 'down'
+            }"
+          >
 
-          const rawTime =
-            row.ARRIVETIME ||
-            row.ARRIVAL_TIME ||
-            row.DEPTIME ||
-            '';
+            <div class="arr-top-row">
 
+              <span
+                style="
+                  font-weight:bold;
+                  font-size:14px;
+                "
+              >
+                ${escapeHtml(
+                  displayTime
+                )}
+              </span>
 
-          const displayTime =
-            String(rawTime)
-              .substring(0, 5);
-
-
-          let expClass =
-            'exp-normal';
-
-          let expText =
-            '일반';
-
-
-          const expressYn =
-            String(
-              row.EXPRESS_YN ||
-              ''
-            );
-
-
-          const flFlag =
-            String(
-              row.FL_FLAG ||
-              ''
-            );
-
-
-          if (
-            expressYn === 'G' ||
-            expressYn === 'D' ||
-            expressYn === 'E' ||
-            flFlag === '급행'
-          ) {
-
-            expClass =
-              'exp-express';
-
-            expText =
-              '급행';
-
-          } else if (
-            expressYn === 'S' ||
-            flFlag === '특급'
-          ) {
-
-            expClass =
-              'exp-special';
-
-            expText =
-              '특급';
-          }
-
-
-          const destination =
-            escapeHtml(
-              row.SUBWAYENAME ||
-              row.SUBWAYENAM ||
-              row.BSTATN_NM ||
-              '방면'
-            );
-
-
-          html += `
-            <div
-              class="tt-item ${
-                isUp
-                  ? 'up'
-                  : 'down'
-              }"
-            >
-
-              <div class="arr-top-row">
-
-                <span
-                  style="
-                    font-weight:bold;
-                    font-size:14px;
-                  "
-                >
-                  ${escapeHtml(
-                    displayTime
-                  )}
-                </span>
-
-                <span
-                  class="exp-badge ${
-                    expClass
-                  }"
-                >
-                  ${expText}
-                </span>
-
-              </div>
-
-              <div class="arr-desc">
-                ${destination}행
-              </div>
+              <span
+                class="exp-badge ${
+                  expClass
+                }"
+              >
+                ${expText}
+              </span>
 
             </div>
-          `;
-        });
+
+            <div class="arr-desc">
+              ${escapeHtml(
+                destination
+              )}행
+            </div>
+
+          </div>
+        `;
+      });
 
 
-        return html;
-      };
+      return html;
+    }
 
 
     ttUpList.innerHTML =
@@ -2041,228 +2031,456 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   /* =========================================================
-     역 상세정보
+     승하차 통계
   ========================================================= */
 
-  async function fetchStationDetails(
+  function formatNumber(value) {
+
+    const number =
+      Number(value);
+
+
+    if (
+      !Number.isFinite(number)
+    ) {
+      return '-';
+    }
+
+
+    return Math.round(
+      number
+    ).toLocaleString();
+  }
+
+
+  function getDateString(date) {
+
+    const y =
+      date.getFullYear();
+
+
+    const m =
+      String(
+        date.getMonth() + 1
+      ).padStart(2, '0');
+
+
+    const d =
+      String(
+        date.getDate()
+      ).padStart(2, '0');
+
+
+    return `${y}${m}${d}`;
+  }
+
+
+  async function fetchStatistics(
     station,
-    isSilent = false,
-    popupRequestGeneration = popupGeneration
+    requestId
   ) {
 
-    const key =
-      getApiKey();
-
+    /*
+     * CardSubwayStatsNew는 일별 확정 승하차 데이터다.
+     *
+     * 당일 실시간 통계가 아니라
+     * 최근 제공된 날짜의 데이터다.
+     *
+     * 따라서 오늘 → 어제 → 그제 ...
+     * 순서로 최대 7일을 찾아본다.
+     */
 
     const line =
       lineData[currentLine];
 
 
-    if (!line) return;
+    const key =
+      getApiKey();
 
 
-    /*
-     * 현재 팝업인지 확인
-     */
+    const targetStation =
+      normalizeStationName(
+        station
+      );
+
+
+    const targetLine =
+      currentLine === 'GTX-A'
+        ? 'GTX-A'
+        : currentLine;
+
+
+    let result = null;
+
+
+    for (
+      let offset = 1;
+      offset <= 7;
+      offset++
+    ) {
+
+      if (
+        requestId !== popupRequestId
+      ) {
+        return;
+      }
+
+
+      const date =
+        new Date();
+
+
+      date.setDate(
+        date.getDate() -
+        offset
+      );
+
+
+      const dateString =
+        getDateString(date);
+
+
+      try {
+
+        const url =
+          `${BASE_OPEN}/${key}/json/` +
+          `CardSubwayStatsNew/1/1000/` +
+          `${dateString}`;
+
+
+        const res =
+          await fetch(url, {
+            cache: 'no-store'
+          });
+
+
+        if (!res.ok) {
+          continue;
+        }
+
+
+        const data =
+          await res.json();
+
+
+        const service =
+          data.CardSubwayStatsNew;
+
+
+        const rows =
+          service &&
+          Array.isArray(service.row)
+            ? service.row
+            : [];
+
+
+        /*
+         * 노선 + 역명으로 찾는다.
+         */
+
+        const matches =
+          rows.filter(row => {
+
+            const rowStation =
+              normalizeStationName(
+                row.SUB_STA_NM
+              );
+
+
+            const rowLine =
+              String(
+                row.LINE_NUM || ''
+              );
+
+
+            const sameStation =
+              rowStation ===
+                targetStation ||
+              rowStation.includes(
+                targetStation
+              ) ||
+              targetStation.includes(
+                rowStation
+              );
+
+
+            let sameLine = false;
+
+
+            if (
+              targetLine === 'GTX-A'
+            ) {
+
+              sameLine =
+                rowLine.includes(
+                  'GTX-A'
+                );
+
+            } else {
+
+              const lineNumber =
+                targetLine.replace(
+                  '호선',
+                  ''
+                );
+
+
+              sameLine =
+                rowLine ===
+                  targetLine ||
+                rowLine.includes(
+                  `${lineNumber}호선`
+                ) ||
+                rowLine ===
+                  lineNumber;
+            }
+
+
+            return (
+              sameStation &&
+              sameLine
+            );
+          });
+
+
+        if (
+          matches.length > 0
+        ) {
+
+          result =
+            matches[0];
+
+          break;
+        }
+
+      } catch (error) {
+
+        console.warn(
+          '통계 날짜 조회 실패:',
+          dateString,
+          error
+        );
+      }
+    }
+
+
     if (
-      popupRequestGeneration !==
-      popupGeneration
+      requestId !== popupRequestId
     ) {
       return;
     }
 
 
-    if (!isSilent) {
+    if (!result) {
 
-      document
-        .getElementById('arrLoading')
-        ?.classList.remove(
-          'hidden'
-        );
+      timeRideNum.textContent =
+        '-';
 
-      document
-        .getElementById('statLoading')
-        ?.classList.remove(
-          'hidden'
-        );
 
-      document
-        .getElementById('ttLoading')
-        ?.classList.remove(
-          'hidden'
-        );
+      timeAlightNum.textContent =
+        '-';
+
+
+      return;
     }
 
 
+    timeRideNum.textContent =
+      `${formatNumber(
+        result.RIDE_PASGR_NUM
+      )}명`;
+
+
+    timeAlightNum.textContent =
+      `${formatNumber(
+        result.ALIGHT_PASGR_NUM
+      )}명`;
+  }
+
+
+  /* =========================================================
+     전체 역 상세정보
+  ========================================================= */
+
+  async function fetchStationDetails(
+    station,
+    isSilent = false,
+    requestId = popupRequestId
+  ) {
+
+    const tasks = [];
+
+
     /*
-     * =====================================================
-     * 1. 실시간 도착정보
-     * =====================================================
+     * 실시간 도착
      */
 
-    try {
-
-      await fetchArrivalInfo(
+    tasks.push(
+      fetchArrivalInfo(
         station,
-        key,
-        line,
-        popupRequestGeneration
-      );
+        requestId
+      )
+        .catch(error => {
 
-    } catch (error) {
-
-      console.error(
-        '실시간 도착정보 오류:',
-        error
-      );
-
-
-      if (
-        popupRequestGeneration ===
-        popupGeneration
-      ) {
-
-        arrUpList.innerHTML =
-          `
-            <div
-              class="arr-item"
-              style="border:none"
-            >
-              정보 로드 실패
-            </div>
-          `;
-
-
-        arrDownList.innerHTML =
-          `
-            <div
-              class="arr-item"
-              style="border:none"
-            >
-              정보 로드 실패
-            </div>
-          `;
-      }
-
-    } finally {
-
-      if (
-        popupRequestGeneration ===
-        popupGeneration
-      ) {
-
-        document
-          .getElementById(
-            'arrLoading'
-          )
-          ?.classList.add(
-            'hidden'
+          console.error(
+            '도착정보 오류:',
+            error
           );
-      }
-    }
+
+
+          if (
+            requestId === popupRequestId
+          ) {
+
+            arrUpList.innerHTML =
+              `
+                <div
+                  class="arr-item"
+                  style="border:none"
+                >
+                  정보 로드 실패
+                </div>
+              `;
+
+
+            arrDownList.innerHTML =
+              `
+                <div
+                  class="arr-item"
+                  style="border:none"
+                >
+                  정보 로드 실패
+                </div>
+              `;
+          }
+        })
+        .finally(() => {
+
+          if (
+            requestId === popupRequestId
+          ) {
+
+            document
+              .getElementById(
+                'arrLoading'
+              )
+              ?.classList.add(
+                'hidden'
+              );
+          }
+        })
+    );
 
 
     /*
-     * =====================================================
-     * 2. 통계
-     * =====================================================
+     * 통계
      */
 
-    try {
-
-      await fetchStatistics();
-
-    } catch (error) {
-
-      console.error(
-        '통계 조회 오류:',
-        error
-      );
-
-    } finally {
-
-      if (
-        popupRequestGeneration ===
-        popupGeneration
-      ) {
-
-        document
-          .getElementById(
-            'statLoading'
-          )
-          ?.classList.add(
-            'hidden'
-          );
-      }
-    }
-
-
-    /*
-     * =====================================================
-     * 3. 시간표
-     * =====================================================
-     */
-
-    try {
-
-      await fetchTimetable(
+    tasks.push(
+      fetchStatistics(
         station,
-        key,
-        line,
-        popupRequestGeneration
-      );
+        requestId
+      )
+        .catch(error => {
 
-    } catch (error) {
-
-      console.error(
-        '시간표 조회 오류:',
-        error
-      );
-
-
-      if (
-        popupRequestGeneration ===
-        popupGeneration
-      ) {
-
-        ttUpList.innerHTML =
-          `
-            <div
-              class="tt-item"
-              style="border:none"
-            >
-              시간표 조회 불가
-            </div>
-          `;
-
-
-        ttDownList.innerHTML =
-          `
-            <div
-              class="tt-item"
-              style="border:none"
-            >
-              시간표 조회 불가
-            </div>
-          `;
-      }
-
-    } finally {
-
-      if (
-        popupRequestGeneration ===
-        popupGeneration
-      ) {
-
-        document
-          .getElementById(
-            'ttLoading'
-          )
-          ?.classList.add(
-            'hidden'
+          console.error(
+            '통계 오류:',
+            error
           );
-      }
-    }
+
+          if (
+            requestId === popupRequestId
+          ) {
+
+            timeRideNum.textContent =
+              '-';
+
+            timeAlightNum.textContent =
+              '-';
+          }
+        })
+        .finally(() => {
+
+          if (
+            requestId === popupRequestId
+          ) {
+
+            document
+              .getElementById(
+                'statLoading'
+              )
+              ?.classList.add(
+                'hidden'
+              );
+          }
+        })
+    );
+
+
+    /*
+     * 시간표
+     */
+
+    tasks.push(
+      fetchTimetable(
+        station,
+        requestId
+      )
+        .catch(error => {
+
+          console.error(
+            '시간표 오류:',
+            error
+          );
+
+
+          if (
+            requestId === popupRequestId
+          ) {
+
+            ttUpList.innerHTML =
+              `
+                <div
+                  class="tt-item"
+                  style="border:none"
+                >
+                  시간표 조회 불가
+                </div>
+              `;
+
+
+            ttDownList.innerHTML =
+              `
+                <div
+                  class="tt-item"
+                  style="border:none"
+                >
+                  시간표 조회 불가
+                </div>
+              `;
+          }
+        })
+        .finally(() => {
+
+          if (
+            requestId === popupRequestId
+          ) {
+
+            document
+              .getElementById(
+                'ttLoading'
+              )
+              ?.classList.add(
+                'hidden'
+              );
+          }
+        })
+    );
+
+
+    await Promise.allSettled(
+      tasks
+    );
   }
 
 
@@ -2279,10 +2497,7 @@ document.addEventListener('DOMContentLoaded', () => {
       );
 
 
-      /*
-       * 현재 팝업 요청 무효화
-       */
-      popupGeneration++;
+      popupRequestId++;
 
 
       if (popupRefreshTimer) {
@@ -2305,18 +2520,12 @@ document.addEventListener('DOMContentLoaded', () => {
     'change',
     event => {
 
-      /*
-       * 팝업 닫기
-       */
       fullPopup.classList.add(
         'hidden'
       );
 
 
-      /*
-       * 팝업 요청 무효화
-       */
-      popupGeneration++;
+      popupRequestId++;
 
 
       if (popupRefreshTimer) {
@@ -2329,9 +2538,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
 
-      /*
-       * 지도 초기화
-       */
       initMaps(
         event.target.value
       );
@@ -2340,7 +2546,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   /* =========================================================
-     최초 실행
+     시작
   ========================================================= */
 
   initMaps('2호선');
