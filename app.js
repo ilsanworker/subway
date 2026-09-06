@@ -24,16 +24,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // DOM
   const lineSelect = document.getElementById('lineSelect');
-  const apiKeyInput = document.getElementById('apiKeyInput');
-  const mapArea = document.getElementById('mapArea');
   const stationNodesMini = document.getElementById('stationNodesMini');
   const trainsContainer = document.getElementById('trainsContainer');
   const trackWrapper = document.getElementById('trackWrapper');
   const verticalStationList = document.getElementById('verticalStationList');
   const currentLineTitle = document.getElementById('currentLineTitle');
   
-  const modalBackdrop = document.getElementById('modalBackdrop');
-  const closeModal = document.getElementById('closeModal');
+  const fullPopup = document.getElementById('fullPopup');
+  const closePopupBtn = document.getElementById('closePopup');
   const starBtn = document.getElementById('starBtn');
   
   const pName = document.getElementById('panelStationName');
@@ -50,14 +48,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const timetableBody = document.getElementById('timetableBody');
   const timetableTitle = document.getElementById('timetableTitle');
 
-  // 초기 뷰 설정 (세로 리스트 그리기)
   function initView(lineName) {
     currentLine = lineName;
     const data = lineData[currentLine];
     document.documentElement.style.setProperty('--line-color', data.color);
     currentLineTitle.textContent = `${currentLine} 전체 역 목록`;
 
-    // 1. 세로 리스트 렌더링
+    // 1. 세로 리스트
     verticalStationList.innerHTML = '';
     data.stations.forEach((station) => {
       const isFav = favorites.includes(station);
@@ -67,25 +64,28 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="vertical-item-name">${isFav ? '⭐ ' : ''}${station}역</span>
         <span class="vertical-item-arrow">상세보기 ›</span>
       `;
-      item.addEventListener('click', () => openBottomSheet(station));
+      item.addEventListener('click', () => openPopup(station));
       verticalStationList.appendChild(item);
     });
 
-    // 2. 팝업이 뜰 때 쓸 가로 미니 지도 뼈대 준비
+    // 2. 상단 가로 지도 뼈대
     stationNodesMini.innerHTML = '';
     data.stations.forEach((station) => {
       const node = document.createElement('div');
       node.className = 'station-node-mini';
       node.innerHTML = `<div class="station-name-mini">${station}</div>`;
-      node.addEventListener('click', () => openBottomSheet(station));
+      node.addEventListener('click', () => openPopup(station));
       stationNodesMini.appendChild(node);
     });
     trackWrapper.style.width = `${(data.stations.length - 1) * STATION_SPACING + 60}px`;
+
+    // 항상 열차 위치 가져오기 시작
+    fetchTrainPositions();
+    if(refreshInterval) clearInterval(refreshInterval);
+    refreshInterval = setInterval(fetchTrainPositions, 10000);
   }
 
-  // 실시간 열차 위치 (가로 미니 지도용)
   async function fetchTrainPositions() {
-    if (modalBackdrop.classList.contains('hidden')) return; // 팝업 닫혀있으면 갱신 안 함 (자원 절약)
     try {
       const res = await fetch(`${BASE_SW}/${getApiKey()}/json/realtimePosition/0/80/${encodeURIComponent(currentLine)}`);
       const data = await res.json();
@@ -131,11 +131,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   }
 
-  // 바텀 시트 팝업 열기
-  function openBottomSheet(station) {
+  function openPopup(station) {
     currentStation = station;
-    modalBackdrop.classList.remove('hidden');
-    mapArea.classList.remove('hidden'); // 팝업 열릴 때만 상단 가로 지도 표시!
+    fullPopup.classList.remove('hidden');
     
     pName.textContent = station + '역';
     pBadge.textContent = currentLine;
@@ -147,14 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateFavoriteUI();
     fetchStationDetails(station);
-
-    // 가로 미니 지도 실시간 애니메이션 시작
-    fetchTrainPositions();
-    if(refreshInterval) clearInterval(refreshInterval);
-    refreshInterval = setInterval(fetchTrainPositions, 10000);
   }
 
-  // 역 상세 정보 로드
   async function fetchStationDetails(station) {
     try {
       const infoRes = await fetch(`${BASE_OPEN}/${getApiKey()}/json/SearchInfoBySubwayNameService/1/5/${encodeURIComponent(station)}`);
@@ -203,7 +195,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) { document.getElementById('arrLoading').classList.add('hidden'); }
   }
 
-  // 즐겨찾기 UI 및 저장 로직 수정 (정상 작동)
   function updateFavoriteUI() {
     if (favorites.includes(currentStation)) {
       starBtn.textContent = '★ 즐겨찾기 취소';
@@ -222,41 +213,53 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     localStorage.setItem('subway_favs', JSON.stringify(favorites));
     updateFavoriteUI();
-    initView(currentLine); // 세로 리스트에 별표 반영
+    initView(currentLine);
   });
 
-  // 시간표 버튼
+  // 실제 서울시 Open API 시간표 연동 (SearchSTTimeTableService)
   timetableBtn.addEventListener('click', async () => {
     timetableModal.classList.remove('hidden');
     timetableTitle.textContent = `${currentStation}역 시간표`;
-    timetableBody.innerHTML = '<div class="loading-text">시간표 불러오는 중...</div>';
+    timetableBody.innerHTML = '<div class="loading-text">실시간 API 시간표 불러오는 중...</div>';
     
-    setTimeout(() => {
-      let html = '';
-      const mockTimes = ['06:12 (일반)', '06:28 (급행)', '06:45 (일반)', '07:02 (일반)', '07:19 (급행)', '07:35 (일반)', '07:52 (일반)', '08:10 (급행)'];
-      mockTimes.forEach(t => {
-        html += `<div class="tt-item"><span>열차 시각</span><strong>${t}</strong></div>`;
-      });
-      timetableBody.innerHTML = html;
-    }, 300);
+    try {
+      // 요일 구분 (1: 평일, 2: 토요일, 3: 휴일/일요일)
+      const dayOfWeek = new Date().getDay();
+      let weekTag = '1';
+      if (dayOfWeek === 6) weekTag = '2';
+      else if (dayOfWeek === 0) weekTag = '3';
+
+      // 상행(1)/하행(2) 중 기본 1구간 호출
+      const res = await fetch(`${BASE_OPEN}/${getApiKey()}/json/SearchSTTimeTableService/1/50/${encodeURIComponent(currentStation)}/${weekTag}/1/`);
+      const data = await res.json();
+
+      if (data.SearchSTTimeTableService && data.SearchSTTimeTableService.row) {
+        let html = '';
+        data.SearchSTTimeTableService.row.forEach(item => {
+          html += `
+            <div class="tt-item">
+              <span>도착 시간: <strong>${item.ARRIVETIME}</strong> (${item.SUBWAYENAME}행)</span>
+              <span style="color:var(--text-muted);">${item.EXPRESS_YN === 'Y' ? '⚡급행' : '일반'}</span>
+            </div>
+          `;
+        });
+        timetableBody.innerHTML = html;
+      } else {
+        // 데이터가 없거나 샘플키 제한인 경우 안내 메시지
+        timetableBody.innerHTML = '<div class="loading-text">해당 역의 시간표 데이터가 없거나 샘플 키 제한입니다. (발급받은 키를 상단에 입력해주세요)</div>';
+      }
+    } catch (e) {
+      timetableBody.innerHTML = '<div class="loading-text" style="color:red;">시간표를 불러오는 중 네트워크 오류가 발생했습니다.</div>';
+    }
   });
 
-  // 팝업 닫을 때 가로 지도는 다시 숨김
-  function closePopup() {
-    modalBackdrop.classList.add('hidden');
-    mapArea.classList.add('hidden');
-    if(refreshInterval) clearInterval(refreshInterval);
-  }
-
-  closeModal.addEventListener('click', closePopup);
-  modalBackdrop.addEventListener('click', (e) => { if(e.target === modalBackdrop) closePopup(); });
+  closePopupBtn.addEventListener('click', () => fullPopup.classList.add('hidden'));
   closeTimetable.addEventListener('click', () => timetableModal.classList.add('hidden'));
 
   lineSelect.addEventListener('change', (e) => {
-    closePopup();
+    fullPopup.classList.add('hidden');
     initView(e.target.value);
   });
 
-  // 초기 실행
   initView('2호선');
 });
