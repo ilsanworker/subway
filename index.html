@@ -2,165 +2,238 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Seoul Subway Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seoul Subway Master - Live Map & Telemetry</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app-container">
     
-    <!-- Top Navigation -->
-    <nav class="top-nav">
-      <div class="nav-title">
-        <div class="logo-icon"></div>
-        <div class="title-text">
+    <!-- 상단 헤더 & 검색바 -->
+    <header class="app-header">
+      <div class="top-row">
+        <div class="service-title">
           <h1>서울 지하철 실시간</h1>
-          <p><span class="status-dot"></span>전 노선 정상 운행</p>
+          <div class="status-pill"><span class="dot green"></span> 전 노선 정상 운행</div>
+        </div>
+        <div class="top-actions">
+          <button class="icon-btn" id="themeToggle" title="설정">⚙️</button>
+          <button class="icon-btn" title="프로필">👤</button>
         </div>
       </div>
-      <div class="nav-actions">
-        <button class="icon-btn">⚙️</button>
-        <button class="icon-btn profile-btn">👤</button>
-      </div>
-    </nav>
 
-    <!-- Search & Filters -->
-    <div class="search-section">
-      <div class="search-bar">
+      <!-- 통합 검색바 -->
+      <div class="search-bar-container">
         <span class="search-icon">🔍</span>
-        <input type="text" id="stationInput" placeholder="역명 검색 (예: 강남, 홍대입구)" value="강남">
-        <button id="searchBtn">검색</button>
+        <input type="text" id="globalSearchInput" placeholder="역명 검색 (예: 강남, 홍대입구, 시청)">
+        <span class="mic-icon">🎤</span>
       </div>
-      <div class="filter-chips">
-        <button class="chip active">전체</button>
-        <button class="chip">1호선</button>
-        <button class="chip">2호선</button>
-        <button class="chip">3호선</button>
-        <button class="chip">4호선</button>
-        <button class="chip">9호선</button>
-        <button class="chip">신분당선</button>
+
+      <!-- 노선 필터 칩 -->
+      <div class="line-chips" id="lineChips">
+        <button class="chip active" data-line="ALL">전체</button>
+        <button class="chip" data-line="1호선">1호선</button>
+        <button class="chip" data-line="2호선">2호선</button>
+        <button class="chip" data-line="3호선">3호선</button>
+        <button class="chip" data-line="4호선">4호선</button>
+        <button class="chip" data-line="9호선">9호선</button>
+        <button class="chip" data-line="신분당선">신분당선</button>
       </div>
+    </header>
+
+    <!-- 인터랙티브 지도 텔레메트리 영역 -->
+    <div class="map-viewport">
+      <div class="telemetry-bar">
+        <span class="tele-dot"></span> LIVE GPS TELEMETRY <span id="teleTime">18:42:15</span>
+      </div>
+      
+      <div class="map-controls-floating">
+        <button class="map-ctrl-btn" id="btnLocate">🎯</button>
+        <button class="map-ctrl-btn" id="btnZoomIn">+</button>
+        <button class="map-ctrl-btn" id="btnZoomOut">-</button>
+      </div>
+
+      <!-- 가로 스크롤 가능한 메인 트랙 지도 -->
+      <div class="interactive-track-container" id="trackContainer">
+        <div class="track-line-bg line-2"></div>
+        <div class="stations-track" id="stationsTrack">
+          <!-- JS로 전국의 모든 역 노드 삽입 -->
+        </div>
+        <div class="trains-layer" id="trainsLayer">
+          <!-- 실시간 움직이는 열차 마커 -->
+        </div>
+      </div>
+      
+      <div class="map-footer-hint">역 터치시 변경 및 상세 정보 확인</div>
     </div>
 
-    <!-- Map Area (Neon Style) -->
-    <main class="map-view">
-      <div class="map-overlay">
-        <span class="live-badge"><span class="live-dot"></span> LIVE GPS TELEMETRY</span>
-      </div>
-      
-      <!-- Abstract Glowing Map for visual representation -->
-      <div class="abstract-map">
-        <!-- Line 2 (Green) -->
-        <div class="svg-line line-green"></div>
-        <!-- Shinbundang Line (Red) -->
-        <div class="svg-line line-red"></div>
-        
-        <!-- Nodes -->
-        <div class="map-node target-node" style="top: 50%; left: 50%;">
-          <div class="node-ring"></div>
-          <div class="node-core">
-            <span class="core-dot green"></span>
-            <span class="core-dot red"></span>
-          </div>
-          <div class="node-label">강남역</div>
-        </div>
-        
-        <div class="map-node" style="top: 50%; left: 15%;">
-          <div class="node-core small"></div>
-          <div class="node-label-sub">교대</div>
-        </div>
-        
-        <div class="map-node" style="top: 50%; left: 85%;">
-          <div class="node-core small"></div>
-          <div class="node-label-sub">역삼</div>
-        </div>
-
-        <!-- Train Markers -->
-        <div class="train-marker marker-green" style="top: 50%; left: 30%;">
-          <div class="marker-id">2284</div>
-          <div class="marker-info">외선·3분후</div>
-        </div>
-        <div class="train-marker marker-green" style="top: 50%; left: 70%;">
-          <div class="marker-id">2304</div>
-          <div class="marker-info">내선·곧도착</div>
-        </div>
-        <div class="train-marker marker-red" style="top: 65%; left: 50%; transform: translate(-50%, -50%);">
-          <div class="marker-id">D04</div>
-        </div>
-      </div>
-      
-      <!-- Bottom Map Legend -->
-      <div class="map-legend">
-        <div><span class="legend-dot green"></span> 2호선</div>
-        <div><span class="legend-dot red"></span> 신분당선</div>
-      </div>
-    </main>
-
-    <!-- Bottom Sheet (Station Details) -->
+    <!-- 하단 상세 정보 바텀 시트 (Bottom Sheet) -->
     <div class="bottom-sheet" id="bottomSheet">
-      <div class="drag-handle"></div>
+      <div class="sheet-handle-bar"><div class="handle"></div></div>
       
-      <div class="sheet-header">
-        <div class="station-title-group">
+      <!-- 역 헤더 정보 -->
+      <div class="station-main-header">
+        <div class="title-wrap">
           <h2 id="sheetStationName">강남역</h2>
-          <span class="station-eng" id="sheetStationEng">Gangnam · 江南</span>
+          <span id="sheetStationEng" class="eng-sub">Gangnam · 江南</span>
         </div>
         <div class="action-icons">
-          <button class="icon-btn-small">⭐</button>
-          <button class="icon-btn-small">🔗</button>
+          <button class="action-icon-btn" id="favBtn">⭐</button>
+          <button class="action-icon-btn" id="shareBtn">🔗</button>
         </div>
       </div>
 
-      <div class="sheet-badges">
-        <span class="line-badge badge-2">2호선</span>
-        <span class="line-badge badge-shin">신분당선</span>
-        <span class="status-badge">✔️ 정상 운행 (지연 0분)</span>
+      <!-- 노선 배지 및 운행상태 -->
+      <div class="station-meta-row" id="sheetLineBadges">
+        <span class="line-badge line-2">2호선</span>
+        <span class="line-badge line-shin">신분당선</span>
+        <span class="status-text-badge">🟢 정상 운행 (지연 0분)</span>
       </div>
 
-      <div class="quick-actions">
-        <button class="action-btn"><span class="green-ring"></span> 출발역 설정</button>
-        <button class="action-btn"><span class="blue-loc"></span> 도착역 설정</button>
-        <button class="action-btn density-btn">
-          <span class="density-dot yellow"></span> 현재 혼잡도<br><strong>보통 (72%)</strong>
-        </button>
+      <!-- 빠른 설정 버튼 (출발/도착/혼잡도) -->
+      <div class="quick-action-grid">
+        <button class="q-btn"><span class="q-icon">🟢</span> 출발역 설정</button>
+        <button class="q-btn"><span class="q-icon">📍</span> 도착역 설정</button>
+        <button class="q-btn highlight"><span class="q-icon">🟡</span> 현재 혼잡도 <strong id="sheetCongestion">보통 (72%)</strong></button>
       </div>
 
+      <!-- 상세 정보 탭 메뉴 -->
       <div class="sheet-tabs">
-        <button class="tab active">실시간 도착</button>
-        <button class="tab">칸별 혼잡도</button>
-        <button class="tab">도착 시간표</button>
-        <button class="tab">환승/시설</button>
+        <button class="tab-btn active" data-tab="arrival">실시간 도착</button>
+        <button class="tab-btn" data-tab="congestion">칸별 혼잡도</button>
+        <button class="tab-btn" data-tab="timetable">도착 시간표</button>
+        <button class="tab-btn" data-tab="facility">환승/시설</button>
       </div>
 
-      <div class="sheet-content">
-        <div class="content-header">
-          <span>실시간 노선별 도착 현황</span>
-          <span class="auto-refresh">🔄 실시간 자동 갱신중</span>
-        </div>
+      <!-- 탭 컨텐츠 영역 -->
+      <div class="tab-content-container">
+        
+        <!-- 1. 실시간 도착 탭 -->
+        <div class="tab-pane active" id="tabArrival">
+          <div class="sub-header-row">
+            <span>실시간 노선별 도착 현황</span>
+            <span class="live-sync-text">🔄 실시간 자동 갱신중</span>
+          </div>
 
-        <!-- 2호선 실시간 정보 카드 -->
-        <div class="line-card border-2">
-          <div class="card-header">
-            <div class="card-title-area">
-              <span class="square-badge bg-2">2호<br>선</span>
+          <!-- 노선별 도착 그룹 1 -->
+          <div class="line-arrival-card">
+            <div class="card-line-title">
+              <span class="dot-badge line-2">2호선</span> 
               <div>
-                <h3 class="card-title">2호선 순환선 승강장</h3>
-                <p class="card-subtitle">지하 2층 승강장 · 성수/강남권</p>
+                <strong>2호선 순환선 승강장</strong>
+                <p>지하 2층 승강장 · 성수/강남권</p>
+              </div>
+              <div class="mini-cong">열차 혼잡 <strong>여유 45%</strong></div>
+            </div>
+
+            <!-- 방향별 도착 목록 -->
+            <div class="direction-block">
+              <div class="dir-title">내선순환 (역삼·잠실 방면) <span class="badge-status green">정시 운행</span></div>
+              <div class="arrival-highlight-box">
+                <div class="main-arrival-info">
+                  <span class="big-time">곧 도착 (진입중) ➔</span>
+                  <span class="train-num-info">열차번호 2304호 · 역삼역 출발</span>
+                </div>
+                <div class="next-arrival-info">
+                  다음 열차 <strong>2분 40초 후</strong>
+                </div>
               </div>
             </div>
-            <div class="card-density"><span class="density-dot green"></span> 열차 혼잡<br><strong>여유 45%</strong></div>
+
+            <div class="direction-block">
+              <div class="dir-title">외선순환 (교대·사당 방면) <span class="badge-status orange">+1분 서행</span></div>
+              <div class="arrival-highlight-box">
+                <div class="main-arrival-info">
+                  <span class="big-time">3분 후 도착</span>
+                  <span class="train-num-info">열차번호 2284호 · 서초 진입</span>
+                </div>
+                <div class="next-arrival-info">
+                  다음 열차 <strong>6분 15초 후</strong>
+                </div>
+              </div>
+            </div>
           </div>
-          
-          <div class="arrival-list" id="arrivalLine2">
-            <div class="loading-text">데이터를 불러오는 중입니다...</div>
+
+          <!-- 노선별 도착 그룹 2 (신분당선 등) -->
+          <div class="line-arrival-card">
+            <div class="card-line-title">
+              <span class="dot-badge line-shin">신분당선</span> 
+              <div>
+                <strong>신분당선 고속직결 승강장</strong>
+                <p>지하 4층 승강장 · 신사/판교/광교</p>
+              </div>
+              <div class="mini-cong">열차 혼잡 <strong>보통 68%</strong></div>
+            </div>
+
+            <div class="direction-block">
+              <div class="dir-title">신사행 (신논현·논현 방면) <span class="badge-status green">정시 운행</span></div>
+              <div class="arrival-highlight-box">
+                <div class="main-arrival-info">
+                  <span class="big-time">1분 후 도착</span>
+                  <span class="train-num-info">열차번호 D04호 · 양재 진입중</span>
+                </div>
+                <div class="next-arrival-info">다음 열차 <strong>5분 후</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. 칸별 혼잡도 탭 -->
+        <div class="tab-pane" id="tabCongestion">
+          <div class="congestion-guide-box">
+            <p>💡 열차 내부 혼잡도 실시간 안내 (혼잡도 높음 순: 🔴 매우혼잡 🟠 혼잡 🟡 보통 🟢 여유)</p>
+            <div class="train-cars-grid">
+              <div class="car-item green"><span>1호차</span><span>여유</span></div>
+              <div class="car-item green"><span>2호차</span><span>여유</span></div>
+              <div class="car-item yellow"><span>3호차</span><span>보통</span></div>
+              <div class="car-item orange"><span>4호차</span><span>혼잡</span></div>
+              <div class="car-item red"><span>5호차</span><span>매우혼잡</span></div>
+              <div class="car-item orange"><span>6호차</span><span>혼잡</span></div>
+              <div class="car-item yellow"><span>7호차</span><span>보통</span></div>
+              <div class="car-item green"><span>8호차</span><span>여유</span></div>
+              <div class="car-item green"><span>9호차</span><span>여유</span></div>
+              <div class="car-item green"><span>10호차</span><span>여유</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 시간표 탭 -->
+        <div class="tab-pane" id="tabTimetable">
+          <div class="timetable-mock">
+            <div class="tt-header">
+              <button class="tt-filter active">평일</button>
+              <button class="tt-filter">토요일</button>
+              <button class="tt-filter">공휴일</button>
+            </div>
+            <ul class="tt-list">
+              <li><strong>05:32</strong> <span class="dest">성수행</span> <span class="type">일반</span></li>
+              <li><strong>05:41</strong> <span class="dest">내선순환</span> <span class="type">급행</span></li>
+              <li><strong>05:50</strong> <span class="dest">외선순환</span> <span class="type">일반</span></li>
+              <li><strong>06:03</strong> <span class="dest">잠실행</span> <span class="type">일반</span></li>
+              <li><strong>06:15</strong> <span class="dest">내선순환</span> <span class="type">일반</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 4. 환승/시설 탭 -->
+        <div class="tab-pane" id="tabFacility">
+          <div class="facility-info-box">
+            <h4>🏢 편의시설 정보</h4>
+            <ul>
+              <li>🚻 화장실: 개찰구 내부 (지하 1층)</li>
+              <li>♿ 엘리베이터: 2번, 7번 출구측 위치</li>
+              <li>🍼 수유실: 고객안내센터 옆 위치</li>
+              <li>📦 물품보관함: 지하 1층 대합실 북측</li>
+              <li>🔄 환승 통로 도보 소요시간: 신분당선 ↔ 2호선 약 3분</li>
+            </ul>
           </div>
         </div>
 
       </div>
     </div>
+
   </div>
 
-  <input type="hidden" id="apiKey" value="sample">
   <script src="app.js"></script>
 </body>
 </html>
