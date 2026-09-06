@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Seoul Subway Full Radar</title>
+  <title>Seoul Subway Vertical & Horizontal Radar</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app-container">
     
-    <!-- 상단바 및 API 키 입력 -->
+    <!-- 상단바 -->
     <header class="topbar">
       <div class="logo">🚇 서울 지하철 관제</div>
       <div class="controls">
@@ -28,65 +28,48 @@
       </div>
     </header>
 
-    <!-- 항상 표시되는 실시간 가로 지도 영역 -->
-    <section class="map-area" id="mapArea">
-      <div class="map-instruction">역을 터치하면 상세 정보가 열립니다</div>
-      <div class="track-scroll-container">
-        <div class="track-wrapper" id="trackWrapper">
-          <div class="track-line up-line"></div>
-          <div class="track-line down-line"></div>
-          <div id="stationNodesMini" class="station-nodes"></div>
-          <div id="trainsContainer" class="trains-container"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 세로형 역 리스트 -->
+    <!-- 메인 화면: 세로형 실시간 지도 (텍스트 리스트 아님) -->
     <main class="main-content" id="mainContent">
-      <div class="list-header">
-        <h2 id="currentLineTitle">2호선 전체 역 목록</h2>
-        <span class="sub-tip">역을 터치하면 상세 정보 및 시간표를 볼 수 있습니다</span>
+      <div class="map-instruction">역을 터치하면 상세 정보 및 가로 지도가 열립니다.</div>
+      <div class="vertical-map-container" id="vMapContainer">
+        <!-- 세로 트랙 선 -->
+        <div class="v-track-line v-up-line"></div>
+        <div class="v-track-line v-down-line"></div>
+        
+        <!-- 역 및 열차 컨테이너 -->
+        <div id="vStationNodes" class="v-station-nodes"></div>
+        <div id="vTrainsContainer" class="v-trains-container"></div>
       </div>
-      <div id="verticalStationList" class="vertical-station-list"></div>
     </main>
 
-    <!-- 100% 크기, 배경 흐림 없음 전용 팝업 패널 -->
+    <!-- 100% 팝업 화면 (흐림 현상 없음, 완벽히 독립된 화면) -->
     <div class="full-popup hidden" id="fullPopup">
+      
+      <!-- 팝업 헤더 -->
       <div class="popup-header">
         <div>
           <span class="badge" id="panelLineBadge">2호선</span>
-          <button id="starBtn" class="star-action-btn">☆ 즐겨찾기</button>
+          <span id="panelStationName" class="popup-stn-name">강남역</span>
         </div>
         <button class="close-btn" id="closePopup">✕ 닫기</button>
       </div>
-      
-      <div class="popup-title-area">
-        <h2 id="panelStationName">강남역</h2>
-        <p id="panelStationEng" class="eng-name">Gangnam</p>
-      </div>
 
-      <div class="popup-body">
-        <div class="toolbar">
-          <button id="timetableBtn" class="action-btn">🕒 실제 열차 시간표 보기 (API)</button>
-        </div>
-
-        <div class="info-section">
-          <h3>📊 시간대별 승하차 인원 통계</h3>
-          <div id="statLoading" class="loading-text">데이터 분석 중...</div>
-          <div class="stat-grid">
-            <div class="stat-box">
-              <div class="stat-title">해당 시간 승차</div>
-              <div class="stat-value" id="timeRideNum">-</div>
-            </div>
-            <div class="stat-box">
-              <div class="stat-title">해당 시간 하차</div>
-              <div class="stat-value" id="timeAlightNum">-</div>
-            </div>
+      <!-- 팝업 최상단: 가로형 실시간 지도 -->
+      <section class="h-map-area">
+        <div class="h-track-scroll-container">
+          <div class="h-track-wrapper" id="hTrackWrapper">
+            <div class="h-track-line h-up-line"></div>
+            <div class="h-track-line h-down-line"></div>
+            <div id="hStationNodes" class="h-station-nodes"></div>
+            <div id="hTrainsContainer" class="h-trains-container"></div>
           </div>
         </div>
+      </section>
 
+      <!-- 팝업 본문: 실시간 정보 및 통계 -->
+      <div class="popup-body">
         <div class="info-section">
-          <h3>⏱️ 실시간 도착 정보 (급행 포함)</h3>
+          <h3>⏱️ 실시간 도착 정보</h3>
           <div id="arrLoading" class="loading-text">불러오는 중...</div>
           <div class="arrival-split">
             <div class="arr-col">
@@ -99,15 +82,41 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- 시간표 모달 -->
-    <div class="sub-modal hidden" id="timetableModal">
-      <div class="sub-modal-content">
-        <button class="close-sub" id="closeTimetable">✕</button>
-        <h3 id="timetableTitle">열차 시간표</h3>
-        <div id="timetableBody" class="timetable-list">시간표 로딩중...</div>
+        <div class="info-section">
+          <h3>📊 시간대별 승하차 통계</h3>
+          <div id="statLoading" class="loading-text">데이터 분석 중...</div>
+          <div class="stat-grid">
+            <div class="stat-box">
+              <div class="stat-title">해당 시간 승차</div>
+              <div class="stat-value" id="timeRideNum">-</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-title">해당 시간 하차</div>
+              <div class="stat-value" id="timeAlightNum">-</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- OA-22750 지하철역 시간표 (API 연동) -->
+        <div class="info-section">
+          <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h3>🕒 역 시간표 (API 연동)</h3>
+            <span id="ttDateType" style="font-size:12px; font-weight:bold; color:var(--accent);">평일 기준</span>
+          </div>
+          <div id="ttLoading" class="loading-text">시간표 데이터(OA-22750)를 불러오는 중입니다...</div>
+          <div class="arrival-split">
+            <div class="arr-col">
+              <h4>상행 / 내선</h4>
+              <div id="ttUpList" class="tt-list">시간표 없음</div>
+            </div>
+            <div class="arr-col">
+              <h4>하행 / 외선</h4>
+              <div id="ttDownList" class="tt-list">시간표 없음</div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
