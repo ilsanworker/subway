@@ -1,1 +1,2 @@
-/api/* http://swopenapi.seoul.go.kr/api/subway/:splat 200
+/api/sw/* http://swopenapi.seoul.go.kr/api/subway/:splat 200
+/api/open/* http://openapi.seoul.go.kr:8088/:splat 200
