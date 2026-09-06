@@ -3,46 +3,65 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Subway Radar</title>
+  <title>Subway Map Radar</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>Subway Radar</h1>
-      <p>서울 실시간 지하철 위치정보</p>
+      <h1>Subway Map</h1>
+      <p>노선도에서 역을 클릭하여 실시간 도착 정보를 확인하세요.</p>
     </header>
 
     <div class="controls-card">
-      <div class="input-row">
-        <div class="input-group">
-          <label for="apiKey">API 인증키</label>
-          <input type="text" id="apiKey" placeholder="발급받은 API 키 입력" value="sample">
-        </div>
-        <div class="input-group">
-          <label for="lineSelect">노선 선택</label>
-          <select id="lineSelect">
-            <option value="1호선">1호선</option>
-            <option value="2호선" selected>2호선</option>
-            <option value="3호선">3호선</option>
-            <option value="4호선">4호선</option>
-            <option value="5호선">5호선</option>
-            <option value="6호선">6호선</option>
-            <option value="7호선">7호선</option>
-            <option value="8호선">8호선</option>
-            <option value="9호선">9호선</option>
-          </select>
-        </div>
+      <div class="input-group">
+        <label for="apiKey">API 인증키</label>
+        <input type="text" id="apiKey" placeholder="API 키 입력 (기본값: sample)" value="sample">
       </div>
-      <button id="fetchBtn" class="btn-primary">실시간 위치 조회</button>
+      <div class="input-group" style="margin-top: 12px;">
+        <label for="lineSelect">노선 선택</label>
+        <select id="lineSelect">
+          <option value="1">1호선 (주요역)</option>
+          <option value="2" selected>2호선 (순환선)</option>
+        </select>
+      </div>
     </div>
 
-    <div id="loading" class="hidden">
-      <div class="spinner"></div>
-      <p>실시간 데이터를 불러오는 중입니다...</p>
+    <!-- 시각화된 노선도 영역 -->
+    <div class="map-container">
+      <ul id="routeMap" class="route-map">
+        <!-- JS에서 역 목록이 렌더링됩니다 -->
+      </ul>
     </div>
-    
-    <div id="resultGrid" class="result-grid"></div>
+  </div>
+
+  <!-- 역 상세정보 모달 팝업 -->
+  <div id="stationModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <button id="closeModal" class="close-btn">&times;</button>
+      <div class="modal-header">
+        <span id="modalLineBadge" class="line-badge">2호선</span>
+        <h2 id="modalStationName">강남역</h2>
+      </div>
+      
+      <div id="loading" class="hidden">
+        <div class="spinner"></div>
+        <p>실시간 도착 정보를 불러오는 중...</p>
+      </div>
+
+      <div id="arrivalInfo" class="arrival-container">
+        <div class="direction-group" id="updnList1">
+          <h3>상행 / 내선</h3>
+          <div class="train-list" id="listUp"></div>
+        </div>
+        <div class="direction-group" id="updnList2">
+          <h3>하행 / 외선</h3>
+          <div class="train-list" id="listDown"></div>
+        </div>
+      </div>
+      
+      <p class="notice-text">※ 공공데이터 특성상 정시/연착 시간은 직접 제공되지 않으며, 실시간 예측 시간과 현재 위치만 제공됩니다.</p>
+    </div>
   </div>
 
   <script src="app.js"></script>
