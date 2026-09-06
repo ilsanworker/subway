@@ -2,100 +2,165 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Subway Live Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Seoul Subway Tracker</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app-container">
     
-    <!-- 상단 컨트롤바 -->
-    <header class="topbar">
-      <div class="logo">🚇 Live Subway Radar</div>
-      <div class="controls">
-        <input type="text" id="apiKey" placeholder="API 키 (기본: sample)" value="sample">
-        <select id="lineSelect">
-          <option value="2호선" selected>2호선 (순환)</option>
-          <option value="1호선">1호선 (핵심구간)</option>
-        </select>
-        <div class="live-indicator">
-          <div class="pulse-dot"></div> Live
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+      <div class="nav-title">
+        <div class="logo-icon"></div>
+        <div class="title-text">
+          <h1>서울 지하철 실시간</h1>
+          <p><span class="status-dot"></span>전 노선 정상 운행</p>
         </div>
       </div>
-    </header>
+      <div class="nav-actions">
+        <button class="icon-btn">⚙️</button>
+        <button class="icon-btn profile-btn">👤</button>
+      </div>
+    </nav>
 
-    <!-- 메인 지도 영역 -->
-    <main class="map-area">
-      <div class="map-instruction">노선도에서 역을 클릭하면 상세 정보를 볼 수 있습니다. (열차 위치 10초마다 자동 갱신)</div>
+    <!-- Search & Filters -->
+    <div class="search-section">
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="stationInput" placeholder="역명 검색 (예: 강남, 홍대입구)" value="강남">
+        <button id="searchBtn">검색</button>
+      </div>
+      <div class="filter-chips">
+        <button class="chip active">전체</button>
+        <button class="chip">1호선</button>
+        <button class="chip">2호선</button>
+        <button class="chip">3호선</button>
+        <button class="chip">4호선</button>
+        <button class="chip">9호선</button>
+        <button class="chip">신분당선</button>
+      </div>
+    </div>
+
+    <!-- Map Area (Neon Style) -->
+    <main class="map-view">
+      <div class="map-overlay">
+        <span class="live-badge"><span class="live-dot"></span> LIVE GPS TELEMETRY</span>
+      </div>
       
-      <!-- 가로 스크롤 노선도 컨테이너 -->
-      <div class="track-scroll-container">
-        <div class="track-wrapper" id="trackWrapper">
-          <!-- 상행/내선 트랙 선 -->
-          <div class="track-line up-line"></div>
-          <!-- 하행/외선 트랙 선 -->
-          <div class="track-line down-line"></div>
-          
-          <!-- 역 노드들이 생성되는 곳 -->
-          <div id="stationNodes" class="station-nodes"></div>
-          
-          <!-- 실시간 열차 아이콘들이 생성되는 곳 -->
-          <div id="trainsContainer" class="trains-container"></div>
+      <!-- Abstract Glowing Map for visual representation -->
+      <div class="abstract-map">
+        <!-- Line 2 (Green) -->
+        <div class="svg-line line-green"></div>
+        <!-- Shinbundang Line (Red) -->
+        <div class="svg-line line-red"></div>
+        
+        <!-- Nodes -->
+        <div class="map-node target-node" style="top: 50%; left: 50%;">
+          <div class="node-ring"></div>
+          <div class="node-core">
+            <span class="core-dot green"></span>
+            <span class="core-dot red"></span>
+          </div>
+          <div class="node-label">강남역</div>
         </div>
+        
+        <div class="map-node" style="top: 50%; left: 15%;">
+          <div class="node-core small"></div>
+          <div class="node-label-sub">교대</div>
+        </div>
+        
+        <div class="map-node" style="top: 50%; left: 85%;">
+          <div class="node-core small"></div>
+          <div class="node-label-sub">역삼</div>
+        </div>
+
+        <!-- Train Markers -->
+        <div class="train-marker marker-green" style="top: 50%; left: 30%;">
+          <div class="marker-id">2284</div>
+          <div class="marker-info">외선·3분후</div>
+        </div>
+        <div class="train-marker marker-green" style="top: 50%; left: 70%;">
+          <div class="marker-id">2304</div>
+          <div class="marker-info">내선·곧도착</div>
+        </div>
+        <div class="train-marker marker-red" style="top: 65%; left: 50%; transform: translate(-50%, -50%);">
+          <div class="marker-id">D04</div>
+        </div>
+      </div>
+      
+      <!-- Bottom Map Legend -->
+      <div class="map-legend">
+        <div><span class="legend-dot green"></span> 2호선</div>
+        <div><span class="legend-dot red"></span> 신분당선</div>
       </div>
     </main>
 
-    <!-- 우측 상세정보 패널 (역 클릭 시 등장) -->
-    <aside class="detail-panel" id="detailPanel">
-      <button class="close-btn" id="closePanel">×</button>
+    <!-- Bottom Sheet (Station Details) -->
+    <div class="bottom-sheet" id="bottomSheet">
+      <div class="drag-handle"></div>
       
-      <div class="panel-header">
-        <span class="badge" id="panelLineBadge">2호선</span>
-        <h2 id="panelStationName">역을 선택하세요</h2>
-        <p id="panelStationEng" class="eng-name">Select a station</p>
+      <div class="sheet-header">
+        <div class="station-title-group">
+          <h2 id="sheetStationName">강남역</h2>
+          <span class="station-eng" id="sheetStationEng">Gangnam · 江南</span>
+        </div>
+        <div class="action-icons">
+          <button class="icon-btn-small">⭐</button>
+          <button class="icon-btn-small">🔗</button>
+        </div>
       </div>
 
-      <div class="panel-content" id="panelContent">
-        <!-- 역 정보 & 통계 (OA-15799, DT201004I040014) -->
-        <div class="info-section">
-          <h3>📊 실시간 통계 & 정보</h3>
-          <div id="statLoading" class="loading-text hidden">데이터 로딩중...</div>
-          <div id="statData" class="stat-grid">
-            <div class="stat-box">
-              <div class="stat-title">환승 가능 노선</div>
-              <div class="stat-value" id="transferLines">-</div>
+      <div class="sheet-badges">
+        <span class="line-badge badge-2">2호선</span>
+        <span class="line-badge badge-shin">신분당선</span>
+        <span class="status-badge">✔️ 정상 운행 (지연 0분)</span>
+      </div>
+
+      <div class="quick-actions">
+        <button class="action-btn"><span class="green-ring"></span> 출발역 설정</button>
+        <button class="action-btn"><span class="blue-loc"></span> 도착역 설정</button>
+        <button class="action-btn density-btn">
+          <span class="density-dot yellow"></span> 현재 혼잡도<br><strong>보통 (72%)</strong>
+        </button>
+      </div>
+
+      <div class="sheet-tabs">
+        <button class="tab active">실시간 도착</button>
+        <button class="tab">칸별 혼잡도</button>
+        <button class="tab">도착 시간표</button>
+        <button class="tab">환승/시설</button>
+      </div>
+
+      <div class="sheet-content">
+        <div class="content-header">
+          <span>실시간 노선별 도착 현황</span>
+          <span class="auto-refresh">🔄 실시간 자동 갱신중</span>
+        </div>
+
+        <!-- 2호선 실시간 정보 카드 -->
+        <div class="line-card border-2">
+          <div class="card-header">
+            <div class="card-title-area">
+              <span class="square-badge bg-2">2호<br>선</span>
+              <div>
+                <h3 class="card-title">2호선 순환선 승강장</h3>
+                <p class="card-subtitle">지하 2층 승강장 · 성수/강남권</p>
+              </div>
             </div>
-            <div class="stat-box">
-              <div class="stat-title">일평균 승차</div>
-              <div class="stat-value" id="rideNum">-</div>
-            </div>
-            <div class="stat-box">
-              <div class="stat-title">일평균 하차</div>
-              <div class="stat-value" id="alightNum">-</div>
-            </div>
+            <div class="card-density"><span class="density-dot green"></span> 열차 혼잡<br><strong>여유 45%</strong></div>
+          </div>
+          
+          <div class="arrival-list" id="arrivalLine2">
+            <div class="loading-text">데이터를 불러오는 중입니다...</div>
           </div>
         </div>
 
-        <!-- 실시간 도착 정보 (OA-12764) -->
-        <div class="info-section">
-          <h3>⏱️ 실시간 도착 정보</h3>
-          <div id="arrLoading" class="loading-text hidden">데이터 로딩중...</div>
-          <div class="arrival-split">
-            <div class="arr-col">
-              <h4>상행 / 내선</h4>
-              <div id="arrUpList" class="arr-list">대기 열차 없음</div>
-            </div>
-            <div class="arr-col">
-              <h4>하행 / 외선</h4>
-              <div id="arrDownList" class="arr-list">대기 열차 없음</div>
-            </div>
-          </div>
-        </div>
-        
       </div>
-    </aside>
+    </div>
   </div>
 
+  <input type="hidden" id="apiKey" value="sample">
   <script src="app.js"></script>
 </body>
 </html>
