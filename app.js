@@ -1,3 +1,9 @@
+// ==========================================
+// 🔑 API 키 설정 (이곳에 키를 넣으면 자동 적용됩니다)
+// 'sample' 이라는 글자를 지우고, 발급받은 API 키를 따옴표 안에 넣어주세요!
+// ==========================================
+const MY_API_KEY = '486c77684e696c7331303157766b6779'; 
+
 document.addEventListener('DOMContentLoaded', () => {
   const lineData = {
     '1호선': { color: '#0052A4', id: '1001', stations: ['연천', '전곡', '청산', '소요산', '동두천', '보산', '동두천중앙', '지행', '덕정', '덕계', '양주', '녹양', '가능', '의정부', '회룡', '망월사', '도봉산', '도봉', '방학', '창동', '녹천', '월계', '광운대', '석계', '신이문', '외대앞', '회기', '청량리', '제기동', '신설동', '동대문', '종로5가', '종로3가', '종각', '시청', '서울역', '남영', '용산', '노량진', '대방', '신길', '영등포', '신도림', '구로', '가산디지털단지', '독산', '금천구청', '광명', '석수', '관악', '안양', '명학', '금정', '군포', '당정', '의왕', '성균관대', '화서', '수원', '세류', '병점', '서동탄', '세마', '오산대', '오산', '진위', '송탄', '서정리', '평택지제', '평택', '성환', '직산', '두정', '천안', '봉명', '쌍용', '아산', '탕정', '배방', '온양온천', '신창', '구일', '개봉', '오류동', '온수', '역곡', '소사', '부천', '중동', '송내', '부개', '부평', '백운', '동암', '간석', '주안', '도화', '제물포', '도원', '동인천', '인천'] },
@@ -13,7 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
     '경의중앙선': { color: '#77C4A3', id: '1063', stations: ['도라산', '임진강', '문산', '파주', '월롱', '금촌', '금릉', '운정', '야당', '탄현', '일산', '풍산', '백마', '곡산', '대곡', '능곡', '행신', '강매', '화전', '수색', '디지털미디어시티', '가좌', '신촌', '서울역', '홍대입구', '서강대', '공덕', '효창공원앞', '용산', '이촌', '서빙고', '한남', '옥수', '응봉', '왕십리', '청량리', '회기', '중랑', '상봉', '망우', '양원', '구리', '도농', '양정', '덕소', '도심', '팔당', '운길산', '양수', '신원', '아신', '오빈', '양평', '원덕', '용문', '지평'] }
   };
 
-  const getApiKey = () => document.getElementById('apiKeyInput')?.value?.trim() || 'sample';
+  const getApiKey = () => MY_API_KEY; // 여기서 상단의 키를 자동으로 가져옵니다!
+  
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '';
   const BASE_SW = isLocal ? 'http://swopenapi.seoul.go.kr/api/subway' : '/api/sw';
   const BASE_OPEN = isLocal ? 'http://openapi.seoul.go.kr:8088' : '/api/open';
@@ -103,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshInterval = setInterval(fetchTrainPositions, 10000);
   }
 
-  // 2. 팝업 열기 (가로지도: 앞뒤 3역만 표시되도록 수정)
+  // 2. 팝업 열기 (가로지도: 앞뒤 3역만 표시)
   function openFullPopup(station) {
     currentStation = station; popupRequestId++; const requestId = popupRequestId;
     fullPopup.classList.remove('hidden');
@@ -120,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (centerIdx !== -1) {
       const startIdx = Math.max(0, centerIdx - 3);
       const endIdx = Math.min(stations.length - 1, centerIdx + 3);
-      currentPopupStations = stations.slice(startIdx, endIdx + 1); // 팝업 전용 배열 저장
+      currentPopupStations = stations.slice(startIdx, endIdx + 1);
 
       hStationNodes.innerHTML = ''; hTrainsContainer.innerHTML = '';
       hTrackWrapper.style.width = `${Math.max(1, currentPopupStations.length - 1) * H_SPACING + 60}px`;
@@ -129,7 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const node = document.createElement('div');
         node.className = 'h-station-node';
         node.style.left = `${index * H_SPACING}px`;
-        // 현재 선택한 역을 진하게 강조
         const isCurrent = normalizeStationName(stn) === normalizeStationName(station);
         node.innerHTML = `<div class="h-station-name" style="${isCurrent ? 'color:#fff; font-size:13px; top:-26px;' : ''}">${escapeHtml(stn)}</div>`;
         hStationNodes.appendChild(node);
@@ -138,9 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (popupRefreshTimer) clearInterval(popupRefreshTimer);
     fetchStationDetails(station, false, requestId);
-    fetchTrainPositions(); // 지도 열자마자 열차 위치 반영
+    fetchTrainPositions(); 
     
-    // 5초 자동 갱신
     popupRefreshTimer = setInterval(() => {
       if (fullPopup.classList.contains('hidden') || requestId !== popupRequestId) {
         clearInterval(popupRefreshTimer); popupRefreshTimer = null; return;
@@ -178,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const domKey = String(`${line.id}-${train.updnLine}-${trainNo}`).replace(/[^a-zA-Z0-9_-]/g, '_');
         const trainStatusText = escapeHtml(getTrainStatusText(status));
 
-        // [수직 지도 업데이트]
+        // 수직 지도 업데이트
         const vStationIndex = getStationIndex(line.stations, train.statnNm);
         if (vStationIndex !== -1) {
           vActiveKeys.add(domKey);
@@ -193,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
           vEl.style.top = `${vStationIndex * V_SPACING + offset}px`;
         }
 
-        // [팝업 가로 지도 업데이트 (앞뒤 3역 안에 있을 때만)]
+        // 팝업 가로 지도 업데이트 (앞뒤 3역 안에 있을 때만)
         if (!fullPopup.classList.contains('hidden') && currentPopupStations.length > 0) {
           const hStationIndex = getStationIndex(currentPopupStations, train.statnNm);
           if (hStationIndex !== -1) {
@@ -211,7 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      // 영역 벗어난 열차 삭제
       Array.from(vTrainsContainer.children).forEach(el => { if (!vActiveKeys.has(el.id.replace('v-train-', ''))) el.remove(); });
       Array.from(hTrainsContainer.children).forEach(el => { if (!hActiveKeys.has(el.id.replace('h-train-', ''))) el.remove(); });
     } catch (e) {} 
@@ -219,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 4. API 실시간 도착 정보 조회
   async function fetchArrivalInfo(station, requestId) {
-    const reqStation = normalizeStationName(station); // API 규격에 맞춰 '역' 제거
+    const reqStation = normalizeStationName(station); 
     const url = `${BASE_SW}/${getApiKey()}/json/realtimeStationArrival/0/30/${encodeURIComponent(reqStation)}`;
     
     try {
@@ -230,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const list = Array.isArray(data.realtimeArrivalList) ? data.realtimeArrivalList : [];
       const targetId = String(lineData[currentLine].id);
       let filtered = list.filter(train => String(train.subwayId || '') === targetId);
-      if (filtered.length === 0) filtered = list; // GTX등 ID 불일치 예외 처리
+      if (filtered.length === 0) filtered = list; 
 
       filtered.sort((a, b) => {
         const weight = (t) => {
@@ -287,10 +291,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 5. API 승하차 통계 (순수 데이터만 사용)
+  // 5. API 승하차 통계 
   async function fetchStatistics(station, requestId) {
     try {
-      // 통계는 당일 데이터가 안 나오므로 보통 3일 전 데이터를 조회해야 가장 안전함
       const date = new Date(); date.setDate(date.getDate() - 3); 
       const dateString = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
       
@@ -311,7 +314,6 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error("No data");
       }
     } catch (e) {
-      // 랜덤 데이터 절대 생성 안 함
       timeRideNum.textContent = `데이터 없음`;
       timeAlightNum.textContent = `데이터 없음`;
     } finally {
@@ -319,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 6. API 시간표 조회 (순수 데이터만 사용)
+  // 6. API 시간표 조회 
   async function fetchTimetable(station, requestId) {
     const week = getWeekTag();
     ttDateType.textContent = week.name;
@@ -353,7 +355,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (requestId !== popupRequestId) return;
 
     const renderTimetable = (rows, isUp) => {
-      // 가짜 데이터 생성 안 함, API 에러나면 그대로 데이터 없다고 표기
       if (rows.length === 0) return '<div class="tt-item" style="border:none; text-align:center;">API 데이터 없음(키 제한/누락)</div>';
 
       const now = new Date(); let h = now.getHours(); if (h < 4) h += 24;
@@ -388,11 +389,10 @@ document.addEventListener('DOMContentLoaded', () => {
     ttUpList.innerHTML = renderTimetable(upRows, true);
     ttDownList.innerHTML = renderTimetable(downRows, false);
     
-    // 무조건 로딩바 가리기
     document.getElementById('ttLoading')?.classList.add('hidden');
   }
 
-  // 7. 통합 디테일 조회 호출 (각자의 finally에서 로딩 숨김)
+  // 7. 통합 디테일 조회 호출
   function fetchStationDetails(station, isSilent = false, requestId = popupRequestId) {
     if (!isSilent) ['arrLoading', 'statLoading', 'ttLoading'].forEach(id => document.getElementById(id)?.classList.remove('hidden'));
     
@@ -401,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchTimetable(station, requestId);
   }
 
-  // 팝업 닫기 및 노선 변경 이벤트
+  // 팝업 닫기 및 노선 변경
   closePopupBtn.addEventListener('click', () => {
     fullPopup.classList.add('hidden'); popupRequestId++;
     if (popupRefreshTimer) clearInterval(popupRefreshTimer);
