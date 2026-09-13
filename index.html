@@ -2,16 +2,34 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  >
+
   <title>Seoul Subway Radar</title>
+
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <div class="app-container">
+
+    <!-- ==============================
+         상단 헤더
+    ============================== -->
     <header class="topbar">
       <div class="logo">Seoul Train Map</div>
+
       <div class="controls">
-        <input type="text" id="apiKeyInput" placeholder="API 키 입력" value="sample" aria-label="API 키 입력">
+        <input
+          type="text"
+          id="apiKeyInput"
+          placeholder="API 키 입력"
+          value="sample"
+          aria-label="API 키 입력"
+        >
+
         <select id="lineSelect" aria-label="노선 선택">
           <option value="1호선">1호선</option>
           <option value="2호선" selected>2호선</option>
@@ -28,87 +46,254 @@
       </div>
     </header>
 
+
+    <!-- ==============================
+         메인 세로 지도
+    ============================== -->
     <main class="main-content" id="mainContent">
-      <div class="map-instruction">역을 터치하면 상세 정보 및 가로 지도가 열립니다.</div>
-      <div class="vertical-map-container" id="vMapContainer">
+
+      <div class="map-instruction">
+        역을 터치하면 상세 정보 및 가로 지도가 열립니다.
+      </div>
+
+      <div
+        class="vertical-map-container"
+        id="vMapContainer"
+      >
         <div class="v-track-line v-up-line"></div>
         <div class="v-track-line v-down-line"></div>
-        <div id="vStationNodes" class="v-station-nodes"></div>
-        <div id="vTrainsContainer" class="v-trains-container"></div>
+
+        <div
+          id="vStationNodes"
+          class="v-station-nodes"
+        ></div>
+
+        <div
+          id="vTrainsContainer"
+          class="v-trains-container"
+        ></div>
       </div>
+
     </main>
 
-    <div class="full-popup hidden" id="fullPopup">
+
+    <!-- ==============================
+         역 상세 팝업
+    ============================== -->
+    <div
+      class="full-popup hidden"
+      id="fullPopup"
+    >
+
+      <!-- 팝업 헤더 -->
       <div class="popup-header">
+
         <div>
-          <span class="badge" id="panelLineBadge">2호선</span>
-          <span id="panelStationName" class="popup-stn-name">강남역</span>
+          <span
+            class="badge"
+            id="panelLineBadge"
+          >
+            2호선
+          </span>
+
+          <span
+            id="panelStationName"
+            class="popup-stn-name"
+          >
+            강남역
+          </span>
         </div>
-        <button class="close-btn" id="closePopup">✕ 닫기</button>
+
+        <button
+          class="close-btn"
+          id="closePopup"
+        >
+          ✕ 닫기
+        </button>
+
       </div>
 
+
+      <!-- ==============================
+           가로 실시간 지도
+      ============================== -->
       <section class="h-map-area">
+
         <div class="h-track-scroll-container">
-          <div class="h-track-wrapper" id="hTrackWrapper">
+
+          <div
+            class="h-track-wrapper"
+            id="hTrackWrapper"
+          >
             <div class="h-track-line h-up-line"></div>
             <div class="h-track-line h-down-line"></div>
-            <div id="hStationNodes" class="h-station-nodes"></div>
-            <div id="hTrainsContainer" class="h-trains-container"></div>
+
+            <div
+              id="hStationNodes"
+              class="h-station-nodes"
+            ></div>
+
+            <div
+              id="hTrainsContainer"
+              class="h-trains-container"
+            ></div>
+
           </div>
+
         </div>
+
       </section>
 
-      <div class="popup-body">
-        <div class="info-section">
-          <h3>⏱️ 실시간 도착 정보</h3>
-          <div id="arrLoading" class="loading-text">불러오는 중...</div>
-          <div class="arrival-split">
-            <div class="arr-col">
-              <h4>상행 / 내선</h4>
-              <div id="arrUpList" class="arr-list">도착 정보 없음</div>
-            </div>
-            <div class="arr-col">
-              <h4>하행 / 외선</h4>
-              <div id="arrDownList" class="arr-list">도착 정보 없음</div>
-            </div>
-          </div>
-        </div>
 
-        <div class="info-section">
-          <h3>📊 시간대별 승하차 통계</h3>
-          <div id="statLoading" class="loading-text">데이터 분석 중...</div>
-          <div class="stat-grid">
-            <div class="stat-box">
-              <div class="stat-title">해당 시간 승차</div>
-              <div class="stat-value" id="timeRideNum">-</div>
-            </div>
-            <div class="stat-box">
-              <div class="stat-title">해당 시간 하차</div>
-              <div class="stat-value" id="timeAlightNum">-</div>
-            </div>
+      <!-- ==============================
+           상세 정보
+      ============================== -->
+      <div class="popup-body">
+
+
+        <!-- 실시간 도착 -->
+        <section class="info-section">
+
+          <h3>⏱️ 실시간 도착 정보</h3>
+
+          <div
+            id="arrLoading"
+            class="loading-text"
+          >
+            불러오는 중...
           </div>
-        </div>
-        
-        <div class="info-section">
-          <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <h3>🕒 역 시간표 (현재시간 이후)</h3>
-            <span id="ttDateType" style="font-size:12px; font-weight:bold; color:var(--accent);">평일 기준</span>
-          </div>
-          <div id="ttLoading" class="loading-text">시간표 데이터를 불러오는 중입니다...</div>
+
           <div class="arrival-split">
+
             <div class="arr-col">
               <h4>상행 / 내선</h4>
-              <div id="ttUpList" class="tt-list">시간표 없음</div>
+
+              <div
+                id="arrUpList"
+                class="arr-list"
+              >
+                도착 정보 없음
+              </div>
             </div>
+
             <div class="arr-col">
               <h4>하행 / 외선</h4>
-              <div id="ttDownList" class="tt-list">시간표 없음</div>
+
+              <div
+                id="arrDownList"
+                class="arr-list"
+              >
+                도착 정보 없음
+              </div>
             </div>
+
           </div>
-        </div>
+
+        </section>
+
+
+        <!-- 승하차 통계 -->
+        <section class="info-section">
+
+          <h3>📊 시간대별 승하차 통계</h3>
+
+          <div
+            id="statLoading"
+            class="loading-text"
+          >
+            데이터 분석 중...
+          </div>
+
+          <div class="stat-grid">
+
+            <div class="stat-box">
+              <div class="stat-title">
+                해당 시간 승차
+              </div>
+
+              <div
+                class="stat-value"
+                id="timeRideNum"
+              >
+                -
+              </div>
+            </div>
+
+            <div class="stat-box">
+              <div class="stat-title">
+                해당 시간 하차
+              </div>
+
+              <div
+                class="stat-value"
+                id="timeAlightNum"
+              >
+                -
+              </div>
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- 시간표 -->
+        <section class="info-section">
+
+          <div class="section-header">
+
+            <h3>🕒 역 시간표 (현재시간 이후)</h3>
+
+            <span
+              id="ttDateType"
+              class="date-type"
+            >
+              평일 기준
+            </span>
+
+          </div>
+
+          <div
+            id="ttLoading"
+            class="loading-text"
+          >
+            시간표 데이터를 불러오는 중입니다...
+          </div>
+
+          <div class="arrival-split">
+
+            <div class="arr-col">
+              <h4>상행 / 내선</h4>
+
+              <div
+                id="ttUpList"
+                class="tt-list"
+              >
+                시간표 없음
+              </div>
+            </div>
+
+            <div class="arr-col">
+              <h4>하행 / 외선</h4>
+
+              <div
+                id="ttDownList"
+                class="tt-list"
+              >
+                시간표 없음
+              </div>
+            </div>
+
+          </div>
+
+        </section>
+
       </div>
+
     </div>
+
   </div>
+
   <script src="app.js"></script>
 </body>
 </html>
