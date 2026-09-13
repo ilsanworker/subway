@@ -414,4 +414,4 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   initMaps('2호선');
-});이거 시간표가 작동을 안해
+});
