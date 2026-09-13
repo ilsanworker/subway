@@ -1,8 +1,15 @@
 // ==========================================
-// 🔑 API 키 설정 (이곳에 키를 넣으면 자동 적용됩니다)
-// 'sample' 이라는 글자를 지우고, 발급받은 API 키를 따옴표 안에 넣어주세요!
+// 🔑 API 키 설정
+// 발급받으신 두 가지 API 키를 각각 따옴표 안에 넣어주세요!
 // ==========================================
-const MY_API_KEY = '486c77684e696c7331303157766b6779'; 
+
+// 1. 실시간 API 키 (서울시 지하철 실시간 도착 정보, 실시간 열차 위치)
+const REALTIME_API_KEY = '486c77684e696c7331303157766b6779'; 
+
+// 2. 일반 공공데이터 API 키 (서울 지하철 시간표, 승하차 인원 통계)
+const OPEN_API_KEY = '486c77684e696c7331303157766b6779'; // 시간표용 키를 이곳에 넣어주세요!
+
+// ==========================================
 
 document.addEventListener('DOMContentLoaded', () => {
   const lineData = {
@@ -19,7 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
     '경의중앙선': { color: '#77C4A3', id: '1063', stations: ['도라산', '임진강', '문산', '파주', '월롱', '금촌', '금릉', '운정', '야당', '탄현', '일산', '풍산', '백마', '곡산', '대곡', '능곡', '행신', '강매', '화전', '수색', '디지털미디어시티', '가좌', '신촌', '서울역', '홍대입구', '서강대', '공덕', '효창공원앞', '용산', '이촌', '서빙고', '한남', '옥수', '응봉', '왕십리', '청량리', '회기', '중랑', '상봉', '망우', '양원', '구리', '도농', '양정', '덕소', '도심', '팔당', '운길산', '양수', '신원', '아신', '오빈', '양평', '원덕', '용문', '지평'] }
   };
 
-  const getApiKey = () => MY_API_KEY; // 여기서 상단의 키를 자동으로 가져옵니다!
+  const getRealtimeApiKey = () => REALTIME_API_KEY; 
+  const getOpenApiKey = () => OPEN_API_KEY; 
   
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '';
   const BASE_SW = isLocal ? 'http://swopenapi.seoul.go.kr/api/subway' : '/api/sw';
@@ -160,7 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!line) return;
 
     try {
-      const res = await fetch(`${BASE_SW}/${getApiKey()}/json/realtimePosition/0/100/${encodeURIComponent(requestLine)}`, { cache: 'no-store' });
+      // BASE_SW 에는 실시간 API 키 적용
+      const res = await fetch(`${BASE_SW}/${getRealtimeApiKey()}/json/realtimePosition/0/100/${encodeURIComponent(requestLine)}`, { cache: 'no-store' });
       const data = await res.json();
       if (requestLine !== currentLine || requestId !== mapRequestId) return;
 
@@ -224,7 +233,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // 4. API 실시간 도착 정보 조회
   async function fetchArrivalInfo(station, requestId) {
     const reqStation = normalizeStationName(station); 
-    const url = `${BASE_SW}/${getApiKey()}/json/realtimeStationArrival/0/30/${encodeURIComponent(reqStation)}`;
+    // BASE_SW 에는 실시간 API 키 적용
+    const url = `${BASE_SW}/${getRealtimeApiKey()}/json/realtimeStationArrival/0/30/${encodeURIComponent(reqStation)}`;
     
     try {
       const res = await fetch(url, { cache: 'no-store' });
@@ -297,7 +307,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const date = new Date(); date.setDate(date.getDate() - 3); 
       const dateString = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
       
-      const res = await fetch(`${BASE_OPEN}/${getApiKey()}/json/CardSubwayStatsNew/1/1000/${dateString}`, { cache: 'no-store' });
+      // BASE_OPEN 에는 일반 공공데이터 API 키 적용
+      const res = await fetch(`${BASE_OPEN}/${getOpenApiKey()}/json/CardSubwayStatsNew/1/1000/${dateString}`, { cache: 'no-store' });
       if (!res.ok) throw new Error();
       
       const data = await res.json();
@@ -329,7 +340,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let stationCd = null;
     try {
       const reqStation = normalizeStationName(station);
-      const res = await fetch(`${BASE_OPEN}/${getApiKey()}/json/SearchInfoBySubwayNameService/1/50/${encodeURIComponent(reqStation)}`, { cache: 'no-store' });
+      // BASE_OPEN 에는 일반 공공데이터 API 키 적용
+      const res = await fetch(`${BASE_OPEN}/${getOpenApiKey()}/json/SearchInfoBySubwayNameService/1/50/${encodeURIComponent(reqStation)}`, { cache: 'no-store' });
       const data = await res.json();
       const rows = data.SearchInfoBySubwayNameService?.row || [];
       
@@ -349,8 +361,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (stationCd) {
       try {
         const [upRes, downRes] = await Promise.all([
-          fetch(`${BASE_OPEN}/${getApiKey()}/json/SearchSTTimeTableByIDService/1/500/${stationCd}/${week.tag}/1/`, { cache: 'no-store' }),
-          fetch(`${BASE_OPEN}/${getApiKey()}/json/SearchSTTimeTableByIDService/1/500/${stationCd}/${week.tag}/2/`, { cache: 'no-store' })
+          fetch(`${BASE_OPEN}/${getOpenApiKey()}/json/SearchSTTimeTableByIDService/1/500/${stationCd}/${week.tag}/1/`, { cache: 'no-store' }),
+          fetch(`${BASE_OPEN}/${getOpenApiKey()}/json/SearchSTTimeTableByIDService/1/500/${stationCd}/${week.tag}/2/`, { cache: 'no-store' })
         ]);
         const upData = await upRes.json();
         const downData = await downRes.json();
