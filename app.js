@@ -10,92 +10,43 @@ const OPEN_API_KEY = '76716f6677696c7336344b67715451';
 
 // ==========================================
 
-// 스타일 동적 추가 (CSS 파일을 건드리지 않고 지선 라벨 디자인을 적용하기 위함)
-if (!document.getElementById('dynamic-branch-style')) {
-  const style = document.createElement('style');
-  style.id = 'dynamic-branch-style';
-  style.innerHTML = `
-    .v-branch-label {
-      position: absolute;
-      width: calc(100% - 20px);
-      box-sizing: border-box;
-      font-size: 13px;
-      padding: 8px 0 8px 15px;
-      margin-left: 10px;
-      background: rgba(255,255,255,0.1);
-      border-left: 3px solid var(--line-color);
-      border-radius: 0 4px 4px 0;
-      z-index: 5;
-      display: flex;
-      align-items: center;
-    }
-  `;
-  document.head.appendChild(style);
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-  // 💡 데이터 구조 진화: 지선/분기점이 있는 노선은 객체 형태로 라벨과 분기 속성(branch)을 부여합니다.
-  const rawLineData = {
-    '1호선': { 
-      color: '#0052A4', id: '1001', 
-      stations: [
-        '연천', '전곡', '청산', '소요산', '동두천', '보산', '동두천중앙', '지행', '덕정', '덕계', '양주', '녹양', '가능', '의정부', '회룡', '망월사', '도봉산', '도봉', '방학', '창동', '녹천', '월계', '광운대', '석계', '신이문', '외대앞', '회기', '청량리', '제기동', '신설동', '동대문', '종로5가', '종로3가', '종각', '시청', '서울역', '남영', '용산', '노량진', '대방', '신길', '영등포', '신도림', '구로', 
-        { label: '🔽 천안·신창 방면 (구로 분기)' },
-        { name: '가산디지털단지', branch: true }, { name: '독산', branch: true }, { name: '금천구청', branch: true }, { name: '광명', branch: true }, { name: '석수', branch: true }, { name: '관악', branch: true }, { name: '안양', branch: true }, { name: '명학', branch: true }, { name: '금정', branch: true }, { name: '군포', branch: true }, { name: '당정', branch: true }, { name: '의왕', branch: true }, { name: '성균관대', branch: true }, { name: '화서', branch: true }, { name: '수원', branch: true }, { name: '세류', branch: true }, { name: '병점', branch: true }, { name: '서동탄', branch: true }, { name: '세마', branch: true }, { name: '오산대', branch: true }, { name: '오산', branch: true }, { name: '진위', branch: true }, { name: '송탄', branch: true }, { name: '서정리', branch: true }, { name: '평택지제', branch: true }, { name: '평택', branch: true }, { name: '성환', branch: true }, { name: '직산', branch: true }, { name: '두정', branch: true }, { name: '천안', branch: true }, { name: '봉명', branch: true }, { name: '쌍용', branch: true }, { name: '아산', branch: true }, { name: '탕정', branch: true }, { name: '배방', branch: true }, { name: '온양온천', branch: true }, { name: '신창', branch: true },
-        { label: '🔽 인천 방면 (구로 분기)' },
-        { name: '구일', branch: true }, { name: '개봉', branch: true }, { name: '오류동', branch: true }, { name: '온수', branch: true }, { name: '역곡', branch: true }, { name: '소사', branch: true }, { name: '부천', branch: true }, { name: '중동', branch: true }, { name: '송내', branch: true }, { name: '부개', branch: true }, { name: '부평', branch: true }, { name: '백운', branch: true }, { name: '동암', branch: true }, { name: '간석', branch: true }, { name: '주안', branch: true }, { name: '도화', branch: true }, { name: '제물포', branch: true }, { name: '도원', branch: true }, { name: '동인천', branch: true }, { name: '인천', branch: true }
-      ] 
+  // 💡 방법 1: 지선이 갈라지는 구간을 별도의 노선 키로 분리하여 정의합니다.
+  const lineData = {
+    '1호선(신창·천안행)': { 
+      color: '#0052A4', 
+      id: '1001', 
+      apiName: '1호선',
+      stations: ['연천', '전곡', '청산', '소요산', '동두천', '보산', '동두천중앙', '지행', '덕정', '덕계', '양주', '녹양', '가능', '의정부', '회룡', '망월사', '도봉산', '도봉', '방학', '창동', '녹천', '월계', '광운대', '석계', '신이문', '외대앞', '회기', '청량리', '제기동', '신설동', '동대문', '종로5가', '종로3가', '종각', '시청', '서울역', '남영', '용산', '노량진', '대방', '신길', '영등포', '신도림', '구로', '가산디지털단지', '독산', '금천구청', '광명', '석수', '관악', '안양', '명학', '금정', '군포', '당정', '의왕', '성균관대', '화서', '수원', '세류', '병점', '서동탄', '세마', '오산대', '오산', '진위', '송탄', '서정리', '평택지제', '평택', '성환', '직산', '두정', '천안', '봉명', '쌍용', '아산', '탕정', '배방', '온양온천', '신창'] 
     },
-    '2호선': { 
-      color: '#009D3E', id: '1002', 
-      stations: [
-        '시청', '을지로입구', '을지로3가', '을지로4가', '동대문역사문화공원', '신당', '상왕십리', '왕십리', '한양대', '뚝섬', '성수', '건대입구', '구의', '강변', '잠실나루', '잠실', '잠실새내', '종합운동장', '삼성', '선릉', '역삼', '강남', '교대', '서초', '방배', '사당', '낙성대', '서울대입구', '봉천', '신림', '신대방', '구로디지털단지', '대림', '신도림', '문래', '영등포구청', '당산', '합정', '홍대입구', '신촌', '이대', '아현', '충정로',
-        { label: '🔽 성수지선 (성수 분기)' },
-        { name: '용답', branch: true }, { name: '신답', branch: true }, { name: '용두', branch: true }, { name: '신설동', branch: true },
-        { label: '🔽 신정지선 (신도림 분기)' },
-        { name: '도림천', branch: true }, { name: '양천구청', branch: true }, { name: '신정네거리', branch: true }, { name: '까치산', branch: true }
-      ] 
+    '1호선(인천행)': { 
+      color: '#0052A4', 
+      id: '1001', 
+      apiName: '1호선',
+      stations: ['연천', '전곡', '청산', '소요산', '동두천', '보산', '동두천중앙', '지행', '덕정', '덕계', '양주', '녹양', '가능', '의정부', '회룡', '망월사', '도봉산', '도봉', '방학', '창동', '녹천', '월계', '광운대', '석계', '신이문', '외대앞', '회기', '청량리', '제기동', '신설동', '동대문', '종로5가', '종로3가', '종각', '시청', '서울역', '남영', '용산', '노량진', '대방', '신길', '영등포', '신도림', '구로', '구일', '개봉', '오류동', '온수', '역곡', '소사', '부천', '중동', '송내', '부개', '부평', '백운', '동암', '간석', '주안', '도화', '제물포', '도원', '동인천', '인천'] 
     },
-    '3호선': { color: '#EF7C1C', id: '1003', stations: ['대화', '주엽', '정발산', '마두', '백석', '대곡', '화정', '원당', '원흥', '삼송', '지축', '구파발', '연신내', '불광', '녹번', '홍제', '무악재', '독립문', '경복궁', '안국', '종로3가', '을지로3가', '충무로', '동대입구', '약수', '금호', '옥수', '압구정', '신사', '잠원', '고속터미널', '교대', '남부터미널', '양재', '매봉', '도곡', '대치', '학여울', '대청', '일원', '수서', '가락시장', '경찰병원', '오금'] },
-    '4호선': { color: '#00A5DE', id: '1004', stations: ['진접', '오남', '별내별가람', '당고개', '상계', '노원', '창동', '쌍문', '수유', '미아', '미아사거리', '길음', '성신여대입구', '한성대입구', '혜화', '동대문', '동대문역사문화공원', '충무로', '명동', '회현', '서울역', '숙대입구', '삼각지', '신용산', '이촌', '동작', '총신대입구', '사당', '남태령', '선바위', '경마공원', '대공원', '과천', '정부과천청사', '인덕원', '평촌', '범계', '금정', '산본', '수리산', '대야미', '반월', '상록수', '한대앞', '중앙', '고잔', '초지', '안산', '신길온천', '정왕', '오이도'] },
-    '5호선': { 
-      color: '#996CAC', id: '1005', 
-      stations: [
-        '방화', '개화산', '김포공항', '송정', '마곡', '발산', '우장산', '화곡', '까치산', '신정', '목동', '오목교', '양평', '영등포구청', '영등포시장', '신길', '여의도', '여의나루', '마포', '공덕', '애오개', '충정로', '서대문', '광화문', '종로3가', '을지로4가', '동대문역사문화공원', '청구', '신금호', '행당', '왕십리', '마장', '답십리', '장한평', '군자', '아차산', '광나루', '천호', '강동',
-        { label: '🔽 하남검단산 방면 (강동 분기)' },
-        { name: '길동', branch: true }, { name: '굽은다리', branch: true }, { name: '명일', branch: true }, { name: '고덕', branch: true }, { name: '상일동', branch: true }, { name: '강일', branch: true }, { name: '미사', branch: true }, { name: '하남풍산', branch: true }, { name: '하남시청', branch: true }, { name: '하남검단산', branch: true },
-        { label: '🔽 마천 방면 (강동 분기)' },
-        { name: '둔촌동', branch: true }, { name: '올림픽공원', branch: true }, { name: '방이', branch: true }, { name: '오금', branch: true }, { name: '개롱', branch: true }, { name: '거여', branch: true }, { name: '마천', branch: true }
-      ] 
+    '2호선': { color: '#009D3E', id: '1002', apiName: '2호선', stations: ['시청', '을지로입구', '을지로3가', '을지로4가', '동대문역사문화공원', '신당', '상왕십리', '왕십리', '한양대', '뚝섬', '성수', '건대입구', '구의', '강변', '잠실나루', '잠실', '잠실새내', '종합운동장', '삼성', '선릉', '역삼', '강남', '교대', '서초', '방배', '사당', '낙성대', '서울대입구', '봉천', '신림', '신대방', '구로디지털단지', '대림', '신도림', '문래', '영등포구청', '당산', '합정', '홍대입구', '신촌', '이대', '아현', '충정로', '용답', '신답', '용두', '신설동', '도림천', '양천구청', '신정네거리', '까치산'] },
+    '3호선': { color: '#EF7C1C', id: '1003', apiName: '3호선', stations: ['대화', '주엽', '정발산', '마두', '백석', '대곡', '화정', '원당', '원흥', '삼송', '지축', '구파발', '연신내', '불광', '녹번', '홍제', '무악재', '독립문', '경복궁', '안국', '종로3가', '을지로3가', '충무로', '동대입구', '약수', '금호', '옥수', '압구정', '신사', '잠원', '고속터미널', '교대', '남부터미널', '양재', '매봉', '도곡', '대치', '학여울', '대청', '일원', '수서', '가락시장', '경찰병원', '오금'] },
+    '4호선': { color: '#00A5DE', id: '1004', apiName: '4호선', stations: ['진접', '오남', '별내별가람', '당고개', '상계', '노원', '창동', '쌍문', '수유', '미아', '미아사거리', '길음', '성신여대입구', '한성대입구', '혜화', '동대문', '동대문역사문화공원', '충무로', '명동', '회현', '서울역', '숙대입구', '삼각지', '신용산', '이촌', '동작', '총신대입구', '사당', '남태령', '선바위', '경마공원', '대공원', '과천', '정부과천청사', '인덕원', '평촌', '범계', '금정', '산본', '수리산', '대야미', '반월', '상록수', '한대앞', '중앙', '고잔', '초지', '안산', '신길온천', '정왕', '오이도'] },
+    '5호선(하남검단산행)': { 
+      color: '#996CAC', 
+      id: '1005', 
+      apiName: '5호선',
+      stations: ['방화', '개화산', '김포공항', '송정', '마곡', '발산', '우장산', '화곡', '까치산', '신정', '목동', '오목교', '양평', '영등포구청', '영등포시장', '신길', '여의도', '여의나루', '마포', '공덕', '애오개', '충정로', '서대문', '광화문', '종로3가', '을지로4가', '동대문역사문화공원', '청구', '신금호', '행당', '왕십리', '마장', '답십리', '장한평', '군자', '아차산', '광나루', '천호', '강동', '길동', '굽은다리', '명일', '고덕', '상일동', '강일', '미사', '하남풍산', '하남시청', '하남검단산'] 
     },
-    '6호선': { 
-      color: '#CD7C2F', id: '1006', 
-      stations: [
-        { label: '🔄 응암 순환 구간' },
-        { name: '응암', branch: true }, { name: '역촌', branch: true }, { name: '불광', branch: true }, { name: '독바위', branch: true }, { name: '연신내', branch: true }, { name: '구산', branch: true },
-        { label: '⬇️ 6호선 본선' },
-        '새절', '증산', '디지털미디어시티', '월드컵경기장', '마포구청', '망원', '합정', '상수', '광흥창', '대흥', '공덕', '효창공원앞', '삼각지', '녹사평', '이태원', '한강진', '버티고개', '약수', '청구', '신당', '동묘앞', '창신', '보문', '안암', '고려대', '월곡', '상월곡', '돌곶이', '석계', '태릉입구', '화랑대', '봉화산', '신내'
-      ] 
+    '5호선(마천행)': { 
+      color: '#996CAC', 
+      id: '1005', 
+      apiName: '5호선',
+      stations: ['방화', '개화산', '김포공항', '송정', '마곡', '발산', '우장산', '화곡', '까치산', '신정', '목동', '오목교', '양평', '영등포구청', '영등포시장', '신길', '여의도', '여의나루', '마포', '공덕', '애오개', '충정로', '서대문', '광화문', '종로3가', '을지로4가', '동대문역사문화공원', '청구', '신금호', '행당', '왕십리', '마장', '답십리', '장한평', '군자', '아차산', '광나루', '천호', '강동', '둔촌동', '올림픽공원', '방이', '오금', '개롱', '거여', '마천'] 
     },
-    '7호선': { color: '#747F00', id: '1007', stations: ['장암', '도봉산', '수락산', '마들', '노원', '중계', '하계', '공릉', '태릉입구', '먹골', '중화', '상봉', '면목', '용마산', '중곡', '군자', '어린이대공원', '건대입구', '자양(뚝섬한강공원)', '청담', '강남구청', '학동', '논현', '반포', '고속터미널', '내방', '총신대입구', '남성', '숭실대입구', '상도', '장승배기', '신대방삼거리', '보라매', '신풍', '대림', '남구로', '가산디지털단지', '철산', '광명사거리', '천왕', '온수', '까치울', '부천종합운동장', '춘의', '신중동', '부천시청', '상동', '삼산체육관', '굴포천', '부평구청', '산곡', '석남'] },
-    '8호선': { color: '#E6186C', id: '1008', stations: ['별내', '다산', '동구릉', '구리', '장자호수공원', '암사역사공원', '암사', '천호', '강동구청', '몽촌토성', '잠실', '석촌', '송파', '가락시장', '문정', '장지', '복정', '남위례', '산성', '단대오거리', '신흥', '수진', '모란'] },
-    '9호선': { color: '#BDB092', id: '1009', stations: ['개화', '김포공항', '공항시장', '신방화', '마곡나루', '양천향교', '가양', '증미', '등촌', '염창', '신목동', '선유도', '당산', '국회의사당', '여의도', '샛강', '노량진', '노들', '흑석', '동작', '구반포', '신반포', '고속터미널', '사평', '신논현', '언주', '선정릉', '삼성중앙', '봉은사', '종합운동장', '삼전', '석촌고분', '석촌', '송파나루', '한성백제', '올림픽공원', '둔촌오륜', '중앙보훈병원'] },
-    'GTX-A': { color: '#905A89', id: '1032', stations: ['운정중앙', '킨텍스', '대곡', '연신내', '서울역', '수서', '성남', '구성', '동탄'] },
-    '경의중앙선': { color: '#77C4A3', id: '1063', stations: ['도라산', '임진강', '문산', '파주', '월롱', '금촌', '금릉', '운정', '야당', '탄현', '일산', '풍산', '백마', '곡산', '대곡', '능곡', '행신', '강매', '화전', '수색', '디지털미디어시티', '가좌', '신촌', '서울역', '홍대입구', '서강대', '공덕', '효창공원앞', '용산', '이촌', '서빙고', '한남', '옥수', '응봉', '왕십리', '청량리', '회기', '중랑', '상봉', '망우', '양원', '구리', '도농', '양정', '덕소', '도심', '팔당', '운길산', '양수', '신원', '아신', '오빈', '양평', '원덕', '용문', '지평'] }
+    '6호선': { color: '#CD7C2F', id: '1006', apiName: '6호선', stations: ['응암', '역촌', '불광', '독바위', '연신내', '구산', '새절', '증산', '디지털미디어시티', '월드컵경기장', '마포구청', '망원', '합정', '상수', '광흥창', '대흥', '공덕', '효창공원앞', '삼각지', '녹사평', '이태원', '한강진', '버티고개', '약수', '청구', '신당', '동묘앞', '창신', '보문', '안암', '고려대', '월곡', '상월곡', '돌곶이', '석계', '태릉입구', '화랑대', '봉화산', '신내'] },
+    '7호선': { color: '#747F00', id: '1007', apiName: '7호선', stations: ['장암', '도봉산', '수락산', '마들', '노원', '중계', '하계', '공릉', '태릉입구', '먹골', '중화', '상봉', '면목', '용마산', '중곡', '군자', '어린이대공원', '건대입구', '자양(뚝섬한강공원)', '청담', '강남구청', '학동', '논현', '반포', '고속터미널', '내방', '총신대입구', '남성', '숭실대입구', '상도', '장승배기', '신대방삼거리', '보라매', '신풍', '대림', '남구로', '가산디지털단지', '철산', '광명사거리', '천왕', '온수', '까치울', '부천종합운동장', '춘의', '신중동', '부천시청', '상동', '삼산체육관', '굴포천', '부평구청', '산곡', '석남'] },
+    '8호선': { color: '#E6186C', id: '1008', apiName: '8호선', stations: ['별내', '다산', '동구릉', '구리', '장자호수공원', '암사역사공원', '암사', '천호', '강동구청', '몽촌토성', '잠실', '석촌', '송파', '가락시장', '문정', '장지', '복정', '남위례', '산성', '단대오거리', '신흥', '수진', '모란'] },
+    '9호선': { color: '#BDB092', id: '1009', apiName: '9호선', stations: ['개화', '김포공항', '공항시장', '신방화', '마곡나루', '양천향교', '가양', '증미', '등촌', '염창', '신목동', '선유도', '당산', '국회의사당', '여의도', '샛강', '노량진', '노들', '흑석', '동작', '구반포', '신반포', '고속터미널', '사평', '신논현', '언주', '선정릉', '삼성중앙', '봉은사', '종합운동장', '삼전', '석촌고분', '석촌', '송파나루', '한성백제', '올림픽공원', '둔촌오륜', '중앙보훈병원'] },
+    'GTX-A': { color: '#905A89', id: '1032', apiName: 'GTX-A', stations: ['운정중앙', '킨텍스', '대곡', '연신내', '서울역', '수서', '성남', '구성', '동탄'] },
+    '경의중앙선': { color: '#77C4A3', id: '1063', apiName: '경의중앙선', stations: ['도라산', '임진강', '문산', '파주', '월롱', '금촌', '금릉', '운정', '야당', '탄현', '일산', '풍산', '백마', '곡산', '대곡', '능곡', '행신', '강매', '화전', '수색', '디지털미디어시티', '가좌', '신촌', '서울역', '홍대입구', '서강대', '공덕', '효창공원앞', '용산', '이촌', '서빙고', '한남', '옥수', '응봉', '왕십리', '청량리', '회기', '중랑', '상봉', '망우', '양원', '구리', '도농', '양정', '덕소', '도심', '팔당', '운길산', '양수', '신원', '아신', '오빈', '양평', '원덕', '용문', '지평'] }
   };
-
-  // 데이터 전처리: 혼합된 배열을 일관된 객체 형태로 파싱
-  const lineData = {};
-  for (const lineName in rawLineData) {
-    lineData[lineName] = {
-      ...rawLineData[lineName],
-      stations: rawLineData[lineName].stations.map(item => {
-        if (typeof item === 'string') return { name: item, branch: false, isLabel: false };
-        if (item.label) return { label: item.label, isLabel: true };
-        return { name: item.name, branch: item.branch, isLabel: false };
-      })
-    };
-  }
 
   const getRealtimeApiKey = () => REALTIME_API_KEY; 
   const getOpenApiKey = () => OPEN_API_KEY; 
@@ -107,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentLine = '2호선', currentStation = '';
   let refreshInterval = null, popupRefreshTimer = null;
   let mapRequestId = 0, popupRequestId = 0;
-  let currentPopupStations = []; // 팝업 가로지도용 주변역 저장 (renderData 기준)
+  let currentPopupStations = []; 
 
   const V_SPACING = 110, H_SPACING = 120;
 
@@ -140,13 +91,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const escapeHtml = (val) => String(val ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#039;'}[m]));
   const normalizeStationName = (name) => String(name || '').trim().replace(/\s+/g, '').replace(/역$/, '').replace(/\([^)]*\)/g, '');
   
-  // 객체 배열(renderData)에서 역을 찾는 함수
-  function getRenderStationInfo(renderData, name) {
+  function getStationIndex(stations, name) {
     const target = normalizeStationName(name);
-    if (!target) return null;
-    let found = renderData.find(s => normalizeStationName(s.name) === target);
-    if (found) return found;
-    return renderData.find(s => normalizeStationName(s.name).includes(target) || target.includes(normalizeStationName(s.name)));
+    if (!target) return -1;
+    let idx = stations.findIndex(s => normalizeStationName(s) === target);
+    if (idx !== -1) return idx;
+    return stations.findIndex(s => normalizeStationName(s).includes(target) || target.includes(normalizeStationName(s)));
   }
 
   function getWeekTag() {
@@ -166,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const getTrainStatusText = (status) => ({'0':'진입','1':'도착','2':'출발','3':'전역출발'}[String(status)] || '운행중');
 
-  // 1. 수직 지도 초기화 (분기점/지선 적용)
+  // 1. 수직 지도 초기화
   function initMaps(lineName) {
     if (refreshInterval) clearInterval(refreshInterval);
     mapRequestId++; currentLine = lineName;
@@ -175,40 +125,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.documentElement.style.setProperty('--line-color', data.color);
     vStationNodes.innerHTML = ''; vTrainsContainer.innerHTML = '';
-    
-    let currentY = 0;
-    data.renderData = []; // 역들의 실제 Y좌표와 지선 여부를 저장
+    vMapContainer.style.height = `${Math.max(1, data.stations.length - 1) * V_SPACING + 60}px`;
 
-    data.stations.forEach((st) => {
+    data.stations.forEach((station, index) => {
       const node = document.createElement('div');
-      
-      if (st.isLabel) {
-        // 라벨 (분기 안내 텍스트) 렌더링
-        node.className = 'v-branch-label';
-        node.style.top = `${currentY}px`;
-        node.style.color = data.color;
-        node.style.fontWeight = 'bold';
-        node.innerHTML = escapeHtml(st.label);
-        vStationNodes.appendChild(node);
-        currentY += 40; // 라벨이 차지하는 높이
-      } else {
-        // 일반 역 렌더링
-        node.className = 'v-station-node';
-        node.style.top = `${currentY}px`;
-        
-        // 지선인 경우 시각적 들여쓰기 적용
-        const indentStyle = st.branch ? 'margin-left: 20px; opacity: 0.9;' : '';
-        node.innerHTML = `<div class="v-station-name" style="${indentStyle}">${escapeHtml(st.name)}</div>`;
-        node.addEventListener('click', () => openFullPopup(st.name));
-        vStationNodes.appendChild(node);
-        
-        // 열차 배치를 위해 좌표 정보 저장
-        data.renderData.push({ name: st.name, y: currentY, branch: st.branch, originalIndex: data.renderData.length });
-        currentY += V_SPACING;
-      }
+      node.className = 'v-station-node';
+      node.style.top = `${index * V_SPACING}px`;
+      node.innerHTML = `<div class="v-station-name">${escapeHtml(station)}</div>`;
+      node.addEventListener('click', () => openFullPopup(station));
+      vStationNodes.appendChild(node);
     });
-
-    vMapContainer.style.height = `${currentY + 60}px`;
 
     fetchTrainPositions();
     refreshInterval = setInterval(fetchTrainPositions, 10000);
@@ -224,25 +150,22 @@ document.addEventListener('DOMContentLoaded', () => {
     timeRideNum.textContent = '-'; timeAlightNum.textContent = '-';
     arrUpList.innerHTML = ''; arrDownList.innerHTML = ''; ttUpList.innerHTML = ''; ttDownList.innerHTML = '';
 
-    // 라벨이 제거된 순수 역 목록(renderData)에서 기준 인덱스 찾기
-    const renderData = lineData[currentLine].renderData;
-    const centerInfo = getRenderStationInfo(renderData, station);
-    
-    if (centerInfo) {
-      const centerIdx = centerInfo.originalIndex;
+    const stations = lineData[currentLine].stations;
+    const centerIdx = getStationIndex(stations, station);
+    if (centerIdx !== -1) {
       const startIdx = Math.max(0, centerIdx - 3);
-      const endIdx = Math.min(renderData.length - 1, centerIdx + 3);
-      currentPopupStations = renderData.slice(startIdx, endIdx + 1);
+      const endIdx = Math.min(stations.length - 1, centerIdx + 3);
+      currentPopupStations = stations.slice(startIdx, endIdx + 1);
 
       hStationNodes.innerHTML = ''; hTrainsContainer.innerHTML = '';
       hTrackWrapper.style.width = `${Math.max(1, currentPopupStations.length - 1) * H_SPACING + 60}px`;
 
-      currentPopupStations.forEach((stInfo, index) => {
+      currentPopupStations.forEach((stn, index) => {
         const node = document.createElement('div');
         node.className = 'h-station-node';
         node.style.left = `${index * H_SPACING}px`;
-        const isCurrent = normalizeStationName(stInfo.name) === normalizeStationName(station);
-        node.innerHTML = `<div class="h-station-name" style="${isCurrent ? 'color:#fff; font-size:13px; top:-26px;' : ''}">${escapeHtml(stInfo.name)}</div>`;
+        const isCurrent = normalizeStationName(stn) === normalizeStationName(station);
+        node.innerHTML = `<div class="h-station-name" style="${isCurrent ? 'color:#fff; font-size:13px; top:-26px;' : ''}">${escapeHtml(stn)}</div>`;
         hStationNodes.appendChild(node);
       });
     }
@@ -265,7 +188,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!line) return;
 
     try {
-      const res = await fetch(`${BASE_SW}/${getRealtimeApiKey()}/json/realtimePosition/0/100/${encodeURIComponent(requestLine)}`, { cache: 'no-store' });
+      // 💡 API를 호출할 때는 '1호선(신창행)'이 아니라 원래 API 노선명인 '1호선'으로 변환하여 요청
+      const apiParamLine = line.apiName || requestLine;
+      const res = await fetch(`${BASE_SW}/${getRealtimeApiKey()}/json/realtimePosition/0/100/${encodeURIComponent(apiParamLine)}`, { cache: 'no-store' });
       const data = await res.json();
       if (requestLine !== currentLine || requestId !== mapRequestId) return;
 
@@ -288,9 +213,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const domKey = String(`${line.id}-${train.updnLine}-${trainNo}`).replace(/[^a-zA-Z0-9_-]/g, '_');
         const trainStatusText = escapeHtml(getTrainStatusText(status));
 
-        // 수직 지도 업데이트 (렌더링 데이터 기준 배치)
-        const vStationInfo = getRenderStationInfo(line.renderData, train.statnNm);
-        if (vStationInfo) {
+        // 수직 지도 업데이트
+        const vStationIndex = getStationIndex(line.stations, train.statnNm);
+        if (vStationIndex !== -1) {
           vActiveKeys.add(domKey);
           let vEl = document.getElementById(`v-train-${domKey}`);
           if (!vEl) {
@@ -300,16 +225,13 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           vEl.className = `v-train ${isUp ? 'up' : 'down'}`;
           vEl.innerHTML = `<span>${escapeHtml(trainNo)}</span><div class="v-train-status">${trainStatusText}</div>`;
-          vEl.style.top = `${vStationInfo.y + offset}px`;
-          
-          // 열차가 지선(Branch) 구간에 있다면 열차 아이콘도 살짝 들여쓰기 처리
-          vEl.style.marginLeft = vStationInfo.branch ? '20px' : '0';
+          vEl.style.top = `${vStationIndex * V_SPACING + offset}px`;
         }
 
         // 팝업 가로 지도 업데이트
         if (!fullPopup.classList.contains('hidden') && currentPopupStations.length > 0) {
-          const hStationInfo = getRenderStationInfo(currentPopupStations, train.statnNm);
-          if (hStationInfo) {
+          const hStationIndex = getStationIndex(currentPopupStations, train.statnNm);
+          if (hStationIndex !== -1) {
             hActiveKeys.add(domKey);
             let hEl = document.getElementById(`h-train-${domKey}`);
             if (!hEl) {
@@ -319,9 +241,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             hEl.className = `h-train ${isUp ? 'up' : 'down'}`;
             hEl.innerHTML = `<span>${escapeHtml(trainNo)}</span><div class="h-train-status">${trainStatusText}</div>`;
-            
-            // hStationInfo는 currentPopupStations 안의 요소이므로 indexOf로 인덱스 추출
-            const hStationIndex = currentPopupStations.indexOf(hStationInfo);
             hEl.style.left = `${hStationIndex * H_SPACING + offset}px`;
           }
         }
@@ -447,8 +366,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const targetLineStr = currentLine.replace('호선', '');
       const match = rows.find(r => {
         const ln = String(r.LINE_NUM);
-        if (currentLine === '경의중앙선') return ln.includes('경의') || ln.includes('중앙');
-        if (currentLine === 'GTX-A') return ln.includes('GTX');
+        if (currentLine.includes('경의중앙선')) return ln.includes('경의') || ln.includes('중앙');
+        if (currentLine.includes('GTX-A')) return ln.includes('GTX');
         return ln.includes(targetLineStr) || ln.includes(currentLine);
       });
       
