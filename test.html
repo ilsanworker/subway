@@ -1180,28 +1180,15 @@ button{
 
 
 <script>
-
-/* =========================================================
-   CONFIG
-========================================================= */
-
 const CONFIG = {
 
-    /*
-     * 서울 열린데이터광장 API
-     */
+    // Netlify 프록시
     seoulBase:
-        "https://openapi.seoul.go.kr:8088",
+        "/api/open",
 
-    /*
-     * 실시간 지하철 API
-     */
     subwayBase:
-        "https://swopenapi.seoul.go.kr/api/subway",
+        "/api/sw",
 
-    /*
-     * API service names
-     */
     services: {
 
         stationMaster:
@@ -1225,7 +1212,6 @@ const CONFIG = {
     },
 
     refreshPositionMs: 20000,
-
     refreshArrivalMs: 20000
 
 };
