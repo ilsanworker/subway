@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서울시 공공데이터 API 대시보드</title>
+    <style>
+        body { 
+            font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; 
+            padding: 20px; 
+            background-color: #f4f7f6; 
+            color: #333;
+        }
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1); 
+        }
+        h1 { text-align: center; color: #2c3e50; }
+        .info { 
+            font-size: 0.95em; 
+            color: #555; 
+            margin-bottom: 25px; 
+            text-align: center; 
+            line-height: 1.6;
+        }
+        .form-group { margin-bottom: 20px; }
+        label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: bold; 
+            color: #34495e;
+        }
+        input[type="text"], select { 
+            width: 100%; 
+            padding: 12px; 
+            border: 1px solid #ccd1d9; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+            font-size: 15px;
+        }
+        button { 
+            padding: 14px 20px; 
+            background-color: #3498db; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            font-weight: bold;
+            width: 100%; 
+            transition: background-color 0.3s;
+        }
+        button:hover { background-color: #2980b9; }
+        .result-container {
+            margin-top: 30px;
+            background-color: #272822; 
+            border-radius: 8px;
+        }
+        pre { 
+            color: #f8f8f2; 
+            padding: 20px; 
+            overflow-x: auto; 
+            max-height: 500px; 
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+        }
+        .url-display {
+            background-color: #e8f4f8;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            word-break: break-all;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>서울시 공공데이터 API 연동 페이지</h1>
+        <p class="info">
+            요청하신 데이터셋(자전거, 미세먼지, 버스, 지하철 등)을 실시간으로 호출합니다.<br>
+            원활한 사용을 위해 <strong>서울열린데이터광장 API 인증키</strong>가 필요합니다.
+        </p>
+        
+        <div class="form-group">
+            <label for="apiKey">🔑 API 인증키 (필수)</label>
+            <input type="text" id="apiKey" placeholder="sample (실제 발급받은 키를 입력해주세요)" value="sample">
+        </div>
+
+        <div class="form-group">
+            <label for="dataset">📊 데이터셋 선택 (요청하신 URL 목록)</label>
+            <select id="dataset" onchange="updateServiceInfo()">
+                <option value="bikeList">서울시 자전거 따릉이 대여소 정보 (OA-12764)</option>
+                <option value="RealtimeCityAir">서울시 실시간 미세먼지 정보 (OA-15799)</option>
+                <option value="stationinfo">서울시 버스도착정보 (OA-12601)</option>
+                <option value="CardSubwayStatsNew">서울시 지하철호선별 역별 승하차 인원 (OA-12914)</option>
+                <option value="subwayStationMaster">서울시 역사마스터 정보 (OA-21232)</option>
+                <option value="SearchSTNTimeTableByFRCodeService">지하철 열차 시간표 검색 (OA-101)</option>
+                <option value="shortestRoute">지하철역 최단경로이동정보 (OA-22724)</option>
+                <option value="OtherService">기타 정보 (OA-109 등)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="serviceName">⚙️ 서비스명 (자동입력, 필요시 세부 서비스명으로 수정 가능)</label>
+            <input type="text" id="serviceName" value="bikeList">
+        </div>
+
+        <div class="form-group">
+            <label for="dataType">📄 응답 데이터 형식</label>
+            <select id="dataType">
+                <option value="json">JSON (추천)</option>
+                <option value="xml">XML</option>
+            </select>
+        </div>
+
+        <button onclick="fetchData()">데이터 가져오기 (API 호출)</button>
+
+        <h3 style="margin-top: 40px; color: #2c3e50;">API 호출 결과</h3>
+        <div id="urlDisplay" class="url-display" style="display: none;"></div>
+        <div class="result-container">
+            <pre id="result">API를 호출하면 여기에 결과가 표시됩니다...</pre>
+        </div>
+    </div>
+
+    <script>
+        // 드롭다운 변경 시 서비스명을 자동으로 업데이트
+        function updateServiceInfo() {
+            const datasetSelect = document.getElementById('dataset');
+            const serviceNameInput = document.getElementById('serviceName');
+            serviceNameInput.value = datasetSelect.value;
+        }
+
+        async function fetchData() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const serviceName = document.getElementById('serviceName').value.trim();
+            const dataType = document.getElementById('dataType').value;
+            const resultBox = document.getElementById('result');
+            const urlDisplay = document.getElementById('urlDisplay');
+
+            if (!apiKey) {
+                alert("API 인증키를 입력해주세요!");
+                return;
+            }
+
+            // 서울시 공공데이터 기본 URL 구조 생성 (1~5번째 데이터까지만 샘플 호출)
+            // *주의: 최신 브라우저 정책상 로컬 파일(file://)이 아닌 https 환경에서 호스팅 시 CORS/Mixed Content 이슈가 있을 수 있습니다.
+            const url = `http://openapi.seoul.go.kr:8088/${apiKey}/${dataType}/${serviceName}/1/5/`;
+
+            urlDisplay.style.display = 'block';
+            urlDisplay.innerHTML = `<strong>요청 URL:</strong> <a href="${url}" target="_blank">${url}</a>`;
+            resultBox.textContent = "데이터를 불러오는 중입니다... 잠시만 기다려주세요.";
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP 에러 발생! 상태 코드: ${response.status}`);
+                }
+                
+                if (dataType === 'json') {
+                    const data = await response.json();
+                    // JSON 데이터를 예쁘게 줄바꿈하여 출력
+                    resultBox.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    const data = await response.text();
+                    resultBox.textContent = data;
+                }
+            } catch (error) {
+                resultBox.textContent = `🚨 오류가 발생했습니다!\n\n` + 
+                                        `원인 1: API 키가 유효하지 않거나 일일 허용량을 초과했을 수 있습니다.\n` +
+                                        `원인 2: 'sample' 키는 일부 데이터(예: 버스, 최단경로)에서 작동하지 않을 수 있습니다.\n` +
+                                        `원인 3: 추가 파라미터(역 코드, 노선 번호 등)가 필요한 API일 수 있습니다.\n\n` + 
+                                        `상세 에러 내용: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
