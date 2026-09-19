@@ -1179,3493 +1179,4330 @@ button{
 </div>
 
 <script>
-
-/* =========================================================
-   METRO SEOUL
-   수도권 지하철 정보
-   Seoul Open Data API
-   안정화 버전
-   ========================================================= */
-
-const CONFIG = {
-
-    seoulBase: "/api/open",
-    subwayBase: "/api/sw",
-
-    services: {
-
-        // 역사마스터
-        stationMaster: "subwayStationMaster",
-
-        // 서울교통공사 노선별 지하철역 정보
-        stationByLine: "SearchSTNBySubwayLineInfo",
-
-        // 실시간 도착
-        realtimeArrival: "realtimeStationArrival",
-
-        // 실시간 열차 위치
-        realtimePosition: "realtimePosition"
-    },
-
-    stationStart: 1,
-    stationEnd: 1000,
-
-    timeout: 15000,
-
-    arrivalRefresh: 20000,
-    positionRefresh: 30000
-};
-
-
-/* =========================================================
-   STATE
-   ========================================================= */
-
-const state = {
-
-    apiKey:
-        localStorage.getItem(
-            "seoul_openapi_key"
-        ) || "",
-
-    stations: [],
-
-    visibleStations: [],
-
-    selectedStation: null,
-
-    selectedLine: "ALL",
-
-    searchQuery: "",
-
-    arrivals: [],
-
-    trainPositions: [],
-
-    zoom: 1,
-
-    panX: 0,
-
-    panY: 0,
-
-    loadingStations: false,
-
-    loadingPositions: false,
-
-    timers: {
-        arrival: null,
-        position: null
-    }
-};
-
-
-/* =========================================================
-   DOM
-   ========================================================= */
-
-function $(selector) {
-    return document.querySelector(selector);
-}
-
-
-function $all(selector) {
-    return [
-        ...document.querySelectorAll(selector)
-    ];
-}
-
-
-/* =========================================================
-   ESCAPE
-   ========================================================= */
-
-function escapeHTML(value) {
-
-    if (
-        value === null ||
-        value === undefined
-    ) {
-        return "";
-    }
-
-    return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-
-/* =========================================================
-   API STATUS
-   ========================================================= */
-
-function setApiStatus(
-    message,
-    type = "normal"
-) {
-
-    const selectors = [
-        "#apiStatus",
-        "#api-status",
-        ".api-status",
-        "[data-api-status]"
-    ];
-
-    let element = null;
-
-    for (
-        const selector
-        of selectors
-    ) {
-
-        element = $(selector);
-
-        if (element) {
-            break;
+    /* =========================================================
+       METRO SEOUL
+       수도권 지하철 정보
+       Seoul Open Data API
+       FINAL STABLE VERSION
+       ========================================================= */
+    
+    
+    /* =========================================================
+       CONFIG
+    ========================================================= */
+    
+    const CONFIG = {
+    
+        seoulBase: "/api/open",
+    
+        subwayBase: "/api/sw",
+    
+        services: {
+    
+            stationMaster:
+                "subwayStationMaster",
+    
+            stationByLine:
+                "SearchSTNBySubwayLineInfo",
+    
+            realtimeArrival:
+                "realtimeStationArrival",
+    
+            realtimePosition:
+                "realtimePosition"
+        },
+    
+        stationStart: 1,
+    
+        stationEnd: 1000,
+    
+        timeout: 15000,
+    
+        arrivalRefresh: 20000,
+    
+        positionRefresh: 30000
+    };
+    
+    
+    /* =========================================================
+       STATE
+    ========================================================= */
+    
+    const state = {
+    
+        apiKey:
+            localStorage.getItem(
+                "seoul_openapi_key"
+            ) || "",
+    
+        stations: [],
+    
+        visibleStations: [],
+    
+        selectedStation: null,
+    
+        selectedLine: "ALL",
+    
+        searchQuery: "",
+    
+        arrivals: [],
+    
+        trainPositions: [],
+    
+        zoom: 1,
+    
+        panX: 0,
+    
+        panY: 0,
+    
+        loadingStations: false,
+    
+        loadingPositions: false,
+    
+        timers: {
+            arrival: null,
+            position: null
         }
+    };
+    
+    
+    /* =========================================================
+       DOM HELPERS
+    ========================================================= */
+    
+    function $(selector) {
+        return document.querySelector(selector);
     }
-
-    if (!element) {
-
+    
+    
+    function $all(selector) {
+        return Array.from(
+            document.querySelectorAll(selector)
+        );
+    }
+    
+    
+    /* =========================================================
+       HTML ESCAPE
+    ========================================================= */
+    
+    function escapeHTML(value) {
+    
+        if (
+            value === null ||
+            value === undefined
+        ) {
+            return "";
+        }
+    
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+    
+    
+    /* =========================================================
+       API STATUS UI
+    ========================================================= */
+    
+    function setApiStatus(
+        message,
+        type = "normal"
+    ) {
+    
+        const status =
+            $("#apiStatus");
+    
+        const dot =
+            $("#apiDot");
+    
+    
+        if (status) {
+    
+            status.textContent =
+                message;
+    
+            status.classList.remove(
+                "success",
+                "error",
+                "loading"
+            );
+    
+            if (
+                type === "success" ||
+                type === "error" ||
+                type === "loading"
+            ) {
+    
+                status.classList.add(
+                    type
+                );
+            }
+        }
+    
+    
+        if (dot) {
+    
+            dot.classList.remove(
+                "ok",
+                "error"
+            );
+    
+    
+            if (
+                type === "success"
+            ) {
+    
+                dot.classList.add(
+                    "ok"
+                );
+    
+            } else if (
+                type === "error"
+            ) {
+    
+                dot.classList.add(
+                    "error"
+                );
+            }
+        }
+    
+    
         console.log(
             `[API ${type}] ${message}`
         );
-
-        return;
     }
-
-    element.textContent =
-        message;
-
-    element.classList.remove(
-        "success",
-        "error",
-        "loading",
-        "normal"
-    );
-
-    element.classList.add(
-        type
-    );
-}
-
-
-/* =========================================================
-   API KEY
-   ========================================================= */
-
-function getApiKey() {
-
-    if (
-        state.apiKey &&
-        state.apiKey.trim()
-    ) {
-
-        return state.apiKey.trim();
-    }
-
-    const selectors = [
-        "#apiKey",
-        "#api-key",
-        'input[name="apiKey"]',
-        'input[name="apikey"]'
-    ];
-
-    for (
-        const selector
-        of selectors
-    ) {
-
-        const input = $(selector);
-
+    
+    
+    /* =========================================================
+       API KEY
+    ========================================================= */
+    
+    function getApiKey() {
+    
+        /*
+         * HTML의 실제 ID:
+         * #seoulApiKey
+         */
+    
+        const input =
+            $("#seoulApiKey");
+    
+    
+        /*
+         * 입력창에 값이 있으면
+         * 현재 값을 우선 사용
+         */
+    
         if (
             input &&
             input.value.trim()
         ) {
-
+    
             return input.value.trim();
         }
-    }
-
-    return "";
-}
-
-
-/* =========================================================
-   URL
-   ========================================================= */
-
-function seoulUrl(
-    service,
-    start = 1,
-    end = 1000,
-    params = []
-) {
-
-    const key =
-        getApiKey();
-
-    let url =
-        `${CONFIG.seoulBase}/` +
-        `${encodeURIComponent(key)}/` +
-        `json/` +
-        `${service}/` +
-        `${start}/` +
-        `${end}`;
-
-    for (
-        const param
-        of params
-    ) {
-
-        url +=
-            `/${encodeURIComponent(
-                param ?? ""
-            )}`;
-    }
-
-    url += "/";
-
-    return url;
-}
-
-
-function subwayUrl(
-    service,
-    start = 1,
-    end = 1000,
-    extra = ""
-) {
-
-    const key =
-        getApiKey();
-
-    let url =
-        `${CONFIG.subwayBase}/` +
-        `${encodeURIComponent(key)}/` +
-        `json/` +
-        `${service}/` +
-        `${start}/` +
-        `${end}`;
-
-    if (
-        extra !== null &&
-        extra !== undefined &&
-        String(extra) !== ""
-    ) {
-
-        url +=
-            `/${encodeURIComponent(
-                String(extra)
-            )}`;
-    }
-
-    url += "/";
-
-    return url;
-}
-
-
-/* =========================================================
-   FETCH
-   ========================================================= */
-
-async function fetchJSON(
-    url,
-    timeout = CONFIG.timeout
-) {
-
-    console.log(
-        "API REQUEST:",
-        url
-    );
-
-    const controller =
-        new AbortController();
-
-    const timer =
-        setTimeout(
-            () => {
-                controller.abort();
-            },
-            timeout
-        );
-
-    try {
-
-        const response =
-            await fetch(
-                url,
-                {
-                    method: "GET",
-                    cache: "no-store",
-                    signal:
-                        controller.signal
-                }
+    
+    
+        /*
+         * localStorage
+         */
+    
+        const stored =
+            localStorage.getItem(
+                "seoul_openapi_key"
             );
-
-        const text =
-            await response.text();
-
+    
+    
+        return stored
+            ? stored.trim()
+            : "";
+    }
+    
+    
+    /* =========================================================
+       API URL
+    ========================================================= */
+    
+    function seoulUrl(
+        service,
+        start = 1,
+        end = 1000,
+        extra = []
+    ) {
+    
+        const key =
+            getApiKey();
+    
+    
+        let url =
+            `${CONFIG.seoulBase}/` +
+            `${encodeURIComponent(key)}/` +
+            `json/` +
+            `${service}/` +
+            `${start}/` +
+            `${end}`;
+    
+    
+        if (
+            Array.isArray(extra)
+        ) {
+    
+            for (
+                const value
+                of extra
+            ) {
+    
+                url +=
+                    "/" +
+                    encodeURIComponent(
+                        value ?? ""
+                    );
+            }
+        }
+    
+    
+        url += "/";
+    
+    
+        return url;
+    }
+    
+    
+    function subwayUrl(
+        service,
+        start = 1,
+        end = 1000,
+        extra = ""
+    ) {
+    
+        const key =
+            getApiKey();
+    
+    
+        let url =
+            `${CONFIG.subwayBase}/` +
+            `${encodeURIComponent(key)}/` +
+            `json/` +
+            `${service}/` +
+            `${start}/` +
+            `${end}`;
+    
+    
+        if (
+            extra !== null &&
+            extra !== undefined &&
+            String(extra) !== ""
+        ) {
+    
+            url +=
+                "/" +
+                encodeURIComponent(
+                    String(extra)
+                );
+        }
+    
+    
+        url += "/";
+    
+    
+        return url;
+    }
+    
+    
+    /* =========================================================
+       FETCH JSON
+    ========================================================= */
+    
+    async function fetchJSON(
+        url,
+        timeout = CONFIG.timeout
+    ) {
+    
         console.log(
-            "API STATUS:",
-            response.status
+            "================================"
         );
-
-        if (!response.ok) {
-
-            throw new Error(
-                `HTTP ${response.status}`
+    
+        console.log(
+            "API REQUEST"
+        );
+    
+        console.log(
+            url
+        );
+    
+    
+        const controller =
+            new AbortController();
+    
+    
+        const timer =
+            setTimeout(
+                () => {
+                    controller.abort();
+                },
+                timeout
             );
-        }
-
-        if (!text.trim()) {
-
-            throw new Error(
-                "API 응답이 비어 있습니다."
-            );
-        }
-
+    
+    
         try {
-
-            return JSON.parse(text);
-
-        } catch {
-
-            console.error(
-                "JSON이 아닌 응답:",
-                text.substring(
-                    0,
-                    1000
-                )
+    
+            const response =
+                await fetch(
+                    url,
+                    {
+                        method: "GET",
+    
+                        cache: "no-store",
+    
+                        signal:
+                            controller.signal,
+    
+                        headers: {
+                            "Accept":
+                                "application/json"
+                        }
+                    }
+                );
+    
+    
+            const text =
+                await response.text();
+    
+    
+            console.log(
+                "HTTP:",
+                response.status
             );
-
-            throw new Error(
-                "API가 JSON 형식으로 응답하지 않았습니다."
+    
+    
+            if (
+                !response.ok
+            ) {
+    
+                throw new Error(
+                    `HTTP ${response.status}`
+                );
+            }
+    
+    
+            if (
+                !text.trim()
+            ) {
+    
+                throw new Error(
+                    "API 응답이 비어 있습니다."
+                );
+            }
+    
+    
+            let data;
+    
+    
+            try {
+    
+                data =
+                    JSON.parse(text);
+    
+            } catch {
+    
+                console.error(
+                    "JSON 파싱 실패:",
+                    text.substring(
+                        0,
+                        1000
+                    )
+                );
+    
+    
+                throw new Error(
+                    "API가 JSON 형식으로 응답하지 않았습니다."
+                );
+            }
+    
+    
+            console.log(
+                "API RESPONSE:",
+                data
+            );
+    
+    
+            return data;
+    
+    
+        } catch (error) {
+    
+            if (
+                error.name ===
+                "AbortError"
+            ) {
+    
+                throw new Error(
+                    "API 요청 시간이 초과되었습니다."
+                );
+            }
+    
+    
+            throw error;
+    
+    
+        } finally {
+    
+            clearTimeout(
+                timer
             );
         }
-
-    } catch (error) {
-
+    }
+    
+    
+    /* =========================================================
+       RESULT CHECK
+    ========================================================= */
+    
+    function checkApiResult(
+        data
+    ) {
+    
         if (
-            error.name ===
-            "AbortError"
+            !data ||
+            typeof data !== "object"
         ) {
-
+    
             throw new Error(
-                "API 요청 시간이 초과되었습니다."
+                "API 응답 데이터가 올바르지 않습니다."
             );
         }
-
-        throw error;
-
-    } finally {
-
-        clearTimeout(timer);
-    }
-}
-
-
-/* =========================================================
-   OBJECT KEY
-   ========================================================= */
-
-function findKey(
-    object,
-    names
-) {
-
-    if (
-        !object ||
-        typeof object !== "object"
-    ) {
-
-        return null;
-    }
-
-    const keys =
-        Object.keys(object);
-
-    // 정확히 찾기
-    for (
-        const name
-        of names
-    ) {
-
-        if (
-            Object.prototype.hasOwnProperty.call(
-                object,
-                name
-            )
-        ) {
-
-            return name;
-        }
-    }
-
-    // 대소문자 무시
-    for (
-        const name
-        of names
-    ) {
-
-        const found =
-            keys.find(
-                key =>
-                    key.toLowerCase() ===
-                    name.toLowerCase()
-            );
-
-        if (found) {
-            return found;
-        }
-    }
-
-    return null;
-}
-
-
-/* =========================================================
-   FIELD
-   ========================================================= */
-
-function field(
-    object,
-    names
-) {
-
-    const key =
-        findKey(
-            object,
-            names
-        );
-
-    if (!key) {
-        return "";
-    }
-
-    const value =
-        object[key];
-
-    if (
-        value === null ||
-        value === undefined
-    ) {
-
-        return "";
-    }
-
-    return String(value).trim();
-}
-
-
-/* =========================================================
-   FIND STATION OBJECTS
-   핵심:
-   row 배열에 의존하지 않고
-   실제로 역명 필드를 가진 객체를 찾는다.
-   ========================================================= */
-
-function findStationObjects(
-    value,
-    result = [],
-    depth = 0
-) {
-
-    if (
-        depth > 15 ||
-        value === null ||
-        value === undefined
-    ) {
-
-        return result;
-    }
-
-
-    if (
-        Array.isArray(value)
-    ) {
-
+    
+    
+        /*
+         * 서울 Open API의 서비스 객체 찾기
+         */
+    
         for (
-            const item
-            of value
+            const [key, value]
+            of Object.entries(data)
         ) {
-
-            findStationObjects(
-                item,
-                result,
-                depth + 1
-            );
+    
+            if (
+                value &&
+                typeof value === "object" &&
+                value.RESULT
+            ) {
+    
+                const result =
+                    value.RESULT;
+    
+    
+                const code =
+                    String(
+                        result.CODE || ""
+                    );
+    
+    
+                const message =
+                    String(
+                        result.MESSAGE || ""
+                    );
+    
+    
+                console.log(
+                    "API RESULT:",
+                    code,
+                    message
+                );
+    
+    
+                if (
+                    code &&
+                    code !== "INFO-000"
+                ) {
+    
+                    throw new Error(
+                        `${code}: ${message}`
+                    );
+                }
+    
+    
+                return;
+            }
         }
-
-        return result;
     }
-
-
-    if (
-        typeof value !== "object"
+    
+    
+    /* =========================================================
+       FIELD FINDER
+    ========================================================= */
+    
+    function getField(
+        object,
+        names
     ) {
-
-        return result;
-    }
-
-
-    /*
-     * 역명 후보
-     */
-
-    const stationName =
-        field(
-            value,
-            [
-                "STATN_NM",
-                "STATION_NM",
-                "STATION_NAME",
-                "stationNm",
-                "stationName",
-                "statnNm"
-            ]
-        );
-
-
-    /*
-     * 역 ID 후보
-     */
-
-    const stationId =
-        field(
-            value,
-            [
-                "STATN_ID",
-                "STATION_CD",
-                "STATION_ID",
-                "statnId",
-                "stationId"
-            ]
-        );
-
-
-    if (
-        stationName &&
-        (
-            stationId ||
-            Object.keys(value).some(
-                key =>
-                    /LINE|ROUTE|FR_CODE|CRDNT|LAT|LON/i
-                        .test(key)
-            )
-        )
-    ) {
-
-        result.push(
-            value
-        );
-    }
-
-
-    /*
-     * 자식 객체 탐색
-     */
-
-    for (
-        const child
-        of Object.values(value)
-    ) {
-
+    
         if (
-            child &&
-            typeof child === "object"
+            !object ||
+            typeof object !== "object"
         ) {
-
-            findStationObjects(
-                child,
-                result,
-                depth + 1
-            );
+    
+            return "";
         }
+    
+    
+        const keys =
+            Object.keys(object);
+    
+    
+        /*
+         * 정확한 이름
+         */
+    
+        for (
+            const name
+            of names
+        ) {
+    
+            if (
+                Object.prototype.hasOwnProperty.call(
+                    object,
+                    name
+                )
+            ) {
+    
+                const value =
+                    object[name];
+    
+    
+                if (
+                    value !== null &&
+                    value !== undefined &&
+                    String(value).trim() !== ""
+                ) {
+    
+                    return String(
+                        value
+                    ).trim();
+                }
+            }
+        }
+    
+    
+        /*
+         * 대소문자 무시
+         */
+    
+        for (
+            const name
+            of names
+        ) {
+    
+            const found =
+                keys.find(
+                    key =>
+                        key.toLowerCase() ===
+                        String(name).toLowerCase()
+                );
+    
+    
+            if (
+                found
+            ) {
+    
+                const value =
+                    object[found];
+    
+    
+                if (
+                    value !== null &&
+                    value !== undefined &&
+                    String(value).trim() !== ""
+                ) {
+    
+                    return String(
+                        value
+                    ).trim();
+                }
+            }
+        }
+    
+    
+        return "";
     }
-
-
-    return result;
-}
-
-
-/* =========================================================
-   FIND ROWS
-   ========================================================= */
-
-function extractRows(
-    data
-) {
-
-    if (
-        !data ||
-        typeof data !== "object"
-    ) {
-
-        return [];
-    }
-
-
-    /*
-     * 1. row를 우선적으로 찾는다.
-     */
-
-    const rowResults = [];
-
-
-    function searchRow(
-        value,
+    
+    
+    /* =========================================================
+       FIND ROWS
+    ========================================================= */
+    
+    function findRows(
+        data,
         depth = 0
     ) {
-
+    
         if (
             depth > 10 ||
-            value === null ||
-            value === undefined
+            data === null ||
+            data === undefined
         ) {
-            return;
+    
+            return [];
         }
-
-
+    
+    
+        /*
+         * 배열
+         */
+    
         if (
-            Array.isArray(value)
+            Array.isArray(data)
         ) {
-
-            return;
+    
+            return data;
         }
-
-
+    
+    
         if (
-            typeof value !== "object"
+            typeof data !== "object"
         ) {
-            return;
+    
+            return [];
         }
-
-
+    
+    
+        /*
+         * row 우선
+         */
+    
+        if (
+            Array.isArray(data.row)
+        ) {
+    
+            return data.row;
+        }
+    
+    
+        /*
+         * data
+         */
+    
+        if (
+            Array.isArray(data.data)
+        ) {
+    
+            return data.data;
+        }
+    
+    
+        /*
+         * items
+         */
+    
+        if (
+            Array.isArray(data.items)
+        ) {
+    
+            return data.items;
+        }
+    
+    
+        /*
+         * 재귀 탐색
+         */
+    
         for (
-            const [key, child]
-            of Object.entries(value)
+            const value
+            of Object.values(data)
         ) {
-
+    
             if (
-                key.toLowerCase() ===
-                "row" &&
-                Array.isArray(child)
+                value &&
+                typeof value === "object"
             ) {
-
-                rowResults.push(
-                    ...child
-                );
-            }
-
-            else if (
-                child &&
-                typeof child === "object"
-            ) {
-
-                searchRow(
-                    child,
-                    depth + 1
-                );
+    
+                const result =
+                    findRows(
+                        value,
+                        depth + 1
+                    );
+    
+    
+                if (
+                    result.length
+                ) {
+    
+                    return result;
+                }
             }
         }
+    
+    
+        return [];
     }
-
-
-    searchRow(data);
-
-
-    if (
-        rowResults.length
+    
+    
+    /* =========================================================
+       NORMALIZE STATION
+    ========================================================= */
+    
+    function normalizeStation(
+        row
     ) {
-
-        console.log(
-            "row 기반 데이터:",
-            rowResults.length
-        );
-
-        return rowResults;
-    }
-
-
-    /*
-     * 2. 역 객체 직접 탐색
-     */
-
-    const stations =
-        findStationObjects(data);
-
-
-    console.log(
-        "역 객체 직접 탐색:",
-        stations.length
-    );
-
-
-    return stations;
-}
-
-
-/* =========================================================
-   NORMALIZE STATION
-   ========================================================= */
-
-function normalizeStation(
-    row
-) {
-
-    const id =
-        field(
-            row,
-            [
-                "STATN_ID",
-                "STATION_CD",
-                "STATION_ID",
-                "stationId",
-                "statnId"
-            ]
-        );
-
-
-    const name =
-        field(
-            row,
-            [
-                "STATN_NM",
-                "STATION_NM",
-                "STATION_NAME",
-                "stationNm",
-                "stationName",
-                "statnNm"
-            ]
-        );
-
-
-    const line =
-        field(
-            row,
-            [
-                "ROUTE",
-                "LINE_NUM",
-                "LINE",
-                "LINE_NAME",
-                "SUBWAY_NM",
-                "route",
-                "lineNum",
-                "lineName",
-                "subwayNm"
-            ]
-        );
-
-
-    const frCode =
-        field(
-            row,
-            [
-                "FR_CODE",
-                "FRCODE",
-                "frCode"
-            ]
-        );
-
-
-    let x =
-        Number(
-            field(
-                row,
-                [
-                    "CRDNT_X",
-                    "LON",
-                    "LNG",
-                    "LONGITUDE",
-                    "longitude",
-                    "lng"
-                ]
-            )
-        );
-
-
-    let y =
-        Number(
-            field(
-                row,
-                [
-                    "CRDNT_Y",
-                    "LAT",
-                    "LATITUDE",
-                    "latitude",
-                    "lat"
-                ]
-            )
-        );
-
-
-    /*
-     * 좌표 자동 교정
-     */
-
-    let lat = y;
-    let lng = x;
-
-
-    if (
-        Number.isFinite(x) &&
-        Number.isFinite(y)
-    ) {
-
+    
         if (
-            Math.abs(x) <= 90 &&
-            Math.abs(y) > 90
+            !row ||
+            typeof row !== "object"
         ) {
-
-            lat = x;
-            lng = y;
+    
+            return null;
         }
+    
+    
+        /*
+         * 역사마스터 OA-21232
+         */
+    
+        const id =
+            getField(
+                row,
+                [
+                    "STATN_ID",
+                    "STATION_ID",
+                    "STATION_CD",
+                    "STATN_CD",
+                    "stationId",
+                    "statnId"
+                ]
+            );
+    
+    
+        const name =
+            getField(
+                row,
+                [
+                    "STATN_NM",
+                    "STATION_NM",
+                    "STATION_NAME",
+                    "stationName",
+                    "stationNm",
+                    "statnNm"
+                ]
+            );
+    
+    
+        const line =
+            getField(
+                row,
+                [
+                    "ROUTE",
+                    "LINE_NUM",
+                    "LINE",
+                    "LINE_NAME",
+                    "SUBWAY_NM",
+                    "route",
+                    "lineNum",
+                    "lineName",
+                    "subwayNm"
+                ]
+            );
+    
+    
+        const frCode =
+            getField(
+                row,
+                [
+                    "FR_CODE",
+                    "FRCODE",
+                    "frCode"
+                ]
+            );
+    
+    
+        /*
+         * X = 경도
+         * Y = 위도
+         */
+    
+        let x =
+            Number(
+                getField(
+                    row,
+                    [
+                        "CRDNT_X",
+                        "CRDNTX",
+                        "X",
+                        "LON",
+                        "LNG",
+                        "LONGITUDE",
+                        "longitude",
+                        "lng"
+                    ]
+                )
+            );
+    
+    
+        let y =
+            Number(
+                getField(
+                    row,
+                    [
+                        "CRDNT_Y",
+                        "CRDNTY",
+                        "Y",
+                        "LAT",
+                        "LATITUDE",
+                        "latitude",
+                        "lat"
+                    ]
+                )
+            );
+    
+    
+        let lat =
+            y;
+    
+        let lng =
+            x;
+    
+    
+        /*
+         * 혹시 좌표가 뒤집혀 있으면 교정
+         */
+    
+        if (
+            Number.isFinite(x) &&
+            Number.isFinite(y)
+        ) {
+    
+            if (
+                Math.abs(x) <= 90 &&
+                Math.abs(y) > 90
+            ) {
+    
+                lat =
+                    x;
+    
+                lng =
+                    y;
+            }
+        }
+    
+    
+        return {
+    
+            id,
+    
+            name,
+    
+            line,
+    
+            frCode,
+    
+            lat,
+    
+            lng,
+    
+            raw:
+                row
+        };
     }
-
-
-    return {
-
-        id,
-
-        name,
-
-        line,
-
-        frCode,
-
-        lat,
-
-        lng,
-
-        raw: row
-    };
-}
-
-
-/* =========================================================
-   VALID STATION
-   ========================================================= */
-
-function validStation(
-    station
-) {
-
-    return (
-        station &&
-        station.name &&
-        station.name.trim().length > 0
-    );
-}
-
-
-/* =========================================================
-   MERGE STATIONS
-   ========================================================= */
-
-function mergeStations(
-    existing,
-    incoming
-) {
-
-    const map =
-        new Map();
-
-
-    function makeKey(
+    
+    
+    /* =========================================================
+       VALID STATION
+    ========================================================= */
+    
+    function isValidStation(
         station
     ) {
-
-        if (
-            station.id
-        ) {
-
-            return `id:${station.id}`;
-        }
-
-
-        if (
-            station.frCode
-        ) {
-
-            return `fr:${station.frCode}`;
-        }
-
-
+    
         return (
-            `name:${station.name}` +
-            `|line:${station.line}`
+            station &&
+            typeof station.name ===
+                "string" &&
+            station.name.trim().length > 0
         );
     }
-
-
-    for (
-        const station
-        of existing
-    ) {
-
-        map.set(
-            makeKey(station),
-            station
+    
+    
+    /* =========================================================
+       STATION MASTER
+    ========================================================= */
+    
+    async function loadStationMaster() {
+    
+        console.log(
+            "===== STATION MASTER ====="
         );
-    }
-
-
-    for (
-        const station
-        of incoming
-    ) {
-
-        const key =
-            makeKey(station);
-
-
-        if (
-            !map.has(key)
-        ) {
-
-            map.set(
-                key,
-                station
-            );
-
-            continue;
-        }
-
-
-        const old =
-            map.get(key);
-
-
-        /*
-         * 새 데이터에 있는 정보로 보강
-         */
-
-        if (
-            !old.id &&
-            station.id
-        ) {
-
-            old.id =
-                station.id;
-        }
-
-
-        if (
-            !old.line &&
-            station.line
-        ) {
-
-            old.line =
-                station.line;
-        }
-
-
-        if (
-            !old.frCode &&
-            station.frCode
-        ) {
-
-            old.frCode =
-                station.frCode;
-        }
-
-
-        if (
-            !Number.isFinite(
-                old.lat
-            ) &&
-            Number.isFinite(
-                station.lat
-            )
-        ) {
-
-            old.lat =
-                station.lat;
-        }
-
-
-        if (
-            !Number.isFinite(
-                old.lng
-            ) &&
-            Number.isFinite(
-                station.lng
-            )
-        ) {
-
-            old.lng =
-                station.lng;
-        }
-    }
-
-
-    return [
-        ...map.values()
-    ];
-}
-
-
-/* =========================================================
-   LOAD HISTORY MASTER
-   ========================================================= */
-
-async function loadStationMaster() {
-
-    console.log(
-        "===== 역사마스터 시작 ====="
-    );
-
-
-    try {
-
+    
+    
         const url =
             seoulUrl(
                 CONFIG.services.stationMaster,
-                CONFIG.stationStart,
-                CONFIG.stationEnd
+                1,
+                1000
             );
-
-
+    
+    
         const data =
             await fetchJSON(
                 url
             );
-
-
-        console.log(
-            "역사마스터 RAW:",
+    
+    
+        /*
+         * 인증키/API 결과 오류를
+         * "역명 오류"로 잘못 표시하지 않도록
+         * 먼저 검사
+         */
+    
+        checkApiResult(
             data
         );
-
-
+    
+    
         const rows =
-            extractRows(data);
-
-
+            findRows(
+                data
+            );
+    
+    
         console.log(
-            "역사마스터 추출:",
+            "역사마스터 row:",
             rows.length
         );
-
-
+    
+    
+        if (
+            !rows.length
+        ) {
+    
+            console.error(
+                "역사마스터 응답:",
+                data
+            );
+    
+    
+            throw new Error(
+                "역사마스터 API에서 row 데이터를 찾지 못했습니다."
+            );
+        }
+    
+    
+        console.log(
+            "첫 번째 원본:",
+            rows[0]
+        );
+    
+    
+        console.log(
+            "첫 번째 필드:",
+            Object.keys(
+                rows[0] || {}
+            )
+        );
+    
+    
         const stations =
             rows
                 .map(
                     normalizeStation
                 )
                 .filter(
-                    validStation
+                    isValidStation
                 );
-
-
+    
+    
         console.log(
-            "역사마스터 정상 역:",
+            "정상 역:",
             stations.length
         );
-
-
+    
+    
+        if (
+            !stations.length
+        ) {
+    
+            throw new Error(
+                "역 데이터의 필드 구조를 확인하지 못했습니다. 콘솔의 '첫 번째 원본'을 확인해주세요."
+            );
+        }
+    
+    
         return stations;
-
-
-    } catch (error) {
-
-        console.warn(
-            "역사마스터 실패:",
-            error.message
-        );
-
-
-        return [];
     }
-}
-
-
-/* =========================================================
-   LOAD STATION BY LINE
-   공식 OA-15442 fallback
-   ========================================================= */
-
-async function loadStationsByLines() {
-
-    console.log(
-        "===== 노선별 역 데이터 시작 ====="
-    );
-
-
-    /*
-     * 서울교통공사 API에서 사용하는 노선명
-     */
-
-    const lines = [
-        "1호선",
-        "2호선",
-        "3호선",
-        "4호선",
-        "5호선",
-        "6호선",
-        "7호선",
-        "8호선",
-        "9호선"
-    ];
-
-
-    let all = [];
-
-
-    for (
-        const line
-        of lines
-    ) {
-
+    
+    
+    /* =========================================================
+       SEARCH STATION API
+       OA-121
+       ========================================================= */
+    
+    async function loadStationSearchDatabase() {
+    
+        console.log(
+            "===== STATION SEARCH DATABASE ====="
+        );
+    
+    
+        const url =
+            seoulUrl(
+                "SearchInfoBySubwayNameService",
+                1,
+                1000
+            );
+    
+    
         try {
-
-            const url =
-                seoulUrl(
-                    CONFIG.services.stationByLine,
-                    1,
-                    1000,
-                    [
-                        "",
-                        "",
-                        line
-                    ]
-                );
-
-
+    
             const data =
                 await fetchJSON(
                     url,
                     10000
                 );
-
-
-            console.log(
-                `${line} RAW:`,
+    
+    
+            checkApiResult(
                 data
             );
-
-
+    
+    
             const rows =
-                extractRows(
+                findRows(
                     data
                 );
-
-
-            const stations =
-                rows
-                    .map(
-                        normalizeStation
-                    )
-                    .filter(
-                        validStation
-                    );
-
-
+    
+    
             console.log(
-                `${line}: ${stations.length}개`
+                "역명검색 데이터:",
+                rows.length
             );
-
-
-            all =
-                mergeStations(
-                    all,
-                    stations
+    
+    
+            return rows
+                .map(
+                    normalizeStation
+                )
+                .filter(
+                    isValidStation
                 );
-
-
+    
+    
         } catch (error) {
-
+    
             console.warn(
-                `${line} 역 API 실패:`,
+                "역명검색 데이터 실패:",
                 error.message
             );
+    
+    
+            return [];
         }
     }
-
-
-    console.log(
-        "노선별 최종:",
-        all.length
-    );
-
-
-    return all;
-}
-
-
-/* =========================================================
-   LOAD STATIONS
-   ========================================================= */
-
-async function loadStations() {
-
-    if (
-        state.loadingStations
-    ) {
-
-        return;
-    }
-
-
-    state.loadingStations =
-        true;
-
-
-    setApiStatus(
-        "역 데이터 불러오는 중...",
-        "loading"
-    );
-
-
-    try {
-
+    
+    
+    /* =========================================================
+       LINE FILTER
+    ========================================================= */
+    
+    function setupLineButtons() {
+    
         /*
-         * 1차
-         * 역사마스터
+         * HTML에 이미 .line-btn들이 존재한다.
+         * JS에서 다른 클래스를 만들지 않는다.
          */
-
-        let stations =
-            await loadStationMaster();
-
-
-        /*
-         * 2차
-         * 실패했거나 역 수가 너무 적으면
-         * 노선별 API 사용
-         */
-
-        if (
-            stations.length === 0
-        ) {
-
-            console.log(
-                "역사마스터에서 역을 얻지 못했습니다."
+    
+        const buttons =
+            $all(
+                ".line-btn"
             );
-
-
-            setApiStatus(
-                "보조 역 데이터 불러오는 중...",
-                "loading"
-            );
-
-
-            stations =
-                await loadStationsByLines();
-        }
-
-
-        /*
-         * 최종 확인
-         */
-
-        if (
-            stations.length === 0
-        ) {
-
-            throw new Error(
-                "사용 가능한 역 데이터를 가져오지 못했습니다."
-            );
-        }
-
-
-        /*
-         * 중복 제거
-         */
-
-        const unique =
-            new Map();
-
-
-        for (
-            const station
-            of stations
-        ) {
-
-            const key =
-                station.id ||
-                `${station.name}|${station.line}`;
-
-
-            if (
-                !unique.has(key)
-            ) {
-
-                unique.set(
-                    key,
-                    station
+    
+    
+        buttons.forEach(
+            button => {
+    
+                button.addEventListener(
+                    "click",
+                    () => {
+    
+                        state.selectedLine =
+                            button.dataset.line ||
+                            "ALL";
+    
+    
+                        buttons.forEach(
+                            item =>
+                                item.classList.remove(
+                                    "active"
+                                )
+                        );
+    
+    
+                        button.classList.add(
+                            "active"
+                        );
+    
+    
+                        applyFilters();
+                    }
                 );
-
-            } else {
-
-                const old =
-                    unique.get(key);
-
-
-                if (
-                    !Number.isFinite(
-                        old.lat
-                    ) &&
-                    Number.isFinite(
-                        station.lat
-                    )
-                ) {
-
-                    old.lat =
-                        station.lat;
-                }
-
-
-                if (
-                    !Number.isFinite(
-                        old.lng
-                    ) &&
-                    Number.isFinite(
-                        station.lng
-                    )
-                ) {
-
-                    old.lng =
-                        station.lng;
-                }
             }
+        );
+    }
+    
+    
+    /* =========================================================
+       SEARCH
+    ========================================================= */
+    
+    function setupSearch() {
+    
+        const input =
+            $("#stationSearch");
+    
+    
+        if (!input) {
+            return;
         }
-
-
-        state.stations =
-            [...unique.values()];
-
-
-        /*
-         * 지도용 역
-         */
-
-        const coordinateCount =
-            state.stations.filter(
-                hasCoordinates
-            ).length;
-
-
-        console.log(
-            "============================"
-        );
-
-        console.log(
-            "최종 역 데이터"
-        );
-
-        console.log(
-            "역 개수:",
-            state.stations.length
-        );
-
-        console.log(
-            "좌표 보유:",
-            coordinateCount
-        );
-
-        console.log(
-            "첫 번째:",
-            state.stations[0]
-        );
-
-        console.log(
-            "============================"
-        );
-
-
-        renderLineFilters();
-
-        applyFilters();
-
-        updateStats();
-
-
-        setApiStatus(
-            `연결됨 · ${state.stations.length}개 역`,
-            "success"
-        );
-
-
-        return state.stations;
-
-
-    } catch (error) {
-
-        console.error(
-            "역 데이터 최종 실패:",
-            error
-        );
-
-
-        state.stations =
-            [];
-
-
-        updateStats();
-
-
-        setApiStatus(
-            `역 데이터 오류: ${error.message}`,
-            "error"
-        );
-
-
-        showError(
-            error.message
-        );
-
-
-        return [];
-
-
-    } finally {
-
-        state.loadingStations =
-            false;
-    }
-}
-
-
-/* =========================================================
-   COORDINATE
-   ========================================================= */
-
-function hasCoordinates(
-    station
-) {
-
-    return (
-        Number.isFinite(
-            station.lat
-        ) &&
-        Number.isFinite(
-            station.lng
-        ) &&
-        station.lat >= -90 &&
-        station.lat <= 90 &&
-        station.lng >= -180 &&
-        station.lng <= 180
-    );
-}
-
-
-/* =========================================================
-   LINE
-   ========================================================= */
-
-function normalizeLine(
-    value
-) {
-
-    return String(
-        value || ""
-    )
-        .replace(
-            /\s+/g,
-            " "
-        )
-        .trim();
-}
-
-
-function getLines() {
-
-    const set =
-        new Set();
-
-
-    for (
-        const station
-        of state.stations
-    ) {
-
-        const line =
-            normalizeLine(
-                station.line
-            );
-
-
-        if (
-            line
-        ) {
-
-            set.add(
-                line
-            );
-        }
-    }
-
-
-    return [
-        ...set
-    ].sort(
-        (a, b) =>
-            a.localeCompare(
-                b,
-                "ko",
-                {
-                    numeric: true
-                }
-            )
-    );
-}
-
-
-/* =========================================================
-   LINE FILTER
-   ========================================================= */
-
-function renderLineFilters() {
-
-    const container =
-        $(
-            "#lineFilters"
-        ) ||
-        $(
-            "#line-filters"
-        ) ||
-        $(
-            ".line-filters"
-        );
-
-
-    if (!container) {
-        return;
-    }
-
-
-    let html = `
-        <button
-            class="line-filter active"
-            data-line="ALL"
-        >
-            전체
-        </button>
-    `;
-
-
-    for (
-        const line
-        of getLines()
-    ) {
-
-        html += `
-            <button
-                class="line-filter"
-                data-line="${escapeHTML(line)}"
-            >
-                ${escapeHTML(line)}
-            </button>
-        `;
-    }
-
-
-    container.innerHTML =
-        html;
-
-
-    $all(
-        ".line-filter"
-    ).forEach(
-        button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    state.selectedLine =
-                        button.dataset.line ||
-                        "ALL";
-
-
-                    $all(
-                        ".line-filter"
-                    ).forEach(
-                        item =>
-                            item.classList.remove(
-                                "active"
-                            )
-                    );
-
-
-                    button.classList.add(
-                        "active"
-                    );
-
-
-                    applyFilters();
-                }
-            );
-        }
-    );
-}
-
-
-/* =========================================================
-   SEARCH
-   ========================================================= */
-
-function setupSearch() {
-
-    const input =
-        $(
-            "#stationSearch"
-        ) ||
-        $(
-            "#station-search"
-        ) ||
-        $(
-            'input[type="search"]'
-        );
-
-
-    if (!input) {
-        return;
-    }
-
-
-    input.addEventListener(
-        "input",
-        event => {
-
-            state.searchQuery =
-                event.target.value
-                    .trim()
-                    .toLowerCase();
-
-
-            applyFilters();
-        }
-    );
-}
-
-
-/* =========================================================
-   FILTER
-   ========================================================= */
-
-function applyFilters() {
-
-    const query =
-        state.searchQuery;
-
-
-    state.visibleStations =
-        state.stations.filter(
-            station => {
-
-                const line =
-                    normalizeLine(
-                        station.line
-                    );
-
-
-                const matchesLine =
-                    state.selectedLine ===
-                    "ALL" ||
-                    line ===
-                    state.selectedLine;
-
-
-                const text =
-                    (
-                        station.name +
-                        " " +
-                        station.line +
-                        " " +
-                        station.frCode
-                    )
+    
+    
+        input.addEventListener(
+            "input",
+            event => {
+    
+                state.searchQuery =
+                    event.target.value
+                        .trim()
                         .toLowerCase();
-
-
-                const matchesSearch =
-                    !query ||
-                    text.includes(
-                        query
+    
+    
+                applyFilters();
+            }
+        );
+    }
+    
+    
+    /* =========================================================
+       APPLY FILTER
+    ========================================================= */
+    
+    function applyFilters() {
+    
+        const query =
+            state.searchQuery;
+    
+    
+        state.visibleStations =
+            state.stations.filter(
+                station => {
+    
+                    const line =
+                        String(
+                            station.line ||
+                            ""
+                        )
+                            .trim();
+    
+    
+                    const matchesLine =
+                        state.selectedLine ===
+                            "ALL" ||
+                        line.includes(
+                            state.selectedLine
+                        );
+    
+    
+                    const searchText =
+                        (
+                            station.name +
+                            " " +
+                            station.line +
+                            " " +
+                            station.frCode
+                        )
+                            .toLowerCase();
+    
+    
+                    const matchesSearch =
+                        !query ||
+                        searchText.includes(
+                            query
+                        );
+    
+    
+                    return (
+                        matchesLine &&
+                        matchesSearch
                     );
-
-
-                return (
-                    matchesLine &&
-                    matchesSearch
+                }
+            );
+    
+    
+        renderSearchResults();
+    
+        renderMap();
+    
+        updateStats();
+    }
+    
+    
+    /* =========================================================
+       SEARCH RESULTS
+    ========================================================= */
+    
+    function renderSearchResults() {
+    
+        const container =
+            $("#searchResults");
+    
+    
+        if (!container) {
+            return;
+        }
+    
+    
+        /*
+         * 검색어가 없을 때
+         */
+    
+        if (
+            !state.searchQuery
+        ) {
+    
+            container.innerHTML = `
+                <div class="empty">
+                    역을 검색해보세요
+                </div>
+            `;
+    
+            return;
+        }
+    
+    
+        const results =
+            state.visibleStations
+                .slice(
+                    0,
+                    30
+                );
+    
+    
+        if (
+            !results.length
+        ) {
+    
+            container.innerHTML = `
+                <div class="empty">
+                    검색 결과가 없습니다
+                </div>
+            `;
+    
+            return;
+        }
+    
+    
+        container.innerHTML =
+            results
+                .map(
+                    station => `
+    
+                        <div
+                            class="station-item"
+                            data-station-id="${escapeHTML(
+                                station.id
+                            )}"
+                            data-station-name="${escapeHTML(
+                                station.name
+                            )}"
+                        >
+    
+                            <div class="station-name">
+                                ${escapeHTML(
+                                    station.name
+                                )}
+                            </div>
+    
+                            <div class="station-meta">
+                                ${escapeHTML(
+                                    station.line ||
+                                    "노선 정보 없음"
+                                )}
+                                ${
+                                    station.frCode
+                                        ? ` · ${escapeHTML(
+                                            station.frCode
+                                        )}`
+                                        : ""
+                                }
+                            </div>
+    
+                        </div>
+    
+                    `
+                )
+                .join("");
+    
+    
+        $all(
+            "#searchResults .station-item"
+        ).forEach(
+            item => {
+    
+                item.addEventListener(
+                    "click",
+                    () => {
+    
+                        const id =
+                            item.dataset.stationId;
+    
+    
+                        const name =
+                            item.dataset.stationName;
+    
+    
+                        const station =
+                            state.stations.find(
+                                s =>
+                                    (
+                                        id &&
+                                        s.id === id
+                                    ) ||
+                                    s.name === name
+                            );
+    
+    
+                        if (
+                            station
+                        ) {
+    
+                            selectStation(
+                                station
+                            );
+                        }
+                    }
                 );
             }
         );
-
-
-    renderMap();
-
-    updateStats();
-}
-
-
-/* =========================================================
-   MAP ELEMENT
-   ========================================================= */
-
-function getSVG() {
-
-    return (
-        $("#subwayMap") ||
-        $("#map") ||
-        document.querySelector(
-            "svg"
-        )
-    );
-}
-
-
-/* =========================================================
-   MAP PROJECTION
-   ========================================================= */
-
-function project(
-    station,
-    bounds,
-    width,
-    height
-) {
-
-    const padding = 60;
-
-
-    const lngRange =
-        bounds.maxLng -
-        bounds.minLng ||
-        1;
-
-
-    const latRange =
-        bounds.maxLat -
-        bounds.minLat ||
-        1;
-
-
-    const x =
-        padding +
-        (
-            (
-                station.lng -
-                bounds.minLng
-            ) /
-            lngRange
-        ) *
-        (
-            width -
-            padding * 2
-        );
-
-
-    const y =
-        height -
-        padding -
-        (
-            (
-                station.lat -
-                bounds.minLat
-            ) /
-            latRange
-        ) *
-        (
-            height -
-            padding * 2
-        );
-
-
-    return {
-        x,
-        y
-    };
-}
-
-
-/* =========================================================
-   MAP
-   ========================================================= */
-
-function renderMap() {
-
-    const svg =
-        getSVG();
-
-
-    if (!svg) {
-
-        console.warn(
-            "SVG 지도를 찾지 못했습니다."
-        );
-
-        return;
     }
-
-
-    const stations =
-        state.visibleStations.filter(
-            hasCoordinates
-        );
-
-
-    /*
-     * 좌표가 없으면
-     * 역 목록 데이터 자체는 정상이라는 것을 보여준다.
-     */
-
-    if (
-        stations.length === 0
+    
+    
+    /* =========================================================
+       MAP SVG
+       ★ 가장 중요한 수정
+    ========================================================= */
+    
+    function getMapSVG() {
+    
+        /*
+         * HTML의 실제 SVG ID는 #mapSvg
+         */
+    
+        return $("#mapSvg");
+    }
+    
+    
+    /* =========================================================
+       MAP COORDINATES
+    ========================================================= */
+    
+    function getMapBounds(
+        stations
     ) {
-
-        svg.innerHTML = `
-            <g>
-                <text
-                    x="50%"
-                    y="48%"
-                    text-anchor="middle"
-                    font-size="18"
-                    fill="currentColor"
-                >
-                    역 데이터는 연결되었습니다
-                </text>
-
-                <text
-                    x="50%"
-                    y="54%"
-                    text-anchor="middle"
-                    font-size="13"
-                    fill="currentColor"
-                    opacity=".55"
-                >
-                    좌표가 있는 역사마스터 데이터를 기다리는 중
-                </text>
-            </g>
-        `;
-
-        return;
-    }
-
-
-    const rect =
-        svg.getBoundingClientRect();
-
-
-    const width =
-        Math.max(
-            rect.width || 900,
-            600
-        );
-
-
-    const height =
-        Math.max(
-            rect.height || 700,
-            500
-        );
-
-
-    svg.setAttribute(
-        "viewBox",
-        `0 0 ${width} ${height}`
-    );
-
-
-    const bounds = {
-
-        minLat:
-            Math.min(
-                ...stations.map(
-                    s => s.lat
-                )
-            ),
-
-        maxLat:
-            Math.max(
-                ...stations.map(
-                    s => s.lat
-                )
-            ),
-
-        minLng:
-            Math.min(
-                ...stations.map(
-                    s => s.lng
-                )
-            ),
-
-        maxLng:
-            Math.max(
-                ...stations.map(
-                    s => s.lng
-                )
-            )
-    };
-
-
-    const points =
-        stations.map(
-            station => {
-
-                return {
-                    station,
-                    ...project(
-                        station,
-                        bounds,
-                        width,
-                        height
+    
+        const valid =
+            stations.filter(
+                hasCoordinates
+            );
+    
+    
+        if (
+            !valid.length
+        ) {
+    
+            return null;
+        }
+    
+    
+        return {
+    
+            minLat:
+                Math.min(
+                    ...valid.map(
+                        s => s.lat
                     )
-                };
-            }
-        );
-
-
-    svg.innerHTML =
-        "";
-
-
-    /*
-     * ROUTES
-     */
-
-    drawRoutes(
-        svg,
-        points
-    );
-
-
-    /*
-     * STATIONS
-     */
-
-    const stationLayer =
-        document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "g"
-        );
-
-
-    stationLayer.classList.add(
-        "stations-layer"
-    );
-
-
-    for (
-        const point
-        of points
+                ),
+    
+            maxLat:
+                Math.max(
+                    ...valid.map(
+                        s => s.lat
+                    )
+                ),
+    
+            minLng:
+                Math.min(
+                    ...valid.map(
+                        s => s.lng
+                    )
+                ),
+    
+            maxLng:
+                Math.max(
+                    ...valid.map(
+                        s => s.lng
+                    )
+                )
+        };
+    }
+    
+    
+    function hasCoordinates(
+        station
     ) {
-
-        const group =
+    
+        return (
+            Number.isFinite(
+                station.lat
+            ) &&
+            Number.isFinite(
+                station.lng
+            ) &&
+            station.lat >= -90 &&
+            station.lat <= 90 &&
+            station.lng >= -180 &&
+            station.lng <= 180
+        );
+    }
+    
+    
+    function projectStation(
+        station,
+        bounds,
+        width,
+        height
+    ) {
+    
+        const padding =
+            70;
+    
+    
+        const lngRange =
+            (
+                bounds.maxLng -
+                bounds.minLng
+            ) || 1;
+    
+    
+        const latRange =
+            (
+                bounds.maxLat -
+                bounds.minLat
+            ) || 1;
+    
+    
+        const x =
+            padding +
+            (
+                (
+                    station.lng -
+                    bounds.minLng
+                ) /
+                lngRange
+            ) *
+            (
+                width -
+                padding * 2
+            );
+    
+    
+        const y =
+            height -
+            padding -
+            (
+                (
+                    station.lat -
+                    bounds.minLat
+                ) /
+                latRange
+            ) *
+            (
+                height -
+                padding * 2
+            );
+    
+    
+        return {
+            x,
+            y
+        };
+    }
+    
+    
+    /* =========================================================
+       MAP RENDER
+    ========================================================= */
+    
+    function renderMap() {
+    
+        const svg =
+            getMapSVG();
+    
+    
+        if (!svg) {
+    
+            console.error(
+                "#mapSvg를 찾지 못했습니다."
+            );
+    
+            return;
+        }
+    
+    
+        /*
+         * 현재 검색/필터된 역 중
+         * 좌표가 있는 역
+         */
+    
+        const stations =
+            state.visibleStations
+                .filter(
+                    hasCoordinates
+                );
+    
+    
+        /*
+         * 좌표 데이터가 없으면
+         * SVG를 망가뜨리지 않고 안내
+         */
+    
+        if (
+            !stations.length
+        ) {
+    
+            svg.innerHTML = `
+    
+                <g>
+    
+                    <text
+                        x="50%"
+                        y="47%"
+                        text-anchor="middle"
+                        font-size="18"
+                        font-weight="700"
+                        fill="#17191c"
+                    >
+                        표시할 역이 없습니다
+                    </text>
+    
+                    <text
+                        x="50%"
+                        y="53%"
+                        text-anchor="middle"
+                        font-size="12"
+                        fill="#747980"
+                    >
+                        역 데이터 또는 좌표 데이터를 확인해주세요
+                    </text>
+    
+                </g>
+    
+            `;
+    
+            return;
+        }
+    
+    
+        const rect =
+            svg.getBoundingClientRect();
+    
+    
+        const width =
+            Math.max(
+                rect.width,
+                600
+            );
+    
+    
+        const height =
+            Math.max(
+                rect.height,
+                500
+            );
+    
+    
+        svg.setAttribute(
+            "viewBox",
+            `0 0 ${width} ${height}`
+        );
+    
+    
+        /*
+         * 기존 SVG 내용 제거
+         */
+    
+        svg.innerHTML =
+            "";
+    
+    
+        const bounds =
+            getMapBounds(
+                stations
+            );
+    
+    
+        if (!bounds) {
+            return;
+        }
+    
+    
+        const points =
+            stations.map(
+                station => {
+    
+                    return {
+    
+                        station,
+    
+                        ...projectStation(
+                            station,
+                            bounds,
+                            width,
+                            height
+                        )
+                    };
+                }
+            );
+    
+    
+        /*
+         * 노선
+         */
+    
+        drawRoutes(
+            svg,
+            points
+        );
+    
+    
+        /*
+         * 역
+         */
+    
+        const stationLayer =
             document.createElementNS(
                 "http://www.w3.org/2000/svg",
                 "g"
             );
-
-
-        group.classList.add(
-            "station-marker"
+    
+    
+        stationLayer.setAttribute(
+            "id",
+            "stationLayer"
         );
-
-
-        group.style.cursor =
-            "pointer";
-
-
-        const circle =
-            document.createElementNS(
-                "http://www.w3.org/2000/svg",
-                "circle"
-            );
-
-
-        circle.setAttribute(
-            "cx",
-            point.x
+    
+    
+        stationLayer.classList.add(
+            "stations-layer"
         );
-
-
-        circle.setAttribute(
-            "cy",
-            point.y
-        );
-
-
-        circle.setAttribute(
-            "r",
-            "4"
-        );
-
-
-        circle.setAttribute(
-            "fill",
-            "#ffffff"
-        );
-
-
-        circle.setAttribute(
-            "stroke",
-            getLineColor(
-                point.station.line
-            )
-        );
-
-
-        circle.setAttribute(
-            "stroke-width",
-            "2"
-        );
-
-
-        const title =
-            document.createElementNS(
-                "http://www.w3.org/2000/svg",
-                "title"
-            );
-
-
-        title.textContent =
-            point.station.name;
-
-
-        group.appendChild(
-            circle
-        );
-
-
-        group.appendChild(
-            title
-        );
-
-
-        group.addEventListener(
-            "click",
-            event => {
-
-                event.stopPropagation();
-
-                selectStation(
-                    point.station
+    
+    
+        for (
+            const point
+            of points
+        ) {
+    
+            const group =
+                document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    "g"
                 );
-            }
-        );
-
-
-        stationLayer.appendChild(
-            group
-        );
-    }
-
-
-    svg.appendChild(
-        stationLayer
-    );
-
-
-    applyMapTransform();
-}
-
-
-/* =========================================================
-   ROUTES
-   ========================================================= */
-
-function drawRoutes(
-    svg,
-    points
-) {
-
-    const groups =
-        new Map();
-
-
-    for (
-        const point
-        of points
-    ) {
-
-        const line =
-            normalizeLine(
-                point.station.line
-            ) ||
-            "기타";
-
-
-        if (
-            !groups.has(line)
-        ) {
-
-            groups.set(
-                line,
-                []
+    
+    
+            group.style.cursor =
+                "pointer";
+    
+    
+            group.dataset.stationId =
+                point.station.id;
+    
+    
+            const circle =
+                document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    "circle"
+                );
+    
+    
+            circle.setAttribute(
+                "cx",
+                point.x
             );
-        }
-
-
-        groups
-            .get(line)
-            .push(point);
-    }
-
-
-    const layer =
-        document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "g"
-        );
-
-
-    layer.classList.add(
-        "routes-layer"
-    );
-
-
-    for (
-        const [
-            line,
-            linePoints
-        ]
-        of groups
-    ) {
-
-        if (
-            linePoints.length < 2
-        ) {
-
-            continue;
-        }
-
-
-        /*
-         * 현재 데이터에서는
-         * station ID 순서로 연결
-         */
-
-        linePoints.sort(
-            (a, b) =>
-                String(
-                    a.station.id
-                ).localeCompare(
-                    String(
-                        b.station.id
-                    ),
-                    "ko",
-                    {
-                        numeric: true
-                    }
+    
+    
+            circle.setAttribute(
+                "cy",
+                point.y
+            );
+    
+    
+            circle.setAttribute(
+                "r",
+                "4"
+            );
+    
+    
+            circle.setAttribute(
+                "fill",
+                "#fff"
+            );
+    
+    
+            circle.setAttribute(
+                "stroke",
+                getLineColor(
+                    point.station.line
                 )
+            );
+    
+    
+            circle.setAttribute(
+                "stroke-width",
+                "2"
+            );
+    
+    
+            circle.classList.add(
+                "station-circle"
+            );
+    
+    
+            const title =
+                document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    "title"
+                );
+    
+    
+            title.textContent =
+                `${point.station.name} · ${point.station.line || ""}`;
+    
+    
+            group.appendChild(
+                circle
+            );
+    
+    
+            group.appendChild(
+                title
+            );
+    
+    
+            group.addEventListener(
+                "click",
+                event => {
+    
+                    event.stopPropagation();
+    
+    
+                    selectStation(
+                        point.station
+                    );
+                }
+            );
+    
+    
+            stationLayer.appendChild(
+                group
+            );
+        }
+    
+    
+        svg.appendChild(
+            stationLayer
         );
-
-
-        let d = "";
-
-
-        linePoints.forEach(
-            (
-                point,
-                index
-            ) => {
-
-                d +=
-                    index === 0
-                        ? `M ${point.x} ${point.y}`
-                        : ` L ${point.x} ${point.y}`;
+    
+    
+        applyMapTransform();
+    }
+    
+    
+    /* =========================================================
+       DRAW ROUTES
+    ========================================================= */
+    
+    function drawRoutes(
+        svg,
+        points
+    ) {
+    
+        const groups =
+            new Map();
+    
+    
+        for (
+            const point
+            of points
+        ) {
+    
+            const line =
+                String(
+                    point.station.line ||
+                    "기타"
+                )
+                    .trim();
+    
+    
+            if (
+                !groups.has(line)
+            ) {
+    
+                groups.set(
+                    line,
+                    []
+                );
             }
-        );
-
-
-        const path =
+    
+    
+            groups
+                .get(line)
+                .push(point);
+        }
+    
+    
+        const routeLayer =
             document.createElementNS(
                 "http://www.w3.org/2000/svg",
-                "path"
+                "g"
             );
-
-
-        path.setAttribute(
-            "d",
-            d
+    
+    
+        routeLayer.setAttribute(
+            "id",
+            "routeLayer"
         );
-
-
-        path.setAttribute(
-            "fill",
-            "none"
+    
+    
+        routeLayer.classList.add(
+            "routes-layer"
         );
-
-
-        path.setAttribute(
-            "stroke",
-            getLineColor(line)
-        );
-
-
-        path.setAttribute(
-            "stroke-width",
-            "3"
-        );
-
-
-        path.setAttribute(
-            "stroke-linecap",
-            "round"
-        );
-
-
-        path.setAttribute(
-            "stroke-linejoin",
-            "round"
-        );
-
-
-        path.setAttribute(
-            "opacity",
-            ".6"
-        );
-
-
-        layer.appendChild(
-            path
-        );
-    }
-
-
-    svg.appendChild(
-        layer
-    );
-}
-
-
-/* =========================================================
-   LINE COLOR
-   ========================================================= */
-
-function getLineColor(
-    line
-) {
-
-    const colors = {
-
-        "1호선": "#0052A4",
-        "2호선": "#00A84D",
-        "3호선": "#EF7C1C",
-        "4호선": "#00A5DE",
-        "5호선": "#996CAC",
-        "6호선": "#CD7C2F",
-        "7호선": "#747F00",
-        "8호선": "#E6186C",
-        "9호선": "#BDB092",
-
-        "경의중앙선": "#77C4A3",
-        "경춘선": "#178C72",
-        "수인분당선": "#FABE00",
-        "신분당선": "#D31145",
-        "공항철도": "#0090D2",
-        "우이신설선": "#B7C452",
-        "김포골드라인": "#A17800",
-        "서해선": "#81A914",
-        "경강선": "#003DA5"
-    };
-
-
-    const key =
-        String(
-            line || ""
-        ).trim();
-
-
-    for (
-        const [
-            name,
-            color
-        ]
-        of Object.entries(colors)
-    ) {
-
-        if (
-            key.includes(name)
+    
+    
+        for (
+            const [
+                line,
+                linePoints
+            ]
+            of groups
         ) {
-
-            return color;
-        }
-    }
-
-
-    return "#555555";
-}
-
-
-/* =========================================================
-   MAP TRANSFORM
-   ========================================================= */
-
-function applyMapTransform() {
-
-    const svg =
-        getSVG();
-
-
-    if (!svg) {
-        return;
-    }
-
-
-    const layers =
-        svg.querySelectorAll(
-            ".stations-layer, .routes-layer, .train-layer"
-        );
-
-
-    layers.forEach(
-        layer => {
-
-            layer.setAttribute(
-                "transform",
-                `
-                    translate(
-                        ${state.panX}
-                        ${state.panY}
-                    )
-                    scale(
-                        ${state.zoom}
-                    )
-                `
-            );
-        }
-    );
-}
-
-
-/* =========================================================
-   MAP CONTROLS
-   ========================================================= */
-
-function setupMapControls() {
-
-    const svg =
-        getSVG();
-
-
-    if (!svg) {
-        return;
-    }
-
-
-    svg.addEventListener(
-        "wheel",
-        event => {
-
-            event.preventDefault();
-
-
-            state.zoom +=
-                event.deltaY < 0
-                    ? 0.1
-                    : -0.1;
-
-
-            state.zoom =
-                Math.max(
-                    .5,
-                    Math.min(
-                        4,
-                        state.zoom
-                    )
-                );
-
-
-            applyMapTransform();
-
-        },
-        {
-            passive: false
-        }
-    );
-
-
-    let dragging = false;
-
-    let startX = 0;
-
-    let startY = 0;
-
-    let originalX = 0;
-
-    let originalY = 0;
-
-
-    svg.addEventListener(
-        "pointerdown",
-        event => {
-
-            dragging = true;
-
-            startX =
-                event.clientX;
-
-            startY =
-                event.clientY;
-
-            originalX =
-                state.panX;
-
-            originalY =
-                state.panY;
-
-            svg.setPointerCapture(
-                event.pointerId
-            );
-        }
-    );
-
-
-    svg.addEventListener(
-        "pointermove",
-        event => {
-
-            if (!dragging) {
-                return;
+    
+            if (
+                linePoints.length < 2
+            ) {
+    
+                continue;
             }
-
-
-            state.panX =
-                originalX +
-                (
-                    event.clientX -
-                    startX
-                );
-
-
-            state.panY =
-                originalY +
-                (
-                    event.clientY -
-                    startY
-                );
-
-
-            applyMapTransform();
-        }
-    );
-
-
-    svg.addEventListener(
-        "pointerup",
-        () => {
-
-            dragging = false;
-        }
-    );
-
-
-    svg.addEventListener(
-        "pointercancel",
-        () => {
-
-            dragging = false;
-        }
-    );
-}
-
-
-/* =========================================================
-   STATION POPUP
-   ========================================================= */
-
-function selectStation(
-    station
-) {
-
-    state.selectedStation =
-        station;
-
-
-    showStationPopup(
-        station
-    );
-
-
-    loadArrival(
-        station
-    );
-}
-
-
-function showStationPopup(
-    station
-) {
-
-    let popup =
-        $(
-            "#stationPopup"
-        );
-
-
-    if (!popup) {
-
-        popup =
-            document.createElement(
-                "div"
+    
+    
+            /*
+             * 역 ID 기준 정렬
+             */
+    
+            linePoints.sort(
+                (a, b) =>
+                    String(
+                        a.station.id
+                    ).localeCompare(
+                        String(
+                            b.station.id
+                        ),
+                        "ko",
+                        {
+                            numeric: true
+                        }
+                    )
             );
-
-        popup.id =
-            "stationPopup";
-
-        popup.className =
-            "station-popup";
-
-        document.body.appendChild(
-            popup
+    
+    
+            let d = "";
+    
+    
+            linePoints.forEach(
+                (
+                    point,
+                    index
+                ) => {
+    
+                    if (
+                        index === 0
+                    ) {
+    
+                        d =
+                            `M ${point.x} ${point.y}`;
+    
+                    } else {
+    
+                        d +=
+                            ` L ${point.x} ${point.y}`;
+                    }
+                }
+            );
+    
+    
+            const path =
+                document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    "path"
+                );
+    
+    
+            path.setAttribute(
+                "d",
+                d
+            );
+    
+    
+            path.setAttribute(
+                "fill",
+                "none"
+            );
+    
+    
+            path.setAttribute(
+                "stroke",
+                getLineColor(
+                    line
+                )
+            );
+    
+    
+            path.setAttribute(
+                "stroke-width",
+                "4"
+            );
+    
+    
+            path.setAttribute(
+                "stroke-linecap",
+                "round"
+            );
+    
+    
+            path.setAttribute(
+                "stroke-linejoin",
+                "round"
+            );
+    
+    
+            path.setAttribute(
+                "opacity",
+                ".65"
+            );
+    
+    
+            path.classList.add(
+                "route"
+            );
+    
+    
+            routeLayer.appendChild(
+                path
+            );
+        }
+    
+    
+        svg.appendChild(
+            routeLayer
         );
     }
-
-
-    popup.innerHTML = `
-
-        <div class="station-popup-inner">
-
-            <button
-                class="station-popup-close"
-                type="button"
-            >
-                ×
-            </button>
-
-            <div class="station-popup-line">
-                ${escapeHTML(
-                    station.line ||
-                    "노선"
-                )}
-            </div>
-
-            <h2>
-                ${escapeHTML(
-                    station.name
-                )}
-            </h2>
-
-            <div class="station-popup-meta">
-                역 코드:
-                ${escapeHTML(
-                    station.id ||
-                    station.frCode ||
-                    "-"
-                )}
-            </div>
-
-            <div
-                id="stationArrivals"
-                class="station-arrivals"
-            >
-                도착정보 불러오는 중...
-            </div>
-
-        </div>
-    `;
-
-
-    popup.classList.add(
-        "show"
-    );
-
-
-    const close =
-        popup.querySelector(
-            ".station-popup-close"
+    
+    
+    /* =========================================================
+       LINE COLOR
+    ========================================================= */
+    
+    function getLineColor(
+        line
+    ) {
+    
+        const value =
+            String(
+                line || ""
+            );
+    
+    
+        const colors = {
+    
+            "1호선":
+                "#0052A4",
+    
+            "2호선":
+                "#00A84D",
+    
+            "3호선":
+                "#EF7C1C",
+    
+            "4호선":
+                "#00A5DE",
+    
+            "5호선":
+                "#996CAC",
+    
+            "6호선":
+                "#CD7C2F",
+    
+            "7호선":
+                "#747F00",
+    
+            "8호선":
+                "#E6186C",
+    
+            "9호선":
+                "#BDB092",
+    
+            "공항철도":
+                "#0090D0",
+    
+            "경의중앙선":
+                "#77C4A3",
+    
+            "경춘선":
+                "#178C72",
+    
+            "수인분당선":
+                "#F5A200",
+    
+            "신분당선":
+                "#D31145",
+    
+            "우이신설선":
+                "#B7C452",
+    
+            "김포골드라인":
+                "#A17800",
+    
+            "서해선":
+                "#81A914",
+    
+            "경강선":
+                "#003DA5"
+        };
+    
+    
+        for (
+            const [
+                key,
+                color
+            ]
+            of Object.entries(colors)
+        ) {
+    
+            if (
+                value.includes(
+                    key
+                )
+            ) {
+    
+                return color;
+            }
+        }
+    
+    
+        return "#555";
+    }
+    
+    
+    /* =========================================================
+       MAP TRANSFORM
+    ========================================================= */
+    
+    function applyMapTransform() {
+    
+        const svg =
+            getMapSVG();
+    
+    
+        if (!svg) {
+            return;
+        }
+    
+    
+        const layers =
+            svg.querySelectorAll(
+                ".routes-layer, " +
+                ".stations-layer, " +
+                ".train-layer"
+            );
+    
+    
+        layers.forEach(
+            layer => {
+    
+                layer.setAttribute(
+                    "transform",
+                    `
+                        translate(
+                            ${state.panX}
+                            ${state.panY}
+                        )
+                        scale(
+                            ${state.zoom}
+                        )
+                    `
+                );
+            }
         );
-
-
-    if (close) {
-
-        close.addEventListener(
+    }
+    
+    
+    /* =========================================================
+       MAP PAN / ZOOM
+    ========================================================= */
+    
+    function setupMapControls() {
+    
+        const map =
+            $("#map");
+    
+    
+        const svg =
+            getMapSVG();
+    
+    
+        if (
+            !map ||
+            !svg
+        ) {
+            return;
+        }
+    
+    
+        /*
+         * Wheel zoom
+         */
+    
+        map.addEventListener(
+            "wheel",
+            event => {
+    
+                event.preventDefault();
+    
+    
+                const delta =
+                    event.deltaY < 0
+                        ? 0.1
+                        : -0.1;
+    
+    
+                state.zoom =
+                    Math.max(
+                        0.5,
+                        Math.min(
+                            5,
+                            state.zoom +
+                            delta
+                        )
+                    );
+    
+    
+                applyMapTransform();
+    
+            },
+            {
+                passive: false
+            }
+        );
+    
+    
+        /*
+         * Drag
+         */
+    
+        let dragging =
+            false;
+    
+    
+        let startX = 0;
+    
+        let startY = 0;
+    
+        let originalX = 0;
+    
+        let originalY = 0;
+    
+    
+        map.addEventListener(
+            "pointerdown",
+            event => {
+    
+                /*
+                 * 역 클릭은 drag 시작으로 처리하지 않음
+                 */
+    
+                if (
+                    event.target.closest(
+                        ".station-circle"
+                    )
+                ) {
+                    return;
+                }
+    
+    
+                dragging =
+                    true;
+    
+    
+                map.classList.add(
+                    "dragging"
+                );
+    
+    
+                startX =
+                    event.clientX;
+    
+    
+                startY =
+                    event.clientY;
+    
+    
+                originalX =
+                    state.panX;
+    
+    
+                originalY =
+                    state.panY;
+    
+    
+                map.setPointerCapture(
+                    event.pointerId
+                );
+            }
+        );
+    
+    
+        map.addEventListener(
+            "pointermove",
+            event => {
+    
+                if (
+                    !dragging
+                ) {
+                    return;
+                }
+    
+    
+                state.panX =
+                    originalX +
+                    (
+                        event.clientX -
+                        startX
+                    );
+    
+    
+                state.panY =
+                    originalY +
+                    (
+                        event.clientY -
+                        startY
+                    );
+    
+    
+                applyMapTransform();
+            }
+        );
+    
+    
+        const stopDrag =
+            () => {
+    
+                dragging =
+                    false;
+    
+    
+                map.classList.remove(
+                    "dragging"
+                );
+            };
+    
+    
+        map.addEventListener(
+            "pointerup",
+            stopDrag
+        );
+    
+    
+        map.addEventListener(
+            "pointercancel",
+            stopDrag
+        );
+    }
+    
+    
+    /* =========================================================
+       ZOOM BUTTONS
+    ========================================================= */
+    
+    function setupZoomButtons() {
+    
+        const zoomIn =
+            $("#zoomIn");
+    
+    
+        const zoomOut =
+            $("#zoomOut");
+    
+    
+        if (
+            zoomIn
+        ) {
+    
+            zoomIn.addEventListener(
+                "click",
+                () => {
+    
+                    state.zoom =
+                        Math.min(
+                            5,
+                            state.zoom +
+                            0.2
+                        );
+    
+    
+                    applyMapTransform();
+                }
+            );
+        }
+    
+    
+        if (
+            zoomOut
+        ) {
+    
+            zoomOut.addEventListener(
+                "click",
+                () => {
+    
+                    state.zoom =
+                        Math.max(
+                            .5,
+                            state.zoom -
+                            0.2
+                        );
+    
+    
+                    applyMapTransform();
+                }
+            );
+        }
+    }
+    
+    
+    /* =========================================================
+       CENTER MAP
+    ========================================================= */
+    
+    function setupCenterButton() {
+    
+        const button =
+            $("#centerBtn");
+    
+    
+        if (
+            !button
+        ) {
+            return;
+        }
+    
+    
+        button.addEventListener(
             "click",
             () => {
-
-                popup.classList.remove(
-                    "show"
-                );
+    
+                state.zoom =
+                    1;
+    
+    
+                state.panX =
+                    0;
+    
+    
+                state.panY =
+                    0;
+    
+    
+                renderMap();
             }
         );
     }
-}
-
-
-/* =========================================================
-   ARRIVAL
-   ========================================================= */
-
-async function loadArrival(
-    station
-) {
-
-    const container =
-        $(
-            "#stationArrivals"
+    
+    
+    /* =========================================================
+       STATION POPUP
+    ========================================================= */
+    
+    function selectStation(
+        station
+    ) {
+    
+        state.selectedStation =
+            station;
+    
+    
+        showStationPopup(
+            station
         );
-
-
-    try {
-
-        const url =
-            subwayUrl(
-                CONFIG.services.realtimeArrival,
-                1,
-                100,
-                station.name
+    
+    
+        loadArrival(
+            station
+        );
+    }
+    
+    
+    function showStationPopup(
+        station
+    ) {
+    
+        const popup =
+            $("#stationPopup");
+    
+    
+        if (!popup) {
+            return;
+        }
+    
+    
+        $("#popupName").textContent =
+            station.name;
+    
+    
+        $("#popupMeta").textContent =
+            [
+                station.line,
+                station.id
+                    ? `역 ID ${station.id}`
+                    : ""
+            ]
+                .filter(Boolean)
+                .join(" · ");
+    
+    
+        const body =
+            $("#popupBody");
+    
+    
+        body.innerHTML = `
+    
+            <div class="popup-section">
+    
+                <div class="popup-section-title">
+                    실시간 도착정보
+                </div>
+    
+                <div id="arrivalList">
+    
+                    <div class="empty">
+                        불러오는 중...
+                    </div>
+    
+                </div>
+    
+            </div>
+    
+            <div class="popup-section">
+    
+                <div class="popup-section-title">
+                    역 정보
+                </div>
+    
+                <div class="metric">
+    
+                    <div class="metric-card">
+    
+                        <div class="metric-label">
+                            노선
+                        </div>
+    
+                        <div class="metric-value">
+                            ${escapeHTML(
+                                station.line ||
+                                "-"
+                            )}
+                        </div>
+    
+                    </div>
+    
+                    <div class="metric-card">
+    
+                        <div class="metric-label">
+                            외부코드
+                        </div>
+    
+                        <div class="metric-value">
+                            ${escapeHTML(
+                                station.frCode ||
+                                "-"
+                            )}
+                        </div>
+    
+                    </div>
+    
+                </div>
+    
+            </div>
+        `;
+    
+    
+        popup.classList.add(
+            "show"
+        );
+    }
+    
+    
+    /* =========================================================
+       CLOSE POPUP
+    ========================================================= */
+    
+    function setupPopup() {
+    
+        const close =
+            $("#closePopup");
+    
+    
+        if (
+            close
+        ) {
+    
+            close.addEventListener(
+                "click",
+                () => {
+    
+                    $("#stationPopup")
+                        ?.classList
+                        .remove(
+                            "show"
+                        );
+                }
             );
-
-
-        const data =
-            await fetchJSON(
-                url
-            );
-
-
-        const rows =
-            extractRows(
+        }
+    }
+    
+    
+    /* =========================================================
+       REALTIME ARRIVAL
+    ========================================================= */
+    
+    async function loadArrival(
+        station
+    ) {
+    
+        const container =
+            $("#arrivalList");
+    
+    
+        if (!container) {
+            return;
+        }
+    
+    
+        container.innerHTML = `
+            <div class="empty">
+                실시간 도착정보 불러오는 중...
+            </div>
+        `;
+    
+    
+        try {
+    
+            /*
+             * OA-12764
+             * station name을 path에 전달
+             */
+    
+            const url =
+                subwayUrl(
+                    CONFIG.services.realtimeArrival,
+                    1,
+                    100,
+                    station.name
+                );
+    
+    
+            const data =
+                await fetchJSON(
+                    url,
+                    12000
+                );
+    
+    
+            checkApiResult(
                 data
             );
-
-
-        state.arrivals =
-            rows;
-
-
-        renderArrivals(
-            rows
-        );
-
-
-    } catch (error) {
-
-        console.warn(
-            "도착정보 실패:",
-            error.message
-        );
-
-
-        if (container) {
-
+    
+    
+            const rows =
+                findRows(
+                    data
+                );
+    
+    
+            state.arrivals =
+                rows;
+    
+    
+            renderArrivals(
+                rows
+            );
+    
+    
+        } catch (error) {
+    
+            console.warn(
+                "실시간 도착정보 오류:",
+                error.message
+            );
+    
+    
             container.innerHTML = `
-                <div>
-                    실시간 도착정보를
-                    불러오지 못했습니다.
+                <div class="empty">
+                    도착정보를 불러오지 못했습니다.<br>
+                    <small>
+                        ${escapeHTML(
+                            error.message
+                        )}
+                    </small>
                 </div>
             `;
         }
     }
-}
-
-
-/* =========================================================
-   ARRIVAL RENDER
-   ========================================================= */
-
-function renderArrivals(
-    rows
-) {
-
-    const container =
-        $(
-            "#stationArrivals"
-        );
-
-
-    if (!container) {
-        return;
-    }
-
-
-    if (
-        !rows.length
-    ) {
-
-        container.innerHTML = `
-            <div class="arrival-empty">
-                현재 도착정보가 없습니다.
-            </div>
-        `;
-
-        return;
-    }
-
-
-    container.innerHTML =
+    
+    
+    /* =========================================================
+       ARRIVAL RENDER
+    ========================================================= */
+    
+    function renderArrivals(
         rows
-            .slice(0, 10)
-            .map(
-                row => {
-
-                    const line =
-                        field(
-                            row,
-                            [
-                                "subwayNm",
-                                "SUBWAY_NM",
-                                "lineNum",
-                                "LINE_NUM"
-                            ]
-                        );
-
-
-                    const direction =
-                        field(
-                            row,
-                            [
-                                "updnLine",
-                                "UPDN_LINE"
-                            ]
-                        );
-
-
-                    const message =
-                        field(
-                            row,
-                            [
-                                "arvlMsg2",
-                                "ARVL_MSG2",
-                                "arvlMsg3",
-                                "ARVL_MSG3"
-                            ]
-                        );
-
-
-                    return `
-                        <div class="arrival-item">
-
-                            <strong>
-                                ${escapeHTML(
-                                    line ||
-                                    "지하철"
-                                )}
-                            </strong>
-
-                            <span>
-                                ${escapeHTML(
-                                    direction
-                                )}
-                            </span>
-
-                            <div>
-                                ${escapeHTML(
-                                    message ||
-                                    "정보 없음"
-                                )}
-                            </div>
-
-                        </div>
-                    `;
-                }
-            )
-            .join("");
-}
-
-
-/* =========================================================
-   REALTIME POSITION
-   ========================================================= */
-
-async function loadRealtimePositions() {
-
-    if (
-        state.loadingPositions
     ) {
-        return;
-    }
-
-
-    state.loadingPositions =
-        true;
-
-
-    /*
-     * 서울 실시간 열차 위치 API
-     */
-
-    const lines = [
-
-        "1호선",
-        "2호선",
-        "3호선",
-        "4호선",
-        "5호선",
-        "6호선",
-        "7호선",
-        "8호선",
-        "9호선"
-
-    ];
-
-
-    const all = [];
-
-
-    try {
-
-        for (
-            const line
-            of lines
-        ) {
-
-            try {
-
-                const url =
-                    subwayUrl(
-                        CONFIG.services.realtimePosition,
-                        1,
-                        1000,
-                        line
-                    );
-
-
-                const data =
-                    await fetchJSON(
-                        url,
-                        8000
-                    );
-
-
-                const rows =
-                    extractRows(
-                        data
-                    );
-
-
-                all.push(
-                    ...rows
-                );
-
-
-            } catch (error) {
-
-                console.warn(
-                    `${line} 열차 위치 실패:`,
-                    error.message
-                );
-            }
+    
+        const container =
+            $("#arrivalList");
+    
+    
+        if (!container) {
+            return;
         }
-
-
-        state.trainPositions =
-            all;
-
-
-        updateStats();
-
-
-        console.log(
-            "실시간 열차:",
-            all.length
-        );
-
-
-    } finally {
-
-        state.loadingPositions =
-            false;
-    }
-}
-
-
-/* =========================================================
-   STATS
-   ========================================================= */
-
-function updateStats() {
-
-    const stationCount =
-        state.stations.length;
-
-
-    const trainCount =
-        state.trainPositions.length;
-
-
-    const selectors = {
-
-        station: [
-            "#stationCount",
-            "#station-count",
-            "[data-station-count]"
-        ],
-
-        train: [
-            "#trainCount",
-            "#train-count",
-            "[data-train-count]"
-        ]
-    };
-
-
-    for (
-        const selector
-        of selectors.station
-    ) {
-
-        const element =
-            $(selector);
-
-
-        if (element) {
-
-            element.textContent =
-                stationCount.toLocaleString();
-        }
-    }
-
-
-    for (
-        const selector
-        of selectors.train
-    ) {
-
-        const element =
-            $(selector);
-
-
-        if (element) {
-
-            element.textContent =
-                trainCount.toLocaleString();
-        }
-    }
-}
-
-
-/* =========================================================
-   ERROR
-   ========================================================= */
-
-function showError(
-    message
-) {
-
-    let box =
-        $(
-            "#globalError"
-        );
-
-
-    if (!box) {
-
-        box =
-            document.createElement(
-                "div"
-            );
-
-        box.id =
-            "globalError";
-
-        box.style.position =
-            "fixed";
-
-        box.style.left =
-            "20px";
-
-        box.style.right =
-            "20px";
-
-        box.style.bottom =
-            "20px";
-
-        box.style.zIndex =
-            "99999";
-
-        box.style.background =
-            "#111";
-
-        box.style.color =
-            "#fff";
-
-        box.style.padding =
-            "14px 18px";
-
-        box.style.borderRadius =
-            "12px";
-
-        document.body.appendChild(
-            box
-        );
-    }
-
-
-    box.innerHTML = `
-        <strong>
-            서울 열린데이터
-        </strong>
-        <br>
-        역 데이터 오류:
-        ${escapeHTML(message)}
-    `;
-}
-
-
-/* =========================================================
-   REFRESH
-   ========================================================= */
-
-async function refreshAll() {
-
-    await loadStations();
-
-    loadRealtimePositions();
-
-
-    if (
-        state.selectedStation
-    ) {
-
-        loadArrival(
-            state.selectedStation
-        );
-    }
-}
-
-
-/* =========================================================
-   AUTO REFRESH
-   ========================================================= */
-
-function startAutoRefresh() {
-
-    stopAutoRefresh();
-
-
-    state.timers.position =
-        setInterval(
-            () => {
-
-                loadRealtimePositions();
-
-            },
-            CONFIG.positionRefresh
-        );
-
-
-    state.timers.arrival =
-        setInterval(
-            () => {
-
-                if (
-                    state.selectedStation
-                ) {
-
-                    loadArrival(
-                        state.selectedStation
-                    );
-                }
-
-            },
-            CONFIG.arrivalRefresh
-        );
-}
-
-
-function stopAutoRefresh() {
-
-    if (
-        state.timers.position
-    ) {
-
-        clearInterval(
-            state.timers.position
-        );
-
-        state.timers.position =
-            null;
-    }
-
-
-    if (
-        state.timers.arrival
-    ) {
-
-        clearInterval(
-            state.timers.arrival
-        );
-
-        state.timers.arrival =
-            null;
-    }
-}
-
-
-/* =========================================================
-   REFRESH BUTTON
-   ========================================================= */
-
-function setupRefresh() {
-
-    const selectors = [
-        "#refreshButton",
-        "#refresh",
-        "[data-refresh]"
-    ];
-
-
-    for (
-        const selector
-        of selectors
-    ) {
-
-        const button =
-            $(selector);
-
-
-        if (!button) {
-            continue;
-        }
-
-
-        button.addEventListener(
-            "click",
-            async () => {
-
-                button.disabled =
-                    true;
-
-
-                try {
-
-                    await refreshAll();
-
-                } finally {
-
-                    button.disabled =
-                        false;
-                }
-            }
-        );
-
-
-        break;
-    }
-}
-
-
-/* =========================================================
-   API KEY UI
-   ========================================================= */
-
-function setupApiKey() {
-
-    const input =
-        $(
-            "#apiKey"
-        ) ||
-        $(
-            "#api-key"
-        ) ||
-        $(
-            'input[name="apiKey"]'
-        );
-
-
-    if (!input) {
-        return;
-    }
-
-
-    input.value =
-        state.apiKey;
-
-
-    const button =
-        $(
-            "#saveApiKey"
-        ) ||
-        $(
-            "#save-api-key"
-        ) ||
-        $(
-            "[data-save-api-key]"
-        );
-
-
-    if (!button) {
-        return;
-    }
-
-
-    button.addEventListener(
-        "click",
-        async () => {
-
-            state.apiKey =
-                input.value.trim();
-
-
-            localStorage.setItem(
-                "seoul_openapi_key",
-                state.apiKey
-            );
-
-
-            await refreshAll();
-        }
-    );
-}
-
-
-/* =========================================================
-   SEARCH
-   ========================================================= */
-
-function setupSearchInput() {
-
-    const input =
-        $(
-            "#stationSearch"
-        ) ||
-        $(
-            "#station-search"
-        );
-
-
-    if (!input) {
-        return;
-    }
-
-
-    input.addEventListener(
-        "input",
-        event => {
-
-            state.searchQuery =
-                event.target.value
-                    .trim()
-                    .toLowerCase();
-
-
-            applyFilters();
-        }
-    );
-}
-
-
-/* =========================================================
-   RESIZE
-   ========================================================= */
-
-function setupResize() {
-
-    let timer;
-
-
-    window.addEventListener(
-        "resize",
-        () => {
-
-            clearTimeout(
-                timer
-            );
-
-
-            timer =
-                setTimeout(
-                    () => {
-
-                        renderMap();
-
-                    },
-                    150
-                );
-        }
-    );
-}
-
-
-/* =========================================================
-   POPUP
-   ========================================================= */
-
-function setupPopup() {
-
-    document.addEventListener(
-        "click",
-        event => {
-
-            const popup =
-                $(
-                    "#stationPopup"
-                );
-
-
-            if (!popup) {
-                return;
-            }
-
-
-            if (
-                !popup.classList.contains(
-                    "show"
-                )
-            ) {
-                return;
-            }
-
-
-            if (
-                event.target.closest(
-                    ".station-popup-inner"
-                )
-            ) {
-                return;
-            }
-
-
-            popup.classList.remove(
-                "show"
-            );
-        }
-    );
-}
-
-
-/* =========================================================
-   INITIALIZE
-   ========================================================= */
-
-async function initialize() {
-
-    console.log(
-        "================================"
-    );
-
-    console.log(
-        " METRO SEOUL START "
-    );
-
-    console.log(
-        "================================"
-    );
-
-
-    const key =
-        getApiKey();
-
-
-    if (!key) {
-
-        setApiStatus(
-            "API 인증키 필요",
-            "error"
-        );
-
-
-        console.warn(
-            "서울 열린데이터 API 키가 없습니다."
-        );
-
-
-        return;
-    }
-
-
-    await loadStations();
-
-
-    /*
-     * 역 데이터가 정상적으로 들어온 경우에만
-     * 실시간 열차를 요청한다.
-     */
-
-    if (
-        state.stations.length
-    ) {
-
-        loadRealtimePositions();
-
-        startAutoRefresh();
-    }
-}
-
-
-/* =========================================================
-   DEBUG
-   ========================================================= */
-
-window.MetroDebug = {
-
-    state,
-
-    reload() {
-        return initialize();
-    },
-
-    stations() {
-
-        console.table(
-            state.stations
-        );
-
-        return state.stations;
-    },
-
-    first() {
-
-        console.log(
-            state.stations[0]
-        );
-
-        return state.stations[0];
-    },
-
-    trains() {
-
-        console.table(
-            state.trainPositions
-        );
-
-        return state.trainPositions;
-    },
-
-    arrivals() {
-
-        console.table(
-            state.arrivals
-        );
-
-        return state.arrivals;
-    }
-};
-
-
-/* =========================================================
-   DOM READY
-   ========================================================= */
-
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
-
-        setupSearchInput();
-
-        setupMapControls();
-
-        setupRefresh();
-
-        setupApiKey();
-
-        setupResize();
-
-        setupPopup();
-
-
+    
+    
         if (
+            !rows.length
+        ) {
+    
+            container.innerHTML = `
+                <div class="empty">
+                    현재 도착정보가 없습니다.
+                </div>
+            `;
+    
+            return;
+        }
+    
+    
+        container.innerHTML =
+            rows
+                .slice(
+                    0,
+                    10
+                )
+                .map(
+                    row => {
+    
+                        const line =
+                            getField(
+                                row,
+                                [
+                                    "subwayNm",
+                                    "SUBWAY_NM",
+                                    "LINE_NUM",
+                                    "lineNum"
+                                ]
+                            );
+    
+    
+                        const direction =
+                            getField(
+                                row,
+                                [
+                                    "updnLine",
+                                    "UPDN_LINE"
+                                ]
+                            );
+    
+    
+                        const message =
+                            getField(
+                                row,
+                                [
+                                    "arvlMsg2",
+                                    "ARVL_MSG2",
+                                    "arvlMsg3",
+                                    "ARVL_MSG3"
+                                ]
+                            );
+    
+    
+                        const seconds =
+                            getField(
+                                row,
+                                [
+                                    "barvlDt",
+                                    "BARVL_DT"
+                                ]
+                            );
+    
+    
+                        let timeText =
+                            message ||
+                            "운행정보";
+    
+    
+                        if (
+                            seconds &&
+                            !message
+                        ) {
+    
+                            const sec =
+                                Number(
+                                    seconds
+                                );
+    
+    
+                            if (
+                                Number.isFinite(sec)
+                            ) {
+    
+                                timeText =
+                                    `${Math.floor(
+                                        sec / 60
+                                    )}분 후`;
+                                }
+                        }
+    
+    
+                        return `
+    
+                            <div class="arrival">
+    
+                                <div class="arrival-main">
+    
+                                    <div class="arrival-line">
+    
+                                        ${escapeHTML(
+                                            line ||
+                                            "지하철"
+                                        )}
+    
+                                    </div>
+    
+                                    <div class="arrival-time">
+    
+                                        ${escapeHTML(
+                                            timeText
+                                        )}
+    
+                                    </div>
+    
+                                </div>
+    
+                                <div class="arrival-sub">
+    
+                                    ${escapeHTML(
+                                        direction
+                                    )}
+    
+                                </div>
+    
+                            </div>
+    
+                        `;
+                    }
+                )
+                .join("");
+    }
+    
+    
+    /* =========================================================
+       REALTIME TRAIN
+    ========================================================= */
+    
+    async function loadRealtimePositions() {
+    
+        if (
+            state.loadingPositions
+        ) {
+            return;
+        }
+    
+    
+        state.loadingPositions =
+            true;
+    
+    
+        const lines = [
+            "1호선",
+            "2호선",
+            "3호선",
+            "4호선",
+            "5호선",
+            "6호선",
+            "7호선",
+            "8호선",
+            "9호선"
+        ];
+    
+    
+        const result = [];
+    
+    
+        try {
+    
+            for (
+                const line
+                of lines
+            ) {
+    
+                try {
+    
+                    const url =
+                        subwayUrl(
+                            CONFIG.services.realtimePosition,
+                            1,
+                            1000,
+                            line
+                        );
+    
+    
+                    const data =
+                        await fetchJSON(
+                            url,
+                            7000
+                        );
+    
+    
+                    /*
+                     * 열차 위치 API가 종료되었거나
+                     * 오류를 반환해도 전체 앱을 죽이지 않는다.
+                     */
+    
+                    try {
+    
+                        checkApiResult(
+                            data
+                        );
+    
+                    } catch (
+                        apiError
+                    ) {
+    
+                        console.warn(
+                            `${line}:`,
+                            apiError.message
+                        );
+    
+                        continue;
+                    }
+    
+    
+                    const rows =
+                        findRows(
+                            data
+                        );
+    
+    
+                    result.push(
+                        ...rows
+                    );
+    
+    
+                } catch (
+                    error
+                ) {
+    
+                    console.warn(
+                        `${line} 열차 위치 실패:`,
+                        error.message
+                    );
+                }
+            }
+    
+    
+            state.trainPositions =
+                result;
+    
+    
+            updateStats();
+    
+    
+            renderTrainPositions();
+    
+    
+        } finally {
+    
+            state.loadingPositions =
+                false;
+        }
+    }
+    
+    
+    /* =========================================================
+       TRAIN POSITION RENDER
+    ========================================================= */
+    
+    function renderTrainPositions() {
+    
+        const svg =
+            getMapSVG();
+    
+    
+        if (!svg) {
+            return;
+        }
+    
+    
+        const old =
+            svg.querySelector(
+                ".train-layer"
+            );
+    
+    
+        if (
+            old
+        ) {
+    
+            old.remove();
+        }
+    
+    
+        if (
+            !state.trainPositions.length
+        ) {
+    
+            return;
+        }
+    
+    
+        const stations =
+            state.stations.filter(
+                hasCoordinates
+            );
+    
+    
+        if (
+            !stations.length
+        ) {
+            return;
+        }
+    
+    
+        const bounds =
+            getMapBounds(
+                stations
+            );
+    
+    
+        const rect =
+            svg.getBoundingClientRect();
+    
+    
+        const width =
+            Math.max(
+                rect.width,
+                600
+            );
+    
+    
+        const height =
+            Math.max(
+                rect.height,
+                500
+            );
+    
+    
+        const stationMap =
+            new Map();
+    
+    
+        for (
+            const station
+            of state.stations
+        ) {
+    
+            if (
+                station.id
+            ) {
+    
+                stationMap.set(
+                    String(
+                        station.id
+                    ),
+                    station
+                );
+            }
+        }
+    
+    
+        const layer =
+            document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "g"
+            );
+    
+    
+        layer.classList.add(
+            "train-layer"
+        );
+    
+    
+        for (
+            const train
+            of state.trainPositions
+        ) {
+    
+            const stationId =
+                getField(
+                    train,
+                    [
+                        "statnId",
+                        "STATN_ID",
+                        "stationId"
+                    ]
+                );
+    
+    
+            const station =
+                stationMap.get(
+                    String(
+                        stationId
+                    )
+                );
+    
+    
+            if (
+                !station
+            ) {
+                continue;
+            }
+    
+    
+            const point =
+                projectStation(
+                    station,
+                    bounds,
+                    width,
+                    height
+                );
+    
+    
+            const circle =
+                document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    "circle"
+                );
+    
+    
+            circle.setAttribute(
+                "cx",
+                point.x
+            );
+    
+    
+            circle.setAttribute(
+                "cy",
+                point.y
+            );
+    
+    
+            circle.setAttribute(
+                "r",
+                "7"
+            );
+    
+    
+            circle.setAttribute(
+                "fill",
+                "#111315"
+            );
+    
+    
+            circle.setAttribute(
+                "stroke",
+                "#fff"
+            );
+    
+    
+            circle.setAttribute(
+                "stroke-width",
+                "2"
+            );
+    
+    
+            circle.classList.add(
+                "train"
+            );
+    
+    
+            const title =
+                document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    "title"
+                );
+    
+    
+            title.textContent =
+                `${getField(
+                    train,
+                    [
+                        "trainNo",
+                        "TRAIN_NO"
+                    ]
+                ) || "열차"} · ${station.name}`;
+    
+    
+            circle.appendChild(
+                title
+            );
+    
+    
+            layer.appendChild(
+                circle
+            );
+        }
+    
+    
+        svg.appendChild(
+            layer
+        );
+    
+    
+        applyMapTransform();
+    }
+    
+    
+    /* =========================================================
+       STATS
+    ========================================================= */
+    
+    function updateStats() {
+    
+        const stationCount =
+            $("#stationCount");
+    
+    
+        const trainCount =
+            $("#trainCount");
+    
+    
+        if (
+            stationCount
+        ) {
+    
+            stationCount.textContent =
+                state.stations.length
+                    .toLocaleString();
+        }
+    
+    
+        if (
+            trainCount
+        ) {
+    
+            trainCount.textContent =
+                state.trainPositions.length
+                    ? state.trainPositions.length
+                        .toLocaleString()
+                    : "0";
+        }
+    }
+    
+    
+    /* =========================================================
+       API MODAL
+    ========================================================= */
+    
+    function setupApiModal() {
+    
+        const modal =
+            $("#apiModal");
+    
+    
+        const open =
+            $("#openApiBtn");
+    
+    
+        const close =
+            $("#closeApiBtn");
+    
+    
+        const test =
+            $("#testApi");
+    
+    
+        const save =
+            $("#saveApi");
+    
+    
+        const remove =
+            $("#deleteApi");
+    
+    
+        const input =
+            $("#seoulApiKey");
+    
+    
+        const saveCheck =
+            $("#saveKey");
+    
+    
+        /*
+         * 저장된 키 표시
+         */
+    
+        if (
+            input &&
             state.apiKey
         ) {
-
-            initialize();
-
-        } else {
-
-            setApiStatus(
-                "API 인증키 필요",
-                "normal"
+    
+            input.value =
+                state.apiKey;
+    
+            if (
+                saveCheck
+            ) {
+    
+                saveCheck.checked =
+                    true;
+            }
+        }
+    
+    
+        /*
+         * 열기
+         */
+    
+        if (
+            open
+        ) {
+    
+            open.addEventListener(
+                "click",
+                () => {
+    
+                    modal?.classList.add(
+                        "show"
+                    );
+                }
+            );
+        }
+    
+    
+        /*
+         * 닫기
+         */
+    
+        if (
+            close
+        ) {
+    
+            close.addEventListener(
+                "click",
+                () => {
+    
+                    modal?.classList.remove(
+                        "show"
+                    );
+                }
+            );
+        }
+    
+    
+        /*
+         * 배경 클릭 닫기
+         */
+    
+        if (
+            modal
+        ) {
+    
+            modal.addEventListener(
+                "click",
+                event => {
+    
+                    if (
+                        event.target ===
+                        modal
+                    ) {
+    
+                        modal.classList.remove(
+                            "show"
+                        );
+                    }
+                }
+            );
+        }
+    
+    
+        /*
+         * 연결 테스트
+         */
+    
+        if (
+            test
+        ) {
+    
+            test.addEventListener(
+                "click",
+                async () => {
+    
+                    const key =
+                        input
+                            ?.value
+                            .trim();
+    
+    
+                    const status =
+                        $("#apiTestStatus");
+    
+    
+                    if (
+                        !key
+                    ) {
+    
+                        if (
+                            status
+                        ) {
+    
+                            status.className =
+                                "api-status error";
+    
+                            status.textContent =
+                                "API 인증키를 입력해주세요.";
+                        }
+    
+                        return;
+                    }
+    
+    
+                    /*
+                     * 테스트를 위해
+                     * state에도 임시 적용
+                     */
+    
+                    state.apiKey =
+                        key;
+    
+    
+                    if (
+                        status
+                    ) {
+    
+                        status.className =
+                            "api-status";
+    
+                        status.textContent =
+                            "API 연결 확인 중...";
+                    }
+    
+    
+                    try {
+    
+                        const url =
+                            seoulUrl(
+                                CONFIG.services.stationMaster,
+                                1,
+                                5
+                            );
+    
+    
+                        const data =
+                            await fetchJSON(
+                                url
+                            );
+    
+    
+                        checkApiResult(
+                            data
+                        );
+    
+    
+                        const rows =
+                            findRows(
+                                data
+                            );
+    
+    
+                        if (
+                            !rows.length
+                        ) {
+    
+                            throw new Error(
+                                "API 연결은 되었지만 데이터 행이 없습니다."
+                            );
+                        }
+    
+    
+                        if (
+                            status
+                        ) {
+    
+                            status.className =
+                                "api-status success";
+    
+                            status.textContent =
+                                `연결 성공 · ${rows.length}개 샘플 확인`;
+                        }
+    
+    
+                        setApiStatus(
+                            "API 연결됨",
+                            "success"
+                        );
+    
+    
+                    } catch (
+                        error
+                    ) {
+    
+                        console.error(
+                            "API 테스트 실패:",
+                            error
+                        );
+    
+    
+                        if (
+                            status
+                        ) {
+    
+                            status.className =
+                                "api-status error";
+    
+                            status.textContent =
+                                error.message;
+                        }
+    
+    
+                        setApiStatus(
+                            "API 오류",
+                            "error"
+                        );
+                    }
+                }
+            );
+        }
+    
+    
+        /*
+         * 저장
+         */
+    
+        if (
+            save
+        ) {
+    
+            save.addEventListener(
+                "click",
+                async () => {
+    
+                    const key =
+                        input
+                            ?.value
+                            .trim();
+    
+    
+                    if (
+                        !key
+                    ) {
+    
+                        return;
+                    }
+    
+    
+                    state.apiKey =
+                        key;
+    
+    
+                    if (
+                        saveCheck &&
+                        saveCheck.checked
+                    ) {
+    
+                        localStorage.setItem(
+                            "seoul_openapi_key",
+                            key
+                        );
+    
+                    } else {
+    
+                        localStorage.removeItem(
+                            "seoul_openapi_key"
+                        );
+                    }
+    
+    
+                    const status =
+                        $("#apiTestStatus");
+    
+    
+                    if (
+                        status
+                    ) {
+    
+                        status.className =
+                            "api-status success";
+    
+                        status.textContent =
+                            "인증키가 저장되었습니다.";
+                    }
+    
+    
+                    await initializeData();
+                }
+            );
+        }
+    
+    
+        /*
+         * 삭제
+         */
+    
+        if (
+            remove
+        ) {
+    
+            remove.addEventListener(
+                "click",
+                () => {
+    
+                    localStorage.removeItem(
+                        "seoul_openapi_key"
+                    );
+    
+    
+                    state.apiKey =
+                        "";
+    
+    
+                    if (
+                        input
+                    ) {
+    
+                        input.value =
+                            "";
+                    }
+    
+    
+                    if (
+                        saveCheck
+                    ) {
+    
+                        saveCheck.checked =
+                            false;
+                    }
+    
+    
+                    const status =
+                        $("#apiTestStatus");
+    
+    
+                    if (
+                        status
+                    ) {
+    
+                        status.className =
+                            "api-status";
+    
+                        status.textContent =
+                            "저장된 API 키를 삭제했습니다.";
+                    }
+    
+    
+                    setApiStatus(
+                        "API 인증키 필요",
+                        "normal"
+                    );
+                }
             );
         }
     }
-);
-</script>
+    
+    
+    /* =========================================================
+       REFRESH
+    ========================================================= */
+    
+    async function refreshAll() {
+    
+        await loadStations();
+    
+    
+        if (
+            state.stations.length
+        ) {
+    
+            loadRealtimePositions();
+        }
+    
+    
+        if (
+            state.selectedStation
+        ) {
+    
+            loadArrival(
+                state.selectedStation
+            );
+        }
+    }
+    
+    
+    /* =========================================================
+       LOAD STATIONS
+    ========================================================= */
+    
+    async function loadStations() {
+    
+        if (
+            state.loadingStations
+        ) {
+    
+            return;
+        }
+    
+    
+        state.loadingStations =
+            true;
+    
+    
+        setApiStatus(
+            "역 데이터 불러오는 중...",
+            "loading"
+        );
+    
+    
+        try {
+    
+            /*
+             * 역사마스터
+             */
+    
+            const stations =
+                await loadStationMaster();
+    
+    
+            state.stations =
+                deduplicateStations(
+                    stations
+                );
+    
+    
+            if (
+                !state.stations.length
+            ) {
+    
+                throw new Error(
+                    "역 데이터가 0개입니다."
+                );
+            }
+    
+    
+            console.log(
+                "================================"
+            );
+    
+    
+            console.log(
+                "최종 역 개수:",
+                state.stations.length
+            );
+    
+    
+            console.log(
+                "첫 번째 역:",
+                state.stations[0]
+            );
+    
+    
+            console.log(
+                "좌표 보유:",
+                state.stations.filter(
+                    hasCoordinates
+                ).length
+            );
+    
+    
+            console.log(
+                "================================"
+            );
+    
+    
+            applyFilters();
+    
+    
+            updateStats();
+    
+    
+            setApiStatus(
+                `연결됨 · ${state.stations.length}개 역`,
+                "success"
+            );
+    
+    
+        } catch (
+            error
+        ) {
+    
+            console.error(
+                "역 데이터 오류:",
+                error
+            );
+    
+    
+            state.stations =
+                [];
+    
+    
+            state.visibleStations =
+                [];
+    
+    
+            updateStats();
+    
+    
+            setApiStatus(
+                `역 데이터 오류: ${error.message}`,
+                "error"
+            );
+    
+    
+            /*
+             * 기존의 모호한
+             * "역명 인식 실패" 대신
+             * 실제 오류를 보여준다.
+             */
+    
+            showGlobalError(
+                error.message
+            );
+    
+    
+        } finally {
+    
+            state.loadingStations =
+                false;
+        }
+    }
+    
+    
+    /* =========================================================
+       DEDUPLICATE
+    ========================================================= */
+    
+    function deduplicateStations(
+        stations
+    ) {
+    
+        const map =
+            new Map();
+    
+    
+        for (
+            const station
+            of stations
+        ) {
+    
+            const key =
+                station.id
+                    ? `ID:${station.id}`
+                    : (
+                        `NAME:${station.name}` +
+                        `|LINE:${station.line}`
+                    );
+    
+    
+            if (
+                !map.has(key)
+            ) {
+    
+                map.set(
+                    key,
+                    station
+                );
+    
+                continue;
+            }
+    
+    
+            const old =
+                map.get(key);
+    
+    
+            /*
+             * 좌표 보강
+             */
+    
+            if (
+                !hasCoordinates(old) &&
+                hasCoordinates(station)
+            ) {
+    
+                old.lat =
+                    station.lat;
+    
+                old.lng =
+                    station.lng;
+            }
+    
+    
+            /*
+             * 노선 보강
+             */
+    
+            if (
+                !old.line &&
+                station.line
+            ) {
+    
+                old.line =
+                    station.line;
+            }
+    
+    
+            /*
+             * 외부코드 보강
+             */
+    
+            if (
+                !old.frCode &&
+                station.frCode
+            ) {
+    
+                old.frCode =
+                    station.frCode;
+            }
+        }
+    
+    
+        return [
+            ...map.values()
+        ];
+    }
+    
+    
+    /* =========================================================
+       AUTO REFRESH
+    ========================================================= */
+    
+    function startAutoRefresh() {
+    
+        stopAutoRefresh();
+    
+    
+        state.timers.position =
+            setInterval(
+                () => {
+    
+                    loadRealtimePositions();
+    
+                },
+                CONFIG.positionRefresh
+            );
+    
+    
+        state.timers.arrival =
+            setInterval(
+                () => {
+    
+                    if (
+                        state.selectedStation
+                    ) {
+    
+                        loadArrival(
+                            state.selectedStation
+                        );
+                    }
+    
+                },
+                CONFIG.arrivalRefresh
+            );
+    }
+    
+    
+    function stopAutoRefresh() {
+    
+        if (
+            state.timers.position
+        ) {
+    
+            clearInterval(
+                state.timers.position
+            );
+    
+    
+            state.timers.position =
+                null;
+        }
+    
+    
+        if (
+            state.timers.arrival
+        ) {
+    
+            clearInterval(
+                state.timers.arrival
+            );
+    
+    
+            state.timers.arrival =
+                null;
+        }
+    }
+    
+    
+    /* =========================================================
+       MOBILE
+    ========================================================= */
+    
+    function setupMobile() {
+    
+        const button =
+            $("#mobileToggle");
+    
+    
+        const sidebar =
+            $("#sidebar");
+    
+    
+        if (
+            !button ||
+            !sidebar
+        ) {
+            return;
+        }
+    
+    
+        button.addEventListener(
+            "click",
+            () => {
+    
+                sidebar.classList.toggle(
+                    "open"
+                );
+            }
+        );
+    }
+    
+    
+    /* =========================================================
+       RESIZE
+    ========================================================= */
+    
+    function setupResize() {
+    
+        let timer;
+    
+    
+        window.addEventListener(
+            "resize",
+            () => {
+    
+                clearTimeout(
+                    timer
+                );
+    
+    
+                timer =
+                    setTimeout(
+                        () => {
+    
+                            renderMap();
+    
+                        },
+                        150
+                    );
+            }
+        );
+    }
+    
+    
+    /* =========================================================
+       GLOBAL ERROR
+    ========================================================= */
+    
+    function showGlobalError(
+        message
+    ) {
+    
+        let box =
+            $("#globalError");
+    
+    
+        if (
+            !box
+        ) {
+    
+            box =
+                document.createElement(
+                    "div"
+                );
+    
+    
+            box.id =
+                "globalError";
+    
+    
+            box.style.position =
+                "fixed";
+    
+    
+            box.style.left =
+                "20px";
+    
+    
+            box.style.right =
+                "20px";
+    
+    
+            box.style.bottom =
+                "20px";
+    
+    
+            box.style.zIndex =
+                "9999";
+    
+    
+            box.style.padding =
+                "13px 16px";
+    
+    
+            box.style.background =
+                "#111315";
+    
+    
+            box.style.color =
+                "#fff";
+    
+    
+            box.style.borderRadius =
+                "12px";
+    
+    
+            box.style.fontSize =
+                "12px";
+    
+    
+            box.style.boxShadow =
+                "0 15px 50px rgba(0,0,0,.2)";
+    
+    
+            document.body.appendChild(
+                box
+            );
+        }
+    
+    
+        box.innerHTML = `
+            <strong>서울 열린데이터</strong>
+            <br>
+            ${escapeHTML(
+                message
+            )}
+        `;
+    }
+    
+    
+    /* =========================================================
+       INITIALIZE
+    ========================================================= */
+    
+    async function initializeData() {
+    
+        const key =
+            getApiKey();
+    
+    
+        if (
+            !key
+        ) {
+    
+            setApiStatus(
+                "API 인증키 필요",
+                "error"
+            );
+    
+    
+            return;
+        }
+    
+    
+        /*
+         * state에 현재 키 반영
+         */
+    
+        state.apiKey =
+            key;
+    
+    
+        /*
+         * 핵심 데이터
+         */
+    
+        await loadStations();
+    
+    
+        /*
+         * 역 데이터가 정상적으로
+         * 로드된 경우에만 realtime 요청
+         */
+    
+        if (
+            state.stations.length
+        ) {
+    
+            loadRealtimePositions();
+    
+            startAutoRefresh();
+        }
+    }
+    
+    
+    /* =========================================================
+       DEBUG
+    ========================================================= */
+    
+    window.MetroDebug = {
+    
+        state,
+    
+        reload() {
+    
+            return initializeData();
+        },
+    
+        stations() {
+    
+            console.table(
+                state.stations
+            );
+    
+            return state.stations;
+        },
+    
+        firstStation() {
+    
+            console.log(
+                state.stations[0]
+            );
+    
+            return state.stations[0];
+        },
+    
+        rawStation() {
+    
+            console.log(
+                state.stations[0]?.raw
+            );
+    
+            return state.stations[0]?.raw;
+        },
+    
+        trains() {
+    
+            console.table(
+                state.trainPositions
+            );
+    
+            return state.trainPositions;
+        },
+    
+        arrivals() {
+    
+            console.table(
+                state.arrivals
+            );
+    
+            return state.arrivals;
+        },
+    
+        key() {
+    
+            console.log(
+                getApiKey()
+            );
+        }
+    };
+    
+    
+    /* =========================================================
+       DOM READY
+    ========================================================= */
+    
+    document.addEventListener(
+        "DOMContentLoaded",
+        () => {
+    
+            console.log(
+                "================================"
+            );
+    
+            console.log(
+                " METRO SEOUL"
+            );
+    
+            console.log(
+                " FINAL INITIALIZATION"
+            );
+    
+            console.log(
+                "================================"
+            );
+    
+    
+            setupSearch();
+    
+            setupLineButtons();
+    
+            setupMapControls();
+    
+            setupZoomButtons();
+    
+            setupCenterButton();
+    
+            setupPopup();
+    
+            setupApiModal();
+    
+            setupMobile();
+    
+            setupResize();
+    
+    
+            /*
+             * 저장된 API 키가 있으면
+             * 바로 시작
+             */
+    
+            if (
+                getApiKey()
+            ) {
+    
+                initializeData();
+    
+            } else {
+    
+                setApiStatus(
+                    "API 인증키 필요",
+                    "normal"
+                );
+            }
+        }
+    );
+    </script>
 
 </body>
 </html>
