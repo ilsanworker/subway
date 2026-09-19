@@ -1,182 +1,823 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>서울시 공공데이터 API 대시보드</title>
-    <style>
-        body { 
-            font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; 
-            padding: 20px; 
-            background-color: #f4f7f6; 
-            color: #333;
-        }
-        .container { 
-            max-width: 900px; 
-            margin: 0 auto; 
-            background: white; 
-            padding: 30px; 
-            border-radius: 12px; 
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1); 
-        }
-        h1 { text-align: center; color: #2c3e50; }
-        .info { 
-            font-size: 0.95em; 
-            color: #555; 
-            margin-bottom: 25px; 
-            text-align: center; 
-            line-height: 1.6;
-        }
-        .form-group { margin-bottom: 20px; }
-        label { 
-            display: block; 
-            margin-bottom: 8px; 
-            font-weight: bold; 
-            color: #34495e;
-        }
-        input[type="text"], select { 
-            width: 100%; 
-            padding: 12px; 
-            border: 1px solid #ccd1d9; 
-            border-radius: 6px; 
-            box-sizing: border-box; 
-            font-size: 15px;
-        }
-        button { 
-            padding: 14px 20px; 
-            background-color: #3498db; 
-            color: white; 
-            border: none; 
-            border-radius: 6px; 
-            cursor: pointer; 
-            font-size: 16px; 
-            font-weight: bold;
-            width: 100%; 
-            transition: background-color 0.3s;
-        }
-        button:hover { background-color: #2980b9; }
-        .result-container {
-            margin-top: 30px;
-            background-color: #272822; 
-            border-radius: 8px;
-        }
-        pre { 
-            color: #f8f8f2; 
-            padding: 20px; 
-            overflow-x: auto; 
-            max-height: 500px; 
-            font-family: 'Courier New', Courier, monospace;
-            margin: 0;
-        }
-        .url-display {
-            background-color: #e8f4f8;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 10px;
-            word-break: break-all;
-            font-size: 0.9em;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metro Seoul · 수도권 지하철 정보</title>
+
+<style>
+/* 기존에 작성해주신 CSS를 그대로 완벽하게 유지합니다 */
+:root{
+    --bg:#f5f6f7;
+    --panel:#ffffff;
+    --text:#17191c;
+    --muted:#747980;
+    --line:#e5e7ea;
+    --success:#16834d;
+    --danger:#d63d3d;
+}
+
+*{ box-sizing:border-box; }
+
+html,body{
+    margin:0; width:100%; height:100%; overflow:hidden;
+    font-family: Inter, Pretendard, -apple-system, sans-serif;
+    color:var(--text); background:var(--bg);
+}
+
+button, input, select{ font:inherit; }
+button{ cursor:pointer; }
+
+.app{ display:grid; grid-template-columns:360px 1fr; width:100%; height:100%; }
+
+/* SIDEBAR */
+.sidebar{ position:relative; z-index:20; background:var(--panel); border-right:1px solid var(--line); display:flex; flex-direction:column; min-width:0; }
+.brand{ padding:24px 22px 18px; border-bottom:1px solid var(--line); }
+.brand-top{ display:flex; align-items:center; justify-content:space-between; }
+.logo{ display:flex; align-items:center; gap:10px; }
+.logo-mark{ width:38px; height:38px; border-radius:12px; background:#111315; color:#fff; display:flex; align-items:center; justify-content:center; font-size:19px; font-weight:800; }
+.brand-title{ font-size:19px; font-weight:800; letter-spacing:-.5px; }
+.brand-sub{ margin-top:7px; font-size:12px; color:var(--muted); }
+.api-button{ width:36px; height:36px; border:1px solid var(--line); background:#fff; border-radius:10px; font-size:16px; }
+.search-wrap{ padding:16px; border-bottom:1px solid var(--line); }
+.search{ display:flex; align-items:center; gap:9px; background:#f3f4f5; border-radius:12px; padding:0 13px; }
+.search input{ width:100%; height:45px; border:0; outline:0; background:transparent; font-size:14px; }
+.search-icon{ color:#777; }
+.content{ flex:1; overflow:auto; padding:14px; }
+.section{ margin-bottom:20px; }
+.section-title{ display:flex; justify-content:space-between; align-items:center; margin:0 3px 9px; font-size:11px; font-weight:800; color:#8a8f95; letter-spacing:.5px; }
+.status-card{ padding:13px; border:1px solid var(--line); border-radius:13px; background:#fff; }
+.status-row{ display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:8px; }
+.status-row:last-child{ margin-bottom:0; }
+.status-value{ color:var(--muted); }
+.dot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; background:#aaa; }
+.dot.success{ background:var(--success); }
+.dot.error{ background:var(--danger); }
+.dot.loading{ background:#f5a623; }
+.line-filters{ display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
+.line-filter{ height:36px; border:1px solid var(--line); background:#fff; border-radius:9px; font-size:11px; color:#555; transition:.15s; }
+.line-filter:hover{ background:#f7f7f7; }
+.line-filter.active{ background:#111315; color:#fff; border-color:#111315; }
+.station-result{ border:1px solid var(--line); border-radius:13px; overflow:hidden; background:#fff; max-height: 400px; overflow-y: auto;}
+.station-item{ padding:12px 13px; border-bottom:1px solid var(--line); cursor:pointer; }
+.station-item:last-child{ border-bottom:0; }
+.station-item:hover{ background:#f8f9fa; }
+.station-name{ font-weight:700; font-size:13px; }
+.station-meta{ margin-top:4px; color:var(--muted); font-size:11px; }
+.empty{ padding:18px 10px; text-align:center; color:#969ba1; font-size:12px; }
+
+/* MAIN MAP */
+.main{ position:relative; min-width:0; overflow:hidden; background:#eef0f2; }
+.map{ position:absolute; inset:0; overflow:hidden; cursor:grab; background:radial-gradient(circle at 50% 45%, #ffffff 0%, #f4f5f6 45%, #eceeef 100%); }
+.map.dragging{ cursor:grabbing; }
+.map-grid{ position:absolute; inset:-200px; opacity:.25; background-image:linear-gradient(#dfe2e5 1px,transparent 1px), linear-gradient(90deg,#dfe2e5 1px,transparent 1px); background-size:80px 80px; }
+#mapSvg{ position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; transform-origin:0 0; }
+.topbar{ position:absolute; top:18px; left:18px; right:18px; display:flex; justify-content:space-between; align-items:flex-start; z-index:10; pointer-events:none; }
+.map-title{ pointer-events:auto; background:rgba(255,255,255,.9); backdrop-filter:blur(14px); border:1px solid rgba(0,0,0,.06); border-radius:15px; padding:12px 15px; box-shadow:0 8px 30px rgba(0,0,0,.06); }
+.map-title strong{ display:block; font-size:14px; }
+.map-title span{ display:block; margin-top:3px; font-size:11px; color:var(--muted); }
+.top-actions{ display:flex; gap:7px; pointer-events:auto; }
+.top-btn{ border:1px solid rgba(0,0,0,.07); background:rgba(255,255,255,.93); backdrop-filter:blur(14px); border-radius:11px; height:40px; padding:0 12px; font-size:12px; box-shadow:0 8px 30px rgba(0,0,0,.06); }
+.zoom{ position:absolute; right:20px; bottom:20px; z-index:10; display:flex; flex-direction:column; gap:6px; }
+.zoom button{ width:40px; height:40px; border:1px solid rgba(0,0,0,.08); border-radius:11px; background:rgba(255,255,255,.94); font-size:18px; box-shadow:0 8px 25px rgba(0,0,0,.07); }
+
+/* POPUP */
+.station-popup{ position:absolute; right:20px; top:80px; width:330px; max-width:calc(100% - 40px); z-index:12; background:#fff; border:1px solid var(--line); border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.16); overflow:hidden; display:none; }
+.station-popup.show{ display:block; }
+.station-popup-inner { padding: 16px; }
+.station-popup-close{ position: absolute; right: 16px; top: 16px; border:0; background:#f1f2f3; width:28px; height:28px; border-radius:8px; cursor: pointer;}
+.station-popup-line{ font-size:11px; font-weight:800; color:#888; margin-bottom:8px; }
+.station-popup h2 { margin: 0 0 4px 0; font-size: 18px; font-weight: 800; }
+.station-popup-meta { font-size:11px; color:var(--muted); margin-bottom: 16px; }
+.arrival-item{ border:1px solid var(--line); border-radius:10px; padding:10px; margin-bottom:6px; }
+.arrival-main{ display:flex; justify-content:space-between; margin-bottom: 4px; font-size:12px; }
+.arrival-message { font-size: 13px; font-weight: bold; color: var(--danger); }
+
+/* MODAL */
+.modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.42); backdrop-filter:blur(6px); z-index:100; display:none; align-items:center; justify-content:center; padding:20px; }
+.modal-backdrop.show{ display:flex; }
+.modal{ width:650px; max-width:100%; max-height:90vh; overflow:auto; background:#fff; border-radius:20px; box-shadow:0 30px 100px rgba(0,0,0,.25); }
+.modal-head{ padding:20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
+.modal-title{ font-size:17px; font-weight:800; }
+.modal-close{ border:0; background:#f2f3f4; width:34px; height:34px; border-radius:9px; cursor:pointer;}
+.modal-body{ padding:20px; }
+.api-box{ padding:14px; border:1px solid var(--line); border-radius:14px; margin-bottom:12px; }
+.api-box-title{ font-size:13px; font-weight:800; }
+.api-box-desc{ margin-top:5px; color:var(--muted); font-size:11px; line-height:1.5; }
+.api-input{ width:100%; margin-top:10px; height:42px; border:1px solid #dfe1e4; border-radius:9px; padding:0 11px; outline:0; }
+.api-input:focus{ border-color:#111; }
+.api-actions{ display:flex; gap:7px; margin-top:10px; }
+.primary{ background:#111315; color:#fff; border:0; border-radius:9px; padding:10px 14px; }
+.secondary{ background:#f1f2f3; color:#222; border:0; border-radius:9px; padding:10px 14px; }
+.api-status{ margin-top:12px; padding:11px; border-radius:9px; font-size:11px; line-height:1.5; background:#f5f6f7; color:#666; }
+.api-status.success{ background:#edf8f1; color:#157344; }
+.api-status.error{ background:#fff0f0; color:#b32d2d; }
+
+/* MOBILE */
+.mobile-toggle{ display:none; }
+@media(max-width:850px){
+    .app{ grid-template-columns:1fr; }
+    .sidebar{ position:absolute; left:0; top:0; bottom:0; width:340px; max-width:90vw; transform:translateX(-100%); transition:.25s; z-index:50; box-shadow:20px 0 60px rgba(0,0,0,.15); }
+    .sidebar.open{ transform:translateX(0); }
+    .mobile-toggle{ display:block; position:absolute; left:15px; bottom:15px; z-index:30; width:44px; height:44px; border:0; border-radius:13px; background:#111315; color:#fff; box-shadow:0 10px 30px rgba(0,0,0,.2); }
+    .topbar{ left:70px; }
+    .station-popup{ top:auto; bottom:15px; right:15px; }
+}
+</style>
 </head>
+
 <body>
-    <div class="container">
-        <h1>서울시 공공데이터 API 연동 페이지</h1>
-        <p class="info">
-            요청하신 데이터셋(자전거, 미세먼지, 버스, 지하철 등)을 실시간으로 호출합니다.<br>
-            원활한 사용을 위해 <strong>서울열린데이터광장 API 인증키</strong>가 필요합니다.
-        </p>
-        
-        <div class="form-group">
-            <label for="apiKey">🔑 API 인증키 (필수)</label>
-            <input type="text" id="apiKey" placeholder="sample (실제 발급받은 키를 입력해주세요)" value="sample">
+
+<div class="app">
+    <!-- ================= SIDEBAR ================= -->
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-top">
+                <div class="logo">
+                    <div class="logo-mark">M</div>
+                    <div>
+                        <div class="brand-title">Metro Seoul</div>
+                        <div class="brand-sub">수도권 지하철 데이터 맵</div>
+                    </div>
+                </div>
+                <button class="api-button" id="openApiBtn" title="API 설정">⚙</button>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label for="dataset">📊 데이터셋 선택 (요청하신 URL 목록)</label>
-            <select id="dataset" onchange="updateServiceInfo()">
-                <option value="bikeList">서울시 자전거 따릉이 대여소 정보 (OA-12764)</option>
-                <option value="RealtimeCityAir">서울시 실시간 미세먼지 정보 (OA-15799)</option>
-                <option value="stationinfo">서울시 버스도착정보 (OA-12601)</option>
-                <option value="CardSubwayStatsNew">서울시 지하철호선별 역별 승하차 인원 (OA-12914)</option>
-                <option value="subwayStationMaster">서울시 역사마스터 정보 (OA-21232)</option>
-                <option value="SearchSTNTimeTableByFRCodeService">지하철 열차 시간표 검색 (OA-101)</option>
-                <option value="shortestRoute">지하철역 최단경로이동정보 (OA-22724)</option>
-                <option value="OtherService">기타 정보 (OA-109 등)</option>
-            </select>
+        <div class="search-wrap">
+            <div class="search">
+                <span class="search-icon">⌕</span>
+                <input id="stationSearch" type="text" placeholder="역 이름을 검색하세요" autocomplete="off">
+            </div>
         </div>
 
-        <div class="form-group">
-            <label for="serviceName">⚙️ 서비스명 (자동입력, 필요시 세부 서비스명으로 수정 가능)</label>
-            <input type="text" id="serviceName" value="bikeList">
+        <div class="content">
+            <!-- API STATUS -->
+            <div class="section">
+                <div class="section-title">API STATUS</div>
+                <div class="status-card">
+                    <div class="status-row">
+                        <span><span class="dot" id="apiDot"></span>서울 열린데이터</span>
+                        <span class="status-value" id="apiStatus">미연결</span>
+                    </div>
+                    <div class="status-row">
+                        <span>역 데이터</span>
+                        <span class="status-value" id="stationCount">0</span>
+                    </div>
+                    <div class="status-row">
+                        <span>실시간 열차</span>
+                        <span class="status-value" id="trainCount">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LINE FILTER -->
+            <div class="section">
+                <div class="section-title">노선</div>
+                <div class="line-filters" id="lineFilters">
+                    <!-- JS에서 렌더링 됩니다 -->
+                </div>
+            </div>
+
+            <!-- SEARCH RESULTS -->
+            <div class="section">
+                <div class="section-title">역 검색 결과</div>
+                <div class="station-result" id="searchResults">
+                    <div class="empty">역을 검색해보세요</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ================= MAIN ================= -->
+    <main class="main">
+        <div class="map" id="map">
+            <div class="map-grid" id="mapGrid"></div>
+            <svg id="mapSvg" xmlns="http://www.w3.org/2000/svg">
+                <!-- JS에서 마커 렌더링 -->
+            </svg>
         </div>
 
-        <div class="form-group">
-            <label for="dataType">📄 응답 데이터 형식</label>
-            <select id="dataType">
-                <option value="json">JSON (추천)</option>
-                <option value="xml">XML</option>
-            </select>
+        <div class="topbar">
+            <div class="map-title">
+                <strong>수도권 지하철</strong>
+                <span id="mapSubtitle">서울 열린데이터광장 실시간 데이터</span>
+            </div>
+            <div class="top-actions">
+                <button class="top-btn" id="refreshBtn">↻ 새로고침</button>
+                <button class="top-btn" id="centerBtn">◎ 전체보기</button>
+            </div>
         </div>
 
-        <button onclick="fetchData()">데이터 가져오기 (API 호출)</button>
+        <div class="zoom">
+            <button id="zoomIn">+</button>
+            <button id="zoomOut">−</button>
+        </div>
 
-        <h3 style="margin-top: 40px; color: #2c3e50;">API 호출 결과</h3>
-        <div id="urlDisplay" class="url-display" style="display: none;"></div>
-        <div class="result-container">
-            <pre id="result">API를 호출하면 여기에 결과가 표시됩니다...</pre>
+        <button class="mobile-toggle" id="mobileToggle">☰</button>
+
+        <!-- STATION POPUP -->
+        <div class="station-popup" id="stationPopup">
+            <!-- JS에서 내용 삽입 -->
+        </div>
+    </main>
+</div>
+
+<!-- ================= API MODAL ================= -->
+<div class="modal-backdrop" id="apiModal">
+    <div class="modal">
+        <div class="modal-head">
+            <div class="modal-title">서울 열린데이터 API 설정</div>
+            <button class="modal-close" id="closeApiBtn">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="api-box">
+                <div class="api-box-title">서울 열린데이터광장 인증키</div>
+                <div class="api-box-desc">
+                    서울 열린데이터광장에서 발급받은 일반 인증키를 입력하세요.<br>
+                    기본 테스트 키 'sample' 입력 시 일부 기능만 제한적으로 동작합니다.
+                </div>
+                <input id="seoulApiKey" class="api-input" type="password" placeholder="인증키 입력 (예: sample)">
+                
+                <div class="api-actions">
+                    <button class="primary" id="testApi">연결 테스트</button>
+                    <button class="secondary" id="saveApi">저장</button>
+                    <button class="secondary" id="deleteApi">삭제</button>
+                </div>
+                <div class="api-status" id="apiTestStatus">API 키를 입력한 후 연결 테스트를 눌러주세요.</div>
+            </div>
         </div>
     </div>
+</div>
 
-    <script>
-        // 드롭다운 변경 시 서비스명을 자동으로 업데이트
-        function updateServiceInfo() {
-            const datasetSelect = document.getElementById('dataset');
-            const serviceNameInput = document.getElementById('serviceName');
-            serviceNameInput.value = datasetSelect.value;
+<script>
+    /* =========================================================
+       CONFIG (실제 서울시 OpenAPI 엔드포인트 적용)
+       ========================================================= */
+    const CONFIG = {
+        seoulBase: "http://openapi.seoul.go.kr:8088", // 역사마스터 등 일반데이터용
+        subwayBase: "http://swopenAPI.seoul.go.kr/api/subway", // 실시간 열차도착/위치용
+        services: {
+            stationMaster: "subwayStationMaster",
+            realtimeArrival: "realtimeStationArrival",
+            realtimePosition: "realtimePosition"
+        },
+        refreshArrivalMs: 20000,
+        refreshPositionMs: 20000,
+        stationStart: 1,
+        stationEnd: 1000,
+        requestTimeout: 15000
+    };
+    
+    const state = {
+        apiKey: localStorage.getItem("seoul_openapi_key") || "",
+        stations: [],
+        visibleStations: [],
+        selectedStation: null,
+        selectedLine: "ALL",
+        searchQuery: "",
+        arrivals: [],
+        trainPositions: [],
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+        isLoadingStations: false,
+        isLoadingArrivals: false,
+        isLoadingPositions: false,
+        timers: { arrival: null, position: null }
+    };
+    
+    function $(selector) { return document.querySelector(selector); }
+    function $all(selector) { return [...document.querySelectorAll(selector)]; }
+    function escapeHTML(value) {
+        if (!value) return "";
+        return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    /* =========================================================
+       UI 연동 및 이벤트 바인딩 (핵심 추가/수정부)
+       ========================================================= */
+    function setupUIBindings() {
+        // 모달 열기/닫기
+        $("#openApiBtn").addEventListener("click", () => {
+            $("#seoulApiKey").value = state.apiKey;
+            $("#apiModal").classList.add("show");
+        });
+        $("#closeApiBtn").addEventListener("click", () => $("#apiModal").classList.remove("show"));
+        
+        // API 연동 테스트
+        $("#testApi").addEventListener("click", async () => {
+            const key = $("#seoulApiKey").value.trim();
+            if (!key) return setModalStatus("키를 입력하세요.", "error");
+            
+            setModalStatus("API 연결 확인 중...", "loading");
+            // 임시로 키 할당해서 테스트
+            const originalKey = state.apiKey;
+            state.apiKey = key;
+            const success = await testApiConnection();
+            if (!success) {
+                state.apiKey = originalKey; // 실패시 복구
+            }
+        });
+
+        // 저장 및 삭제
+        $("#saveApi").addEventListener("click", () => {
+            const key = $("#seoulApiKey").value.trim();
+            if (!key) return setModalStatus("저장할 키를 입력하세요.", "error");
+            state.apiKey = key;
+            localStorage.setItem("seoul_openapi_key", key);
+            setModalStatus("API 키가 저장되었습니다.", "success");
+            $("#apiModal").classList.remove("show");
+            initializeData();
+        });
+
+        $("#deleteApi").addEventListener("click", () => {
+            localStorage.removeItem("seoul_openapi_key");
+            state.apiKey = "";
+            $("#seoulApiKey").value = "";
+            setModalStatus("API 키가 삭제되었습니다.", "error");
+            setApiStatus("미연결", "error");
+        });
+
+        // 모바일 사이드바 토글
+        $("#mobileToggle").addEventListener("click", () => {
+            $("#sidebar").classList.toggle("open");
+        });
+
+        // 지도 줌 인/아웃 및 초기화
+        $("#zoomIn").addEventListener("click", () => { state.zoom = Math.min(4, state.zoom + 0.5); applyMapTransform(); });
+        $("#zoomOut").addEventListener("click", () => { state.zoom = Math.max(0.5, state.zoom - 0.5); applyMapTransform(); });
+        $("#centerBtn").addEventListener("click", () => { state.zoom = 1; state.panX = 0; state.panY = 0; applyMapTransform(); });
+    }
+
+    function setModalStatus(message, type) {
+        const el = $("#apiTestStatus");
+        el.textContent = message;
+        el.className = "api-status " + (type || "");
+    }
+
+    function setApiStatus(message, type = "normal") {
+        $("#apiStatus").textContent = message;
+        const dot = $("#apiDot");
+        dot.className = "dot " + type;
+    }
+
+    /* =========================================================
+       API URL BUILDER
+       ========================================================= */
+    function seoulUrl(service, start = 1, end = 1000) {
+        return `${CONFIG.seoulBase}/${encodeURIComponent(state.apiKey)}/json/${service}/${start}/${end}/`;
+    }
+    
+    function subwayUrl(service, start = 1, end = 1000, extra = "") {
+        let url = `${CONFIG.subwayBase}/${encodeURIComponent(state.apiKey)}/json/${service}/${start}/${end}`;
+        if (extra) url += `/${encodeURIComponent(extra)}`;
+        return url;
+    }
+    
+    async function fetchWithTimeout(url, options = {}, timeout = CONFIG.requestTimeout) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout);
+        try {
+            const response = await fetch(url, { ...options, signal: controller.signal, cache: "no-store" });
+            const text = await response.text();
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return JSON.parse(text);
+        } finally {
+            clearTimeout(timer);
         }
+    }
+    
+    // API 응답 객체 깊은 탐색 (기존 로직 유지)
+    function findRowArrays(value, result = [], depth = 0) {
+        if (depth > 8 || value == null) return result;
+        if (Array.isArray(value)) {
+            if (value.length > 0 && value.every(item => item !== null && typeof item === "object" && !Array.isArray(item))) result.push(value);
+            return result;
+        }
+        if (typeof value !== "object") return result;
+        for (const [k, child] of Object.entries(value)) {
+            if (k.toLowerCase() === "row" && Array.isArray(child)) { result.push(child); continue; }
+            findRowArrays(child, result, depth + 1);
+        }
+        return result;
+    }
+    
+    function extractRows(data, serviceName = "") {
+        let serviceObject = data[serviceName];
+        if(!serviceObject) {
+            for(const key of Object.keys(data)) {
+                if(key.toLowerCase() === serviceName.toLowerCase()) { serviceObject = data[key]; break; }
+            }
+        }
+        if (serviceObject && Array.isArray(serviceObject.row)) return serviceObject.row;
+        if (data && Array.isArray(data.row)) return data.row;
+        if (data && Array.isArray(data.data)) return data.data;
+        
+        const arrays = findRowArrays(data);
+        if (arrays.length > 0) return arrays.sort((a, b) => b.length - a.length)[0];
+        return [];
+    }
 
-        async function fetchData() {
-            const apiKey = document.getElementById('apiKey').value.trim();
-            const serviceName = document.getElementById('serviceName').value.trim();
-            const dataType = document.getElementById('dataType').value;
-            const resultBox = document.getElementById('result');
-            const urlDisplay = document.getElementById('urlDisplay');
+    function getField(row, possibleKeys) {
+        if (!row || typeof row !== "object") return "";
+        for (const key of possibleKeys) { if (row[key]) return row[key]; }
+        const rowKeys = Object.keys(row);
+        for (const wanted of possibleKeys) {
+            const foundKey = rowKeys.find(k => k.toLowerCase() === wanted.toLowerCase());
+            if (foundKey && row[foundKey]) return row[foundKey];
+        }
+        return "";
+    }
 
-            if (!apiKey) {
-                alert("API 인증키를 입력해주세요!");
+    function normalizeStation(row) {
+        if (!row || typeof row !== "object") return null;
+        const id = getField(row, ["STATN_ID", "STATION_CD", "statnId"]);
+        const name = getField(row, ["STATN_NM", "STATION_NM", "statnNm"]);
+        const line = getField(row, ["ROUTE", "LINE_NUM", "SUBWAY_NM"]);
+        let x = Number(String(getField(row, ["CRDNT_X", "X", "LNG"])).replace(/,/g, ""));
+        let y = Number(String(getField(row, ["CRDNT_Y", "Y", "LAT"])).replace(/,/g, ""));
+        
+        let lat = y, lng = x;
+        if (Math.abs(x) <= 90 && Math.abs(y) > 90) { lat = x; lng = y; }
+        
+        return { id: String(id).trim(), name: String(name).trim(), line: String(line).trim(), lat, lng, raw: row };
+    }
+
+    /* =========================================================
+       DATA LOADING
+       ========================================================= */
+    async function testApiConnection() {
+        try {
+            const url = seoulUrl(CONFIG.services.stationMaster, 1, 5);
+            const data = await fetchWithTimeout(url);
+            const rows = extractRows(data, CONFIG.services.stationMaster);
+            if (!rows.length) throw new Error("데이터 배열이 비어있습니다.");
+            setModalStatus("테스트 성공! API가 정상 연동되었습니다.", "success");
+            return true;
+        } catch (err) {
+            setModalStatus(`실패: ${err.message}`, "error");
+            return false;
+        }
+    }
+
+    async function loadStationMaster() {
+        if (state.isLoadingStations) return;
+        state.isLoadingStations = true;
+        setApiStatus("역 데이터 로딩중...", "loading");
+        
+        try {
+            const url = seoulUrl(CONFIG.services.stationMaster, CONFIG.stationStart, CONFIG.stationEnd);
+            const data = await fetchWithTimeout(url);
+            const rows = extractRows(data, CONFIG.services.stationMaster);
+            
+            const normalized = rows.map(normalizeStation).filter(s => s && s.name);
+            const unique = new Map();
+            for (const station of normalized) {
+                const key = station.id || `${station.name}_${station.line}`;
+                if (!unique.has(key)) unique.set(key, station);
+            }
+            
+            state.stations = [...unique.values()];
+            updateStats();
+            renderLineFilters();
+            applyFilters(); 
+            setApiStatus("정상 연결됨", "success");
+        } catch (error) {
+            setApiStatus("API 에러", "error");
+            console.error("역사마스터 로딩 에러:", error);
+        } finally {
+            state.isLoadingStations = false;
+        }
+    }
+
+    /* =========================================================
+       사이드바 검색 및 필터링
+       ========================================================= */
+    function normalizeLineName(line) {
+        return String(line || "기타").replace(/^서울교통공사\s*/i, "").trim();
+    }
+    
+    function renderLineFilters() {
+        const container = $("#lineFilters");
+        if (!container) return;
+        const lines = [...new Set(state.stations.map(s => normalizeLineName(s.line)))].sort();
+        
+        let html = `<button class="line-filter active" data-line="ALL">전체</button>`;
+        for (const line of lines) {
+            html += `<button class="line-filter" data-line="${escapeHTML(line)}">${escapeHTML(line)}</button>`;
+        }
+        container.innerHTML = html;
+        
+        $all(".line-filter").forEach(btn => {
+            btn.addEventListener("click", () => {
+                state.selectedLine = btn.dataset.line || "ALL";
+                $all(".line-filter").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                applyFilters();
+            });
+        });
+    }
+
+    function setupSearch() {
+        $("#stationSearch").addEventListener("input", e => {
+            state.searchQuery = e.target.value.trim().toLowerCase();
+            applyFilters();
+        });
+    }
+
+    function applyFilters() {
+        const query = state.searchQuery;
+        state.visibleStations = state.stations.filter(station => {
+            const line = normalizeLineName(station.line);
+            const matchLine = state.selectedLine === "ALL" || line === state.selectedLine;
+            const matchSearch = !query || station.name.toLowerCase().includes(query) || station.line.toLowerCase().includes(query);
+            return matchLine && matchSearch;
+        });
+        
+        renderMap();
+        renderSidebarStations(); // 사이드바 검색 리스트 업데이트
+        updateStats();
+    }
+
+    // 좌측 사이드바 결과 리스트 렌더링 추가
+    function renderSidebarStations() {
+        const container = $("#searchResults");
+        if(!container) return;
+        const stations = state.visibleStations.slice(0, 100); // 성능을 위해 100개까지만 렌더링
+        if(stations.length === 0) {
+            container.innerHTML = '<div class="empty">역을 찾을 수 없습니다.</div>';
+            return;
+        }
+        container.innerHTML = stations.map(s => `
+            <div class="station-item" onclick="window.selectStationById('${s.id}')">
+                <div class="station-name">${escapeHTML(s.name)}</div>
+                <div class="station-meta">${escapeHTML(s.line)}</div>
+            </div>
+        `).join("");
+    }
+
+    window.selectStationById = function(id) {
+        const st = state.stations.find(s => s.id === id);
+        if(st) {
+            selectStation(st);
+            if(window.innerWidth <= 850) $("#sidebar").classList.remove("open");
+        }
+    }
+
+    /* =========================================================
+       지도 (SVG) 렌더링 및 인터렉션
+       ========================================================= */
+    function projectStation(station, bounds, width, height) {
+        const padding = 70;
+        const lngRange = bounds.maxLng - bounds.minLng || 1;
+        const latRange = bounds.maxLat - bounds.minLat || 1;
+        const x = padding + ((station.lng - bounds.minLng) / lngRange) * (width - padding * 2);
+        const y = height - padding - ((station.lat - bounds.minLat) / latRange) * (height - padding * 2);
+        return { x, y };
+    }
+
+    function renderMap() {
+        const svg = $("#mapSvg");
+        if (!svg) return;
+        
+        const stations = state.visibleStations.filter(s => s.lat && s.lng);
+        if (!stations.length) {
+            svg.innerHTML = '<g><text x="50%" y="50%" text-anchor="middle" fill="#555">역 좌표 정보가 없습니다.</text></g>';
+            return;
+        }
+        
+        const rect = svg.parentElement.getBoundingClientRect();
+        const width = Math.max(rect.width, 500), height = Math.max(rect.height, 400);
+        svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+        
+        const bounds = {
+            minLat: Math.min(...stations.map(s => s.lat)),
+            maxLat: Math.max(...stations.map(s => s.lat)),
+            minLng: Math.min(...stations.map(s => s.lng)),
+            maxLng: Math.max(...stations.map(s => s.lng))
+        };
+        
+        const points = stations.map(st => ({ station: st, ...projectStation(st, bounds, width, height) }));
+        svg.innerHTML = `<rect x="0" y="0" width="${width}" height="${height}" fill="transparent"/>`;
+        
+        const stationGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        stationGroup.classList.add("stations-layer");
+        
+        for (const pt of points) {
+            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            g.style.cursor = "pointer";
+            g.innerHTML = `<circle cx="${pt.x}" cy="${pt.y}" r="5" fill="#fff" stroke="#111" stroke-width="2"><title>${pt.station.name} (${pt.station.line})</title></circle>`;
+            g.addEventListener("click", () => selectStation(pt.station));
+            stationGroup.appendChild(g);
+        }
+        svg.appendChild(stationGroup);
+        applyMapTransform();
+        renderTrainPositions(bounds, width, height, points);
+    }
+
+    function applyMapTransform() {
+        $all(".stations-layer, .train-layer").forEach(layer => {
+            layer.setAttribute("transform", `translate(${state.panX} ${state.panY}) scale(${state.zoom})`);
+        });
+    }
+
+    function setupMapControls() {
+        const mapArea = $("#map");
+        if (!mapArea) return;
+        
+        mapArea.addEventListener("wheel", e => {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 0.1 : -0.1;
+            state.zoom = Math.min(4, Math.max(0.5, state.zoom + delta));
+            applyMapTransform();
+        }, { passive: false });
+
+        let dragging = false, startX, startY, initX, initY;
+        mapArea.addEventListener("pointerdown", e => {
+            dragging = true; mapArea.classList.add("dragging");
+            startX = e.clientX; startY = e.clientY;
+            initX = state.panX; initY = state.panY;
+            mapArea.setPointerCapture(e.pointerId);
+        });
+        mapArea.addEventListener("pointermove", e => {
+            if(!dragging) return;
+            state.panX = initX + (e.clientX - startX);
+            state.panY = initY + (e.clientY - startY);
+            applyMapTransform();
+        });
+        const stopDrag = () => { dragging = false; mapArea.classList.remove("dragging"); };
+        mapArea.addEventListener("pointerup", stopDrag);
+        mapArea.addEventListener("pointercancel", stopDrag);
+    }
+
+    /* =========================================================
+       POPUP & REALTIME ARRIVAL
+       ========================================================= */
+    async function selectStation(station) {
+        state.selectedStation = station;
+        showStationPopup(station);
+        await loadStationArrival(station);
+    }
+
+    function showStationPopup(station) {
+        const popup = $("#stationPopup");
+        popup.innerHTML = `
+            <div class="station-popup-inner">
+                <button class="station-popup-close" id="closePopupBtn">×</button>
+                <div class="station-popup-line">${escapeHTML(station.line)}</div>
+                <h2>${escapeHTML(station.name)}역</h2>
+                <div class="station-popup-meta">ID: ${escapeHTML(station.id)}</div>
+                <div id="stationArrivals">로딩중...</div>
+            </div>
+        `;
+        popup.classList.add("show");
+        $("#closePopupBtn").addEventListener("click", () => popup.classList.remove("show"));
+    }
+
+    async function loadStationArrival(station) {
+        const container = $("#stationArrivals");
+        if (!container) return;
+        container.innerHTML = "실시간 도착정보 불러오는 중...";
+        
+        try {
+            const url = subwayUrl(CONFIG.services.realtimeArrival, 0, 10, station.name);
+            const data = await fetchWithTimeout(url);
+            const rows = extractRows(data, CONFIG.services.realtimeArrival);
+            
+            if(!rows || rows.length === 0) {
+                container.innerHTML = "<div class='empty'>운행 중인 열차 정보가 없습니다.</div>";
                 return;
             }
-
-            // 서울시 공공데이터 기본 URL 구조 생성 (1~5번째 데이터까지만 샘플 호출)
-            // *주의: 최신 브라우저 정책상 로컬 파일(file://)이 아닌 https 환경에서 호스팅 시 CORS/Mixed Content 이슈가 있을 수 있습니다.
-            const url = `http://openapi.seoul.go.kr:8088/${apiKey}/${dataType}/${serviceName}/1/5/`;
-
-            urlDisplay.style.display = 'block';
-            urlDisplay.innerHTML = `<strong>요청 URL:</strong> <a href="${url}" target="_blank">${url}</a>`;
-            resultBox.textContent = "데이터를 불러오는 중입니다... 잠시만 기다려주세요.";
-
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP 에러 발생! 상태 코드: ${response.status}`);
-                }
-                
-                if (dataType === 'json') {
-                    const data = await response.json();
-                    // JSON 데이터를 예쁘게 줄바꿈하여 출력
-                    resultBox.textContent = JSON.stringify(data, null, 2);
-                } else {
-                    const data = await response.text();
-                    resultBox.textContent = data;
-                }
-            } catch (error) {
-                resultBox.textContent = `🚨 오류가 발생했습니다!\n\n` + 
-                                        `원인 1: API 키가 유효하지 않거나 일일 허용량을 초과했을 수 있습니다.\n` +
-                                        `원인 2: 'sample' 키는 일부 데이터(예: 버스, 최단경로)에서 작동하지 않을 수 있습니다.\n` +
-                                        `원인 3: 추가 파라미터(역 코드, 노선 번호 등)가 필요한 API일 수 있습니다.\n\n` + 
-                                        `상세 에러 내용: ${error.message}`;
-            }
+            
+            container.innerHTML = rows.map(r => {
+                const trainName = getField(r, ["trainLineNm", "TRAIN_LINE_NM", "SUBWAY_NM"]);
+                const msg = getField(r, ["arvlMsg2", "ARVL_MSG2"]);
+                const direction = getField(r, ["updnLine", "UPDN_LINE"]);
+                return `
+                    <div class="arrival-item">
+                        <div class="arrival-main">
+                            <strong>${escapeHTML(trainName)}</strong>
+                            <span>${escapeHTML(direction)}</span>
+                        </div>
+                        <div class="arrival-message">${escapeHTML(msg)}</div>
+                    </div>
+                `;
+            }).join("");
+            
+        } catch (e) {
+            container.innerHTML = `<div class='arrival-message'>도착정보를 가져오지 못했습니다. (${e.message})</div>`;
         }
-    </script>
+    }
+
+    /* =========================================================
+       REALTIME POSITIONS
+       ========================================================= */
+    async function loadRealtimePositions() {
+        if (state.isLoadingPositions) return;
+        state.isLoadingPositions = true;
+        const lines = ["1호선", "2호선", "3호선", "4호선", "5호선", "6호선", "7호선", "8호선", "9호선"];
+        const results = [];
+        try {
+            for (const line of lines) {
+                try {
+                    const url = subwayUrl(CONFIG.services.realtimePosition, 0, 100, line);
+                    const data = await fetchWithTimeout(url, {}, 5000);
+                    const rows = extractRows(data, CONFIG.services.realtimePosition);
+                    if(rows) results.push(...rows);
+                } catch(e) { /* 개별 노선 에러 무시 */ }
+            }
+            state.trainPositions = results;
+            $("#trainCount").textContent = results.length.toLocaleString();
+            renderMap(); // 지도 재렌더링 시 기차도 같이 렌더링됨
+        } finally {
+            state.isLoadingPositions = false;
+        }
+    }
+
+    function renderTrainPositions(bounds, width, height, pointsMap) {
+        const svg = $("#mapSvg");
+        let layer = svg.querySelector(".train-layer");
+        if(layer) layer.remove();
+        
+        layer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        layer.classList.add("train-layer");
+        
+        // 역이름과 위치맵핑
+        const stationMap = new Map();
+        state.stations.forEach(s => stationMap.set(s.name, s));
+
+        state.trainPositions.forEach(train => {
+            const stName = getField(train, ["statnNm", "STATN_NM"]);
+            const station = stationMap.get(stName);
+            if(station && station.lat) {
+                const pt = projectStation(station, bounds, width, height);
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute("cx", pt.x); circle.setAttribute("cy", pt.y);
+                circle.setAttribute("r", 7);
+                circle.setAttribute("fill", "#e63946");
+                circle.setAttribute("stroke", "#fff");
+                circle.setAttribute("stroke-width", "2");
+                circle.innerHTML = `<title>${stName}역 열차: ${getField(train, ["trainNo","TRAIN_NO"])}</title>`;
+                layer.appendChild(circle);
+            }
+        });
+        
+        svg.appendChild(layer);
+        applyMapTransform();
+    }
+
+    function updateStats() {
+        $("#stationCount").textContent = state.stations.length.toLocaleString();
+    }
+
+    function setupRefreshButton() {
+        $("#refreshBtn").addEventListener("click", async (e) => {
+            e.target.disabled = true;
+            await loadStationMaster();
+            await loadRealtimePositions();
+            e.target.disabled = false;
+        });
+    }
+
+    /* =========================================================
+       INITIALIZE
+       ========================================================= */
+    async function initializeData() {
+        if (!state.apiKey) {
+            setApiStatus("키 미등록", "error");
+            return;
+        }
+        await loadStationMaster();
+        await loadRealtimePositions();
+        
+        // 자동 갱신 시작 (20초마다)
+        if(state.timers.arrival) clearInterval(state.timers.arrival);
+        if(state.timers.position) clearInterval(state.timers.position);
+        
+        state.timers.position = setInterval(loadRealtimePositions, CONFIG.refreshPositionMs);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        setupUIBindings();
+        setupSearch();
+        setupMapControls();
+        setupRefreshButton();
+        
+        // 창 크기 조절 시 지도 리렌더링
+        window.addEventListener("resize", () => {
+            setTimeout(renderMap, 150);
+        });
+
+        if (state.apiKey) {
+            $("#seoulApiKey").value = state.apiKey;
+            initializeData();
+        } else {
+            $("#apiModal").classList.add("show");
+        }
+    });
+
+</script>
+
 </body>
 </html>
