@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8">
 
@@ -8,105 +9,1618 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
   >
 
+  <meta
+    name="theme-color"
+    content="#0f172a"
+  >
+
   <title>Subway</title>
 
-  <link rel="stylesheet" href="style.css">
+  <style>
+
+    /* =========================================================
+       기본 변수
+    ========================================================= */
+
+    :root {
+
+      --bg-color: #f8f9fa;
+      --panel-bg: #ffffff;
+
+      --text-main: #111111;
+      --text-muted: #666666;
+
+      --border-color: #e2e8f0;
+
+      /* 현재 선택된 노선 색상 */
+      --line-color: #00a84f;
+
+      --train-up: #ef4444;
+      --train-down: #3b82f6;
+
+      --accent: #0071e3;
+
+      --v-spacing: 110px;
+      --h-spacing: 120px;
+
+    }
+
+
+    /* =========================================================
+       Reset
+    ========================================================= */
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+
+      width: 100%;
+      height: 100%;
+
+      overflow: hidden;
+    }
+
+
+    body {
+
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "SF Pro Display",
+        "SF Pro Text",
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+
+      background: var(--bg-color);
+      color: var(--text-main);
+
+      height: 100vh;
+
+      overscroll-behavior: none;
+
+    }
+
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+
+    button {
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+
+    /* =========================================================
+       App
+    ========================================================= */
+
+    .app-container {
+
+      width: 100%;
+      height: 100vh;
+
+      position: relative;
+
+      display: flex;
+      flex-direction: column;
+
+      overflow: hidden;
+
+    }
+
+
+    /* =========================================================
+       Subway Header
+    ========================================================= */
+
+    .subway-header {
+
+      position: fixed;
+
+      top: 0;
+      left: 0;
+
+      width: 100%;
+
+      height: 72px;
+
+      display: flex;
+      align-items: flex-start;
+
+      padding-top: 16px;
+      padding-left: 18px;
+
+      z-index: 1000;
+
+      /*
+       * 지도 클릭을 방해하지 않도록
+       * 실제 버튼/제목만 클릭 가능
+       */
+      pointer-events: none;
+
+    }
+
+
+    /* =========================================================
+       Subway 로고
+    ========================================================= */
+
+    .subway-title {
+
+      position: relative;
+
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "SF Pro Display",
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+
+      font-size: 24px;
+
+      font-weight: 800;
+
+      letter-spacing: -0.8px;
+
+      line-height: 1;
+
+      color: #111111;
+
+      /*
+       * 흰색 외곽선
+       */
+      text-shadow:
+
+        -2px -2px 0 #ffffff,
+         2px -2px 0 #ffffff,
+
+        -2px  2px 0 #ffffff,
+         2px  2px 0 #ffffff,
+
+         0 0 5px rgba(255,255,255,0.95),
+
+         0 2px 8px rgba(0,0,0,0.15);
+
+      pointer-events: auto;
+
+      user-select: none;
+
+      white-space: nowrap;
+
+    }
+
+
+    /* =========================================================
+       노선 선택기
+    ========================================================= */
+
+    .line-selector {
+
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 6px;
+
+      margin-left: 18px;
+
+      pointer-events: auto;
+
+    }
+
+
+    /*
+     * 실제 클릭 영역
+     *
+     * 색상 막대 자체는 20 × 10px
+     * 버튼 전체는 터치하기 편하도록 조금 크게 설정
+     */
+    .line-button {
+
+      position: relative;
+
+      width: 32px;
+      height: 16px;
+
+      padding: 0;
+      margin: 0;
+
+      border: 0;
+
+      outline: none;
+
+      background: transparent;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      cursor: pointer;
+
+      border-radius: 8px;
+
+      touch-action: manipulation;
+
+    }
+
+
+    /* =========================================================
+       실제 노선 색상
+    ========================================================= */
+
+    .line-button::after {
+
+      content: "";
+
+      display: block;
+
+      width: 20px;
+      height: 10px;
+
+      border-radius: 5px;
+
+      transform: scale(1);
+
+      transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        opacity 0.15s ease;
+
+    }
+
+
+    /* 선택된 노선 */
+
+    .line-button.active::after {
+
+      transform: scale(1.18);
+
+      box-shadow:
+
+        0 0 0 2px #ffffff,
+
+        0 2px 7px rgba(0,0,0,0.35);
+
+    }
+
+
+    .line-button:not(.active)::after {
+
+      opacity: 0.85;
+
+    }
+
+
+    .line-button:hover::after {
+
+      transform: scale(1.12);
+
+    }
+
+
+    .line-button.active:hover::after {
+
+      transform: scale(1.22);
+
+    }
+
+
+    /* =========================================================
+       서울 지하철 노선 색상
+    ========================================================= */
+
+    .line-1::after {
+      background: #0052a4;
+    }
+
+    .line-2::after {
+      background: #00a84f;
+    }
+
+    .line-3::after {
+      background: #ef7c1c;
+    }
+
+    .line-4::after {
+      background: #00a5de;
+    }
+
+    .line-5::after {
+      background: #996cac;
+    }
+
+    .line-6::after {
+      background: #cd7c2f;
+    }
+
+    .line-7::after {
+      background: #747f00;
+    }
+
+    .line-8::after {
+      background: #e6186c;
+    }
+
+    .line-9::after {
+      background: #bdb092;
+    }
+
+    .line-gta::after {
+      background: #9a6292;
+    }
+
+    .line-gyeongui::after {
+      background: #77c4a3;
+    }
+
+
+    /* =========================================================
+       Main
+    ========================================================= */
+
+    .main-content {
+
+      flex: 1;
+
+      width: 100%;
+      height: 100%;
+
+      background: #0f172a;
+
+      overflow-y: auto;
+      overflow-x: hidden;
+
+      position: relative;
+
+      /*
+       * Subway + 노선 버튼이 위에 있기 때문에
+       * 지도 내용이 겹치지 않도록 여백 확보
+       */
+      padding:
+
+        105px
+
+        0
+
+        60px;
+
+      scrollbar-width: none;
+
+    }
+
+
+    .main-content::-webkit-scrollbar {
+      display: none;
+    }
+
+
+    /* =========================================================
+       지도 안내 문구
+    ========================================================= */
+
+    .map-instruction {
+
+      width: 100%;
+
+      text-align: center;
+
+      color: #94a3b8;
+
+      font-size: 12px;
+
+      line-height: 1.5;
+
+      margin-bottom: 20px;
+
+      padding: 0 20px;
+
+      user-select: none;
+
+    }
+
+
+    /* =========================================================
+       세로 지도
+    ========================================================= */
+
+    .vertical-map-container {
+
+      position: relative;
+
+      width: 220px;
+
+      min-height: 800px;
+
+      margin: 0 auto;
+
+    }
+
+
+    /* =========================================================
+       세로 트랙
+    ========================================================= */
+
+    .v-track-line {
+
+      position: absolute;
+
+      top: 0;
+      bottom: 0;
+
+      width: 4px;
+
+      background: var(--line-color);
+
+      border-radius: 2px;
+
+      transition:
+        background-color 0.2s ease;
+
+    }
+
+
+    .v-up-line {
+      left: 20px;
+    }
+
+
+    .v-down-line {
+      right: 20px;
+    }
+
+
+    /* =========================================================
+       세로 역
+    ========================================================= */
+
+    .v-station-nodes {
+
+      position: absolute;
+
+      top: 0;
+      left: 0;
+
+      width: 100%;
+
+      min-height: 100%;
+
+    }
+
+
+    .v-station-node {
+
+      position: absolute;
+
+      left: 50%;
+
+      width: 14px;
+      height: 14px;
+
+      background: #1e293b;
+
+      border: 3px solid var(--line-color);
+
+      border-radius: 50%;
+
+      cursor: pointer;
+
+      transform: translateX(-50%);
+
+      z-index: 5;
+
+      transition:
+
+        transform 0.2s ease,
+
+        background-color 0.2s ease,
+
+        border-color 0.2s ease;
+
+    }
+
+
+    .v-station-node:hover {
+
+      transform:
+        translateX(-50%)
+        scale(1.4);
+
+      background: #ffffff;
+
+    }
+
+
+    .v-station-node:active {
+
+      transform:
+        translateX(-50%)
+        scale(1.25);
+
+    }
+
+
+    .v-station-name {
+
+      position: absolute;
+
+      left: 50%;
+      top: -20px;
+
+      transform: translateX(-50%);
+
+      font-size: 13px;
+
+      font-weight: 700;
+
+      color: #f8fafc;
+
+      white-space: nowrap;
+
+      text-shadow:
+        0 1px 3px rgba(0,0,0,0.9);
+
+      user-select: none;
+
+    }
+
+
+    /* =========================================================
+       세로 열차
+    ========================================================= */
+
+    .v-trains-container {
+
+      position: absolute;
+
+      top: 0;
+      left: 0;
+
+      width: 100%;
+      height: 100%;
+
+      pointer-events: none;
+
+      z-index: 6;
+
+    }
+
+
+    .v-train {
+
+      position: absolute;
+
+      width: 44px;
+
+      padding: 4px 0;
+
+      border-radius: 6px;
+
+      color: #ffffff;
+
+      font-size: 11px;
+
+      font-weight: bold;
+
+      display: flex;
+
+      flex-direction: column;
+
+      justify-content: center;
+      align-items: center;
+
+      transition:
+
+        top 1s cubic-bezier(
+          0.25,
+          1,
+          0.5,
+          1
+        );
+
+      box-shadow:
+        0 0 8px rgba(0,0,0,0.8);
+
+      transform: translateX(-50%);
+
+    }
+
+
+    .v-train.up {
+
+      left: 22px;
+
+      background: var(--train-up);
+
+    }
+
+
+    .v-train.down {
+
+      left: 202px;
+
+      background: var(--train-down);
+
+    }
+
+
+    .v-train-status {
+
+      font-size: 10px;
+
+      color: #ffffff;
+
+      opacity: 0.9;
+
+      margin-top: 2px;
+
+      white-space: nowrap;
+
+    }
+
+
+    /* =========================================================
+       전체 팝업
+    ========================================================= */
+
+    .full-popup {
+
+      position: absolute;
+
+      top: 0;
+      left: 0;
+
+      width: 100%;
+      height: 100%;
+
+      background: #ffffff;
+
+      z-index: 2000;
+
+      display: flex;
+
+      flex-direction: column;
+
+      overflow: hidden;
+
+    }
+
+
+    .full-popup.hidden {
+      display: none;
+    }
+
+
+    /* =========================================================
+       팝업 헤더
+    ========================================================= */
+
+    .popup-header {
+
+      min-height: 58px;
+
+      display: flex;
+
+      justify-content: space-between;
+      align-items: center;
+
+      padding: 12px 16px;
+
+      border-bottom: 1px solid var(--border-color);
+
+      background: var(--panel-bg);
+
+      flex-shrink: 0;
+
+    }
+
+
+    .popup-stn-name {
+
+      font-size: 18px;
+
+      font-weight: 700;
+
+      margin-left: 6px;
+
+    }
+
+
+    .badge {
+
+      display: inline-block;
+
+      background: var(--line-color);
+
+      color: #ffffff;
+
+      padding: 4px 8px;
+
+      border-radius: 6px;
+
+      font-size: 12px;
+
+      font-weight: 700;
+
+      transition:
+        background-color 0.2s ease;
+
+    }
+
+
+    .close-btn {
+
+      background: #e2e8f0;
+
+      color: #111827;
+
+      border: none;
+
+      padding: 6px 12px;
+
+      border-radius: 6px;
+
+      font-weight: bold;
+
+      cursor: pointer;
+
+      white-space: nowrap;
+
+    }
+
+
+    .close-btn:hover {
+
+      background: #cbd5e1;
+
+    }
+
+
+    /* =========================================================
+       가로 지도
+    ========================================================= */
+
+    .h-map-area {
+
+      height: 140px;
+
+      position: relative;
+
+      background: #0f172a;
+
+      display: flex;
+
+      flex-direction: column;
+
+      overflow: hidden;
+
+      flex-shrink: 0;
+
+      border-bottom:
+        2px solid var(--line-color);
+
+      transition:
+        border-color 0.2s ease;
+
+    }
+
+
+    .h-track-scroll-container {
+
+      flex: 1;
+
+      overflow-x: auto;
+      overflow-y: hidden;
+
+      display: flex;
+
+      align-items: center;
+
+      padding: 0 40px;
+
+      scrollbar-width: none;
+
+    }
+
+
+    .h-track-scroll-container::-webkit-scrollbar {
+      display: none;
+    }
+
+
+    .h-track-wrapper {
+
+      position: relative;
+
+      height: 100%;
+
+      min-width: max-content;
+
+      display: flex;
+
+      align-items: center;
+
+    }
+
+
+    /* =========================================================
+       가로 트랙
+    ========================================================= */
+
+    .h-track-line {
+
+      position: absolute;
+
+      left: 0;
+      right: 0;
+
+      height: 3px;
+
+      background: var(--line-color);
+
+      border-radius: 2px;
+
+      transition:
+        background-color 0.2s ease;
+
+    }
+
+
+    .h-up-line {
+      top: 40px;
+    }
+
+
+    .h-down-line {
+      top: 100px;
+    }
+
+
+    /* =========================================================
+       가로 역
+    ========================================================= */
+
+    .h-station-nodes {
+
+      position: absolute;
+
+      top: 0;
+      left: 0;
+
+      height: 100%;
+
+      display: flex;
+
+      z-index: 2;
+
+    }
+
+
+    .h-station-node {
+
+      position: absolute;
+
+      width: 14px;
+      height: 14px;
+
+      background: #1e293b;
+
+      border: 2px solid var(--line-color);
+
+      border-radius: 50%;
+
+      top: 63px;
+
+      transform: translateX(-50%);
+
+      transition:
+        border-color 0.2s ease;
+
+    }
+
+
+    .h-station-name {
+
+      position: absolute;
+
+      top: -24px;
+      left: 50%;
+
+      transform: translateX(-50%);
+
+      font-size: 11px;
+
+      font-weight: 700;
+
+      white-space: nowrap;
+
+      color: #cbd5e1;
+
+      text-shadow:
+        0 1px 3px rgba(0,0,0,0.8);
+
+    }
+
+
+    /* =========================================================
+       가로 열차
+    ========================================================= */
+
+    .h-trains-container {
+
+      position: absolute;
+
+      top: 0;
+      left: 0;
+
+      width: 100%;
+      height: 100%;
+
+      pointer-events: none;
+
+      z-index: 3;
+
+    }
+
+
+    .h-train {
+
+      position: absolute;
+
+      width: 44px;
+
+      padding: 4px 0;
+
+      border-radius: 6px;
+
+      color: #ffffff;
+
+      font-size: 10px;
+
+      font-weight: bold;
+
+      display: flex;
+
+      flex-direction: column;
+
+      justify-content: center;
+      align-items: center;
+
+      transition:
+
+        left 1s cubic-bezier(
+          0.25,
+          1,
+          0.5,
+          1
+        );
+
+      transform: translateX(-50%);
+
+      box-shadow:
+        0 0 8px rgba(0,0,0,0.8);
+
+    }
+
+
+    .h-train.up {
+
+      top: 20px;
+
+      background: var(--train-up);
+
+    }
+
+
+    .h-train.down {
+
+      top: 80px;
+
+      background: var(--train-down);
+
+    }
+
+
+    .h-train-status {
+
+      font-size: 9px;
+
+      color: #ffffff;
+
+      margin-top: 2px;
+
+      white-space: nowrap;
+
+    }
+
+
+    /* =========================================================
+       팝업 본문
+    ========================================================= */
+
+    .popup-body {
+
+      padding: 16px;
+
+      overflow-y: auto;
+
+      overflow-x: hidden;
+
+      flex: 1;
+
+      background: var(--bg-color);
+
+      scrollbar-width: thin;
+
+    }
+
+
+    .info-section {
+
+      margin-bottom: 20px;
+
+      background: #ffffff;
+
+      padding: 14px;
+
+      border-radius: 12px;
+
+      box-shadow:
+        0 2px 8px rgba(0,0,0,0.04);
+
+      border:
+        1px solid var(--border-color);
+
+    }
+
+
+    .info-section h3 {
+
+      font-size: 14px;
+
+      color: var(--text-main);
+
+      margin:
+        0 0 12px;
+
+    }
+
+
+    /* =========================================================
+       섹션 헤더
+    ========================================================= */
+
+    .section-header {
+
+      display: flex;
+
+      justify-content: space-between;
+      align-items: center;
+
+      margin-bottom: 8px;
+
+      gap: 10px;
+
+    }
+
+
+    .section-header h3 {
+      margin-bottom: 0;
+    }
+
+
+    .date-type {
+
+      font-size: 12px;
+
+      font-weight: bold;
+
+      color: var(--accent);
+
+      white-space: nowrap;
+
+    }
+
+
+    /* =========================================================
+       승하차 통계
+    ========================================================= */
+
+    .stat-grid {
+
+      display: grid;
+
+      grid-template-columns: 1fr 1fr;
+
+      gap: 10px;
+
+    }
+
+
+    .stat-box {
+
+      background: #f8fafc;
+
+      padding: 12px;
+
+      border-radius: 8px;
+
+      border:
+        1px solid var(--border-color);
+
+    }
+
+
+    .stat-title {
+
+      font-size: 11px;
+
+      color: var(--text-muted);
+
+      margin-bottom: 4px;
+
+    }
+
+
+    .stat-value {
+
+      font-size: 16px;
+
+      font-weight: 700;
+
+      color: var(--text-main);
+
+    }
+
+
+    /* =========================================================
+       도착 정보
+    ========================================================= */
+
+    .arrival-split {
+
+      display: flex;
+
+      gap: 10px;
+
+      align-items: flex-start;
+
+    }
+
+
+    .arr-col {
+
+      flex: 1;
+
+      min-width: 0;
+
+      background: #f8fafc;
+
+      padding: 10px;
+
+      border-radius: 8px;
+
+      border:
+        1px solid var(--border-color);
+
+    }
+
+
+    .arr-col h4 {
+
+      margin:
+        0 0 10px;
+
+      font-size: 12px;
+
+      text-align: center;
+
+      color: var(--text-muted);
+
+    }
+
+
+    /* =========================================================
+       도착 / 시간표 아이템
+    ========================================================= */
+
+    .arr-item,
+    .tt-item {
+
+      background: #ffffff;
+
+      padding: 8px;
+
+      border-radius: 6px;
+
+      margin-bottom: 6px;
+
+      border:
+        1px solid var(--border-color);
+
+      border-left:
+        4px solid #cccccc;
+
+      font-size: 12px;
+
+    }
+
+
+    .arr-item.up,
+    .tt-item.up {
+
+      border-left-color:
+        var(--train-up);
+
+    }
+
+
+    .arr-item.down,
+    .tt-item.down {
+
+      border-left-color:
+        var(--train-down);
+
+    }
+
+
+    .arr-top-row {
+
+      display: flex;
+
+      justify-content: space-between;
+      align-items: center;
+
+      margin-bottom: 4px;
+
+      gap: 6px;
+
+    }
+
+
+    .arr-time {
+
+      color: #dc2626;
+
+      font-weight: 700;
+
+      font-size: 13px;
+
+    }
+
+
+    .arr-desc {
+
+      font-size: 11px;
+
+      color: var(--text-muted);
+
+    }
+
+
+    /* =========================================================
+       급행 뱃지
+    ========================================================= */
+
+    .exp-badge {
+
+      color: #ffffff;
+
+      font-size: 9px;
+
+      padding: 2px 4px;
+
+      border-radius: 4px;
+
+      font-weight: bold;
+
+    }
+
+
+    .exp-normal {
+      background: #64748b;
+    }
+
+
+    .exp-express {
+
+      background: #eab308;
+
+      color: #000000;
+
+    }
+
+
+    .exp-special {
+      background: #ef4444;
+    }
+
+
+    /* =========================================================
+       로딩
+    ========================================================= */
+
+    .loading-text {
+
+      color: var(--text-muted);
+
+      font-size: 12px;
+
+      font-style: italic;
+
+      margin-bottom: 10px;
+
+    }
+
+
+    /* =========================================================
+       시간표
+    ========================================================= */
+
+    .tt-list {
+
+      max-height: 250px;
+
+      overflow-y: auto;
+
+      scrollbar-width: thin;
+
+    }
+
+
+    /* =========================================================
+       모바일
+    ========================================================= */
+
+    @media (max-width: 600px) {
+
+      .subway-header {
+
+        padding-left: 14px;
+
+        padding-top: 14px;
+
+      }
+
+
+      .subway-title {
+
+        font-size: 23px;
+
+      }
+
+
+      .line-selector {
+
+        margin-left: 15px;
+
+        gap: 5px;
+
+      }
+
+
+      .line-button {
+
+        width: 30px;
+        height: 15px;
+
+      }
+
+
+      .line-button::after {
+
+        width: 20px;
+        height: 10px;
+
+      }
+
+
+      .main-content {
+
+        padding-top: 100px;
+
+      }
+
+
+      .arrival-split {
+
+        gap: 7px;
+
+      }
+
+
+      .arr-col {
+
+        padding: 8px;
+
+      }
+
+    }
+
+
+    /* =========================================================
+       아주 작은 화면
+    ========================================================= */
+
+    @media (max-width: 360px) {
+
+      .subway-title {
+
+        font-size: 21px;
+
+      }
+
+
+      .line-selector {
+
+        margin-left: 10px;
+
+      }
+
+
+      .main-content {
+
+        padding-top: 96px;
+
+      }
+
+    }
+
+  </style>
+
 </head>
+
 
 <body>
 
   <div class="app-container">
 
-    <!-- ==============================
-         Subway 헤더
-    ============================== -->
+
+    <!-- =======================================================
+         Subway Header
+    ======================================================== -->
+
     <header class="subway-header">
 
-      <div class="subway-title">
+      <div
+        class="subway-title"
+        aria-label="Subway"
+      >
         Subway
       </div>
 
-      <!-- 노선 선택 -->
-      <div
+
+      <!-- =====================================================
+           노선 선택
+      ====================================================== -->
+
+      <nav
         class="line-selector"
         id="lineSelector"
-        aria-label="노선 선택"
+        aria-label="지하철 노선 선택"
       >
 
         <button
+          type="button"
           class="line-button line-1"
           data-line="1호선"
           aria-label="1호선"
+          title="1호선"
         ></button>
 
+
         <button
+          type="button"
           class="line-button line-2 active"
           data-line="2호선"
           aria-label="2호선"
+          title="2호선"
+          aria-pressed="true"
         ></button>
 
+
         <button
+          type="button"
           class="line-button line-3"
           data-line="3호선"
           aria-label="3호선"
+          title="3호선"
         ></button>
 
+
         <button
+          type="button"
           class="line-button line-4"
           data-line="4호선"
           aria-label="4호선"
+          title="4호선"
         ></button>
 
+
         <button
+          type="button"
           class="line-button line-5"
           data-line="5호선"
           aria-label="5호선"
+          title="5호선"
         ></button>
 
+
         <button
+          type="button"
           class="line-button line-6"
           data-line="6호선"
           aria-label="6호선"
+          title="6호선"
         ></button>
 
+
         <button
+          type="button"
           class="line-button line-7"
           data-line="7호선"
           aria-label="7호선"
+          title="7호선"
         ></button>
 
+
         <button
+          type="button"
           class="line-button line-8"
           data-line="8호선"
           aria-label="8호선"
+          title="8호선"
         ></button>
 
+
         <button
+          type="button"
           class="line-button line-9"
           data-line="9호선"
           aria-label="9호선"
+          title="9호선"
         ></button>
 
+
         <button
+          type="button"
           class="line-button line-gta"
           data-line="GTX-A"
           aria-label="GTX-A"
+          title="GTX-A"
         ></button>
 
+
         <button
+          type="button"
           class="line-button line-gyeongui"
           data-line="경의중앙선"
           aria-label="경의중앙선"
+          title="경의중앙선"
         ></button>
 
-      </div>
+      </nav>
 
     </header>
 
 
-    <!-- ==============================
+    <!-- =======================================================
          메인 세로 지도
-    ============================== -->
+    ======================================================== -->
+
     <main
       class="main-content"
       id="mainContent"
@@ -116,18 +1630,35 @@
         역을 터치하면 상세 정보 및 가로 지도가 열립니다.
       </div>
 
+
       <div
         class="vertical-map-container"
         id="vMapContainer"
       >
 
-        <div class="v-track-line v-up-line"></div>
-        <div class="v-track-line v-down-line"></div>
+        <!-- 세로 노선 -->
+
+        <div
+          class="v-track-line v-up-line"
+          aria-hidden="true"
+        ></div>
+
+
+        <div
+          class="v-track-line v-down-line"
+          aria-hidden="true"
+        ></div>
+
+
+        <!-- 역 -->
 
         <div
           id="vStationNodes"
           class="v-station-nodes"
         ></div>
+
+
+        <!-- 열차 -->
 
         <div
           id="vTrainsContainer"
@@ -139,15 +1670,22 @@
     </main>
 
 
-    <!-- ==============================
+    <!-- =======================================================
          역 상세 팝업
-    ============================== -->
+    ======================================================== -->
+
     <div
       class="full-popup hidden"
       id="fullPopup"
+      aria-hidden="true"
     >
 
-      <div class="popup-header">
+
+      <!-- =====================================================
+           팝업 헤더
+      ====================================================== -->
+
+      <header class="popup-header">
 
         <div>
 
@@ -158,6 +1696,7 @@
             2호선
           </span>
 
+
           <span
             id="panelStationName"
             class="popup-stn-name"
@@ -167,20 +1706,26 @@
 
         </div>
 
+
         <button
+          type="button"
           class="close-btn"
           id="closePopup"
         >
           ✕ 닫기
         </button>
 
-      </div>
+      </header>
 
 
-      <!-- ==============================
+      <!-- =====================================================
            가로 실시간 지도
-      ============================== -->
-      <section class="h-map-area">
+      ====================================================== -->
+
+      <section
+        class="h-map-area"
+        aria-label="가로 실시간 지하철 지도"
+      >
 
         <div class="h-track-scroll-container">
 
@@ -189,13 +1734,31 @@
             id="hTrackWrapper"
           >
 
-            <div class="h-track-line h-up-line"></div>
-            <div class="h-track-line h-down-line"></div>
+            <!-- 상행/내선 -->
+
+            <div
+              class="h-track-line h-up-line"
+              aria-hidden="true"
+            ></div>
+
+
+            <!-- 하행/외선 -->
+
+            <div
+              class="h-track-line h-down-line"
+              aria-hidden="true"
+            ></div>
+
+
+            <!-- 역 -->
 
             <div
               id="hStationNodes"
               class="h-station-nodes"
             ></div>
+
+
+            <!-- 열차 -->
 
             <div
               id="hTrainsContainer"
@@ -209,15 +1772,23 @@
       </section>
 
 
-      <!-- ==============================
+      <!-- =====================================================
            상세 정보
-      ============================== -->
+      ====================================================== -->
+
       <div class="popup-body">
 
-        <!-- 실시간 도착 -->
+
+        <!-- ===================================================
+             실시간 도착
+        ==================================================== -->
+
         <section class="info-section">
 
-          <h3>⏱️ 실시간 도착 정보</h3>
+          <h3>
+            ⏱️ 실시간 도착 정보
+          </h3>
+
 
           <div
             id="arrLoading"
@@ -226,11 +1797,18 @@
             불러오는 중...
           </div>
 
+
           <div class="arrival-split">
+
+
+            <!-- 상행 / 내선 -->
 
             <div class="arr-col">
 
-              <h4>상행 / 내선</h4>
+              <h4>
+                상행 / 내선
+              </h4>
+
 
               <div
                 id="arrUpList"
@@ -241,9 +1819,15 @@
 
             </div>
 
+
+            <!-- 하행 / 외선 -->
+
             <div class="arr-col">
 
-              <h4>하행 / 외선</h4>
+              <h4>
+                하행 / 외선
+              </h4>
+
 
               <div
                 id="arrDownList"
@@ -259,10 +1843,16 @@
         </section>
 
 
-        <!-- 승하차 통계 -->
+        <!-- ===================================================
+             승하차 통계
+        ==================================================== -->
+
         <section class="info-section">
 
-          <h3>📊 시간대별 승하차 통계</h3>
+          <h3>
+            📊 시간대별 승하차 통계
+          </h3>
+
 
           <div
             id="statLoading"
@@ -271,13 +1861,18 @@
             데이터 분석 중...
           </div>
 
+
           <div class="stat-grid">
+
+
+            <!-- 승차 -->
 
             <div class="stat-box">
 
               <div class="stat-title">
                 해당 시간 승차
               </div>
+
 
               <div
                 class="stat-value"
@@ -288,11 +1883,15 @@
 
             </div>
 
+
+            <!-- 하차 -->
+
             <div class="stat-box">
 
               <div class="stat-title">
                 해당 시간 하차
               </div>
+
 
               <div
                 class="stat-value"
@@ -308,14 +1907,19 @@
         </section>
 
 
-        <!-- 시간표 -->
+        <!-- ===================================================
+             시간표
+        ==================================================== -->
+
         <section class="info-section">
+
 
           <div class="section-header">
 
             <h3>
               🕒 역 시간표 (현재시간 이후)
             </h3>
+
 
             <span
               id="ttDateType"
@@ -326,6 +1930,7 @@
 
           </div>
 
+
           <div
             id="ttLoading"
             class="loading-text"
@@ -333,11 +1938,18 @@
             시간표 데이터를 불러오는 중입니다...
           </div>
 
+
           <div class="arrival-split">
+
+
+            <!-- 상행 -->
 
             <div class="arr-col">
 
-              <h4>상행 / 내선</h4>
+              <h4>
+                상행 / 내선
+              </h4>
+
 
               <div
                 id="ttUpList"
@@ -348,9 +1960,15 @@
 
             </div>
 
+
+            <!-- 하행 -->
+
             <div class="arr-col">
 
-              <h4>하행 / 외선</h4>
+              <h4>
+                하행 / 외선
+              </h4>
+
 
               <div
                 id="ttDownList"
@@ -371,7 +1989,214 @@
 
   </div>
 
+
+  <!-- =========================================================
+       기존 JavaScript
+  ========================================================== -->
+
   <script src="app.js"></script>
 
+
+  <!-- =========================================================
+       노선 선택 연결
+  ========================================================== -->
+
+  <script>
+
+    /*
+     * 현재 선택된 노선
+     */
+    let currentLine = "2호선";
+
+
+    /*
+     * 노선 색상
+     */
+    const LINE_COLORS = {
+
+      "1호선": "#0052a4",
+      "2호선": "#00a84f",
+      "3호선": "#ef7c1c",
+      "4호선": "#00a5de",
+      "5호선": "#996cac",
+      "6호선": "#cd7c2f",
+      "7호선": "#747f00",
+      "8호선": "#e6186c",
+      "9호선": "#bdb092",
+
+      "GTX-A": "#9a6292",
+
+      "경의중앙선": "#77c4a3"
+
+    };
+
+
+    /*
+     * 노선 버튼
+     */
+    const lineButtons =
+      document.querySelectorAll(".line-button");
+
+
+    /*
+     * 노선 색상 적용
+     */
+    function applyLineColor(line) {
+
+      const color =
+        LINE_COLORS[line] ||
+        LINE_COLORS["2호선"];
+
+
+      document.documentElement.style
+        .setProperty(
+          "--line-color",
+          color
+        );
+
+    }
+
+
+    /*
+     * 노선 선택 상태 업데이트
+     */
+    function updateLineButtons(line) {
+
+      lineButtons.forEach(button => {
+
+        const buttonLine =
+          button.dataset.line;
+
+        const isActive =
+          buttonLine === line;
+
+
+        button.classList.toggle(
+          "active",
+          isActive
+        );
+
+
+        button.setAttribute(
+          "aria-pressed",
+          isActive ? "true" : "false"
+        );
+
+      });
+
+    }
+
+
+    /*
+     * 현재 노선 변경
+     */
+    function changeLine(line) {
+
+      if (!LINE_COLORS[line]) {
+        return;
+      }
+
+
+      currentLine = line;
+
+
+      /*
+       * 색상 변경
+       */
+      applyLineColor(line);
+
+
+      /*
+       * 버튼 선택 상태 변경
+       */
+      updateLineButtons(line);
+
+
+      /*
+       * 다른 JS에서 사용할 수 있도록
+       * 전역 상태로 저장
+       */
+      window.currentLine = line;
+
+
+      /*
+       * 이벤트 발생
+       *
+       * app.js에서 이 이벤트를 받아
+       * 실제 역 데이터 / 열차 데이터를
+       * 다시 렌더링할 수 있음.
+       */
+      window.dispatchEvent(
+        new CustomEvent(
+          "subwayLineChanged",
+          {
+            detail: {
+              line: line,
+              color: LINE_COLORS[line]
+            }
+          }
+        )
+      );
+
+    }
+
+
+    /*
+     * 모든 노선 버튼 클릭 이벤트
+     */
+    lineButtons.forEach(button => {
+
+      button.addEventListener(
+        "click",
+        function() {
+
+          const line =
+            this.dataset.line;
+
+
+          if (!line) {
+            return;
+          }
+
+
+          if (line === currentLine) {
+            return;
+          }
+
+
+          changeLine(line);
+
+        }
+      );
+
+    });
+
+
+    /*
+     * 초기 상태
+     */
+    applyLineColor(currentLine);
+
+    updateLineButtons(currentLine);
+
+    window.currentLine = currentLine;
+
+
+    /*
+     * app.js에서 사용할 수 있도록
+     * 함수도 전역으로 노출
+     */
+    window.changeSubwayLine =
+      changeLine;
+
+
+    window.getCurrentSubwayLine =
+      function() {
+        return currentLine;
+      };
+
+  </script>
+
 </body>
+
 </html>
