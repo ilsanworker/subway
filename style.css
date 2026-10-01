@@ -63,186 +63,58 @@ body {
   position: relative;
 }
 
-/* ==============================
-   Subway Header
-============================== */
 
-.subway-header {
-  position: fixed;
-  top: 0;
-  left: 0;
+/* =========================================================
+   Header
+========================================================= */
 
-  width: 100%;
-  height: 64px;
-
+.topbar {
   display: flex;
+  justify-content: space-between;
   align-items: center;
 
-  padding: 0 18px;
+  padding: 10px 14px;
 
-  box-sizing: border-box;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border-color);
 
-  z-index: 1000;
-
-  pointer-events: none;
+  z-index: 10;
+  gap: 8px;
 }
 
-
-/* Subway */
-
-.subway-title {
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    "SF Pro Display",
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
-
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -0.8px;
-
-  color: #111;
-
-  /*
-   * 흰색 외곽선
-   */
-  text-shadow:
-    -2px -2px 0 #fff,
-     2px -2px 0 #fff,
-    -2px  2px 0 #fff,
-     2px  2px 0 #fff,
-     0px  0px 5px rgba(255,255,255,0.95);
-
-  pointer-events: auto;
+.logo {
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-
-/* ==============================
-   노선 선택기
-============================== */
-
-.line-selector {
-  display: flex;
-
-  flex-direction: column;
-
-  gap: 7px;
-
-  margin-left: 18px;
-
-  pointer-events: auto;
-}
-
-
-/* 실제 클릭 영역 */
-
-.line-button {
-  width: 32px;
-  height: 17px;
-
-  padding: 0;
-
-  border: none;
-
-  background: transparent;
-
+.controls {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
 
-  cursor: pointer;
-
-  position: relative;
+  gap: 6px;
+  flex: 1;
 }
 
+.controls input,
+.controls select {
+  width: 90px;
 
-/* 실제 노선 색상 */
+  padding: 6px 8px;
 
-.line-button::after {
-  content: "";
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
 
-  display: block;
-
-  width: 20px;
-  height: 10px;
-
-  border-radius: 5px;
-
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
+  font-size: 12px;
+  outline: none;
 }
 
-
-/* 선택 상태 */
-
-.line-button.active::after {
-  transform: scale(1.18);
-
-  box-shadow:
-    0 0 0 2px #fff,
-    0 2px 7px rgba(0,0,0,0.25);
+.controls select {
+  width: 100px;
+  font-weight: 600;
 }
 
-
-/* ==============================
-   서울 지하철 노선 색상
-============================== */
-
-.line-1::after {
-  background: #0052a4;
-}
-
-.line-2::after {
-  background: #00a84f;
-}
-
-.line-3::after {
-  background: #ef7c1c;
-}
-
-.line-4::after {
-  background: #00a5de;
-}
-
-.line-5::after {
-  background: #996cac;
-}
-
-.line-6::after {
-  background: #cd7c2f;
-}
-
-.line-7::after {
-  background: #747f00;
-}
-
-.line-8::after {
-  background: #e6186c;
-}
-
-.line-9::after {
-  background: #bdb092;
-}
-
-.line-gta::after {
-  background: #9a6292;
-}
-
-.line-gyeongui::after {
-  background: #77c4a3;
-}
-
-
-/* ==============================
-   지도 영역
-============================== */
-
-.main-content {
-  padding-top: 85px;
-}
 
 /* =========================================================
    Main
