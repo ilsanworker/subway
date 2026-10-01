@@ -2,55 +2,115 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
   >
 
-  <title>Seoul Subway Radar</title>
+  <title>Subway</title>
 
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
+
   <div class="app-container">
 
     <!-- ==============================
-         상단 헤더
+         Subway 헤더
     ============================== -->
-    <header class="topbar">
-      <div class="logo">Seoul Train Map</div>
+    <header class="subway-header">
 
-      <div class="controls">
-        <input
-          type="text"
-          id="apiKeyInput"
-          placeholder="API 키 입력"
-          value="sample"
-          aria-label="API 키 입력"
-        >
-
-        <select id="lineSelect" aria-label="노선 선택">
-          <option value="1호선">1호선</option>
-          <option value="2호선" selected>2호선</option>
-          <option value="3호선">3호선</option>
-          <option value="4호선">4호선</option>
-          <option value="5호선">5호선</option>
-          <option value="6호선">6호선</option>
-          <option value="7호선">7호선</option>
-          <option value="8호선">8호선</option>
-          <option value="9호선">9호선</option>
-          <option value="GTX-A">GTX-A</option>
-          <option value="경의중앙선">경의중앙선</option>
-        </select>
+      <div class="subway-title">
+        Subway
       </div>
+
+      <!-- 노선 선택 -->
+      <div
+        class="line-selector"
+        id="lineSelector"
+        aria-label="노선 선택"
+      >
+
+        <button
+          class="line-button line-1"
+          data-line="1호선"
+          aria-label="1호선"
+        ></button>
+
+        <button
+          class="line-button line-2 active"
+          data-line="2호선"
+          aria-label="2호선"
+        ></button>
+
+        <button
+          class="line-button line-3"
+          data-line="3호선"
+          aria-label="3호선"
+        ></button>
+
+        <button
+          class="line-button line-4"
+          data-line="4호선"
+          aria-label="4호선"
+        ></button>
+
+        <button
+          class="line-button line-5"
+          data-line="5호선"
+          aria-label="5호선"
+        ></button>
+
+        <button
+          class="line-button line-6"
+          data-line="6호선"
+          aria-label="6호선"
+        ></button>
+
+        <button
+          class="line-button line-7"
+          data-line="7호선"
+          aria-label="7호선"
+        ></button>
+
+        <button
+          class="line-button line-8"
+          data-line="8호선"
+          aria-label="8호선"
+        ></button>
+
+        <button
+          class="line-button line-9"
+          data-line="9호선"
+          aria-label="9호선"
+        ></button>
+
+        <button
+          class="line-button line-gta"
+          data-line="GTX-A"
+          aria-label="GTX-A"
+        ></button>
+
+        <button
+          class="line-button line-gyeongui"
+          data-line="경의중앙선"
+          aria-label="경의중앙선"
+        ></button>
+
+      </div>
+
     </header>
 
 
     <!-- ==============================
          메인 세로 지도
     ============================== -->
-    <main class="main-content" id="mainContent">
+    <main
+      class="main-content"
+      id="mainContent"
+    >
 
       <div class="map-instruction">
         역을 터치하면 상세 정보 및 가로 지도가 열립니다.
@@ -60,6 +120,7 @@
         class="vertical-map-container"
         id="vMapContainer"
       >
+
         <div class="v-track-line v-up-line"></div>
         <div class="v-track-line v-down-line"></div>
 
@@ -72,6 +133,7 @@
           id="vTrainsContainer"
           class="v-trains-container"
         ></div>
+
       </div>
 
     </main>
@@ -85,10 +147,10 @@
       id="fullPopup"
     >
 
-      <!-- 팝업 헤더 -->
       <div class="popup-header">
 
         <div>
+
           <span
             class="badge"
             id="panelLineBadge"
@@ -102,6 +164,7 @@
           >
             강남역
           </span>
+
         </div>
 
         <button
@@ -125,6 +188,7 @@
             class="h-track-wrapper"
             id="hTrackWrapper"
           >
+
             <div class="h-track-line h-up-line"></div>
             <div class="h-track-line h-down-line"></div>
 
@@ -150,7 +214,6 @@
       ============================== -->
       <div class="popup-body">
 
-
         <!-- 실시간 도착 -->
         <section class="info-section">
 
@@ -166,6 +229,7 @@
           <div class="arrival-split">
 
             <div class="arr-col">
+
               <h4>상행 / 내선</h4>
 
               <div
@@ -174,9 +238,11 @@
               >
                 도착 정보 없음
               </div>
+
             </div>
 
             <div class="arr-col">
+
               <h4>하행 / 외선</h4>
 
               <div
@@ -185,6 +251,7 @@
               >
                 도착 정보 없음
               </div>
+
             </div>
 
           </div>
@@ -207,6 +274,7 @@
           <div class="stat-grid">
 
             <div class="stat-box">
+
               <div class="stat-title">
                 해당 시간 승차
               </div>
@@ -217,9 +285,11 @@
               >
                 -
               </div>
+
             </div>
 
             <div class="stat-box">
+
               <div class="stat-title">
                 해당 시간 하차
               </div>
@@ -230,6 +300,7 @@
               >
                 -
               </div>
+
             </div>
 
           </div>
@@ -242,7 +313,9 @@
 
           <div class="section-header">
 
-            <h3>🕒 역 시간표 (현재시간 이후)</h3>
+            <h3>
+              🕒 역 시간표 (현재시간 이후)
+            </h3>
 
             <span
               id="ttDateType"
@@ -263,6 +336,7 @@
           <div class="arrival-split">
 
             <div class="arr-col">
+
               <h4>상행 / 내선</h4>
 
               <div
@@ -271,9 +345,11 @@
               >
                 시간표 없음
               </div>
+
             </div>
 
             <div class="arr-col">
+
               <h4>하행 / 외선</h4>
 
               <div
@@ -282,6 +358,7 @@
               >
                 시간표 없음
               </div>
+
             </div>
 
           </div>
@@ -295,5 +372,6 @@
   </div>
 
   <script src="app.js"></script>
+
 </body>
 </html>
