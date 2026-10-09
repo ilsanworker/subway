@@ -5,10 +5,10 @@
 <meta name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>Seoul Subway Radar</title>
+<title>Subway | 실시간 열차</title>
 
 <style>
-:root { 
+:root {
   --bg: #0f172a;
   --panel: #111827;
   --text: #111827;
@@ -663,6 +663,719 @@ button {
     padding: 5px;
   }
 }
+
+
+/* ========================================
+   성빈 스타일 리메이크: 미니멀 라이트 UI
+   흰색·차콜·노선 고유색만 사용하고 장식은 최소화
+======================================== */
+:root {
+  --bg: #f5f5f7;
+  --panel: #ffffff;
+  --text: #171717;
+  --muted: #737780;
+  --border: #e5e5e8;
+  --line-color: #009D3E;
+  --train-up: #e34f4f;
+  --train-down: #3478f6;
+  --accent: #171717;
+  --v-spacing: 96px;
+  --h-spacing: 116px;
+}
+
+html, body { background: var(--bg); color: var(--text); }
+body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
+.app-container { background: var(--bg); }
+
+.line-selector {
+  gap: 7px;
+  padding: 12px 14px 10px;
+  background: var(--bg);
+  border-bottom: 1px solid #e8e8eb;
+  box-shadow: none;
+}
+.line-button {
+  height: 32px;
+  min-width: 42px;
+  padding: 0 13px;
+  border: 1px solid #e3e3e7;
+  border-radius: 999px;
+  background: transparent;
+  color: #62656d;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: -.2px;
+  transition: background .16s ease, color .16s ease, border-color .16s ease, transform .16s ease;
+}
+.line-button:active { transform: scale(.96); }
+.line-button.active {
+  color: #fff !important;
+  border-color: var(--line-color) !important;
+  background: var(--line-color) !important;
+  box-shadow: none;
+}
+
+.main-content {
+  padding: 14px 0 110px;
+  background: var(--bg);
+  scrollbar-width: none;
+  overscroll-behavior-y: contain;
+}
+.main-content::-webkit-scrollbar { display: none; }
+.map-instruction {
+  margin: 0 0 24px;
+  padding: 0 18px;
+  color: #8a8d94;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -.1px;
+}
+.vertical-map-container { width: 250px; }
+.v-track-line {
+  width: 3px;
+  background: #d6d8dd;
+  border-radius: 10px;
+}
+.v-up-line { left: 26px; }
+.v-down-line { right: 26px; }
+.v-station-node {
+  width: 13px;
+  height: 13px;
+  background: #fff;
+  border: 3px solid var(--line-color);
+  box-shadow: 0 0 0 3px var(--bg);
+}
+.v-station-node:hover { background: var(--line-color); }
+.v-station-name {
+  top: -19px;
+  color: #292b30;
+  font-size: 12px;
+  font-weight: 650;
+  text-shadow: none;
+  letter-spacing: -.25px;
+}
+.v-train {
+  width: 48px;
+  padding: 6px 3px 5px;
+  border: 2px solid #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px #11111118;
+  font-size: 10px;
+  line-height: 1.1;
+  transition: top .8s cubic-bezier(.2,.7,.2,1), transform .16s ease;
+}
+.v-train:active { transform: translateX(-50%) scale(.94); }
+.v-train.up { left: 28px; background: var(--train-up); }
+.v-train.down { left: 222px; background: var(--train-down); }
+.v-train-status { font-size: 9px; font-weight: 600; opacity: .95; }
+
+.refresh-widget { right: 16px; bottom: 18px; gap: 5px; }
+.refresh-button {
+  width: 46px;
+  height: 46px;
+  background: #171717;
+  color: #fff;
+  border: 1px solid #171717;
+  box-shadow: 0 5px 16px #11111120;
+  font-size: 22px;
+}
+.last-refresh {
+  background: #fff;
+  color: #777a82;
+  border: 1px solid #ececf0;
+  box-shadow: 0 2px 7px #11111108;
+}
+
+/* 열차 선택 카드: 앱 위에 얹힌 작은 상태 패널 */
+.train-detail-card {
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  padding: 15px 15px 13px;
+  border: 1px solid #e6e6e9;
+  border-radius: 20px;
+  background: rgba(255,255,255,.97);
+  color: #171717;
+  box-shadow: 0 12px 40px #17171718;
+  backdrop-filter: blur(20px);
+}
+.train-card-top { gap: 11px; }
+.train-line-circle {
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+  border-radius: 12px;
+  font-size: 14px;
+  box-shadow: none;
+}
+.train-card-title { color: #737780; font-size: 11px; font-weight: 600; }
+.train-card-title strong { color: #171717; font-size: 16px; letter-spacing: -.35px; }
+.train-status-pill {
+  margin-left: 5px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #fbe9e9;
+  color: #c63838;
+  font-size: 9px;
+  font-weight: 700;
+}
+.train-card-sub { margin-top: 4px; color: #777a82; font-size: 11px; }
+.train-card-refresh {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e8e8eb;
+  border-radius: 50%;
+  background: #f7f7f8;
+  color: #25262a;
+  font-size: 17px;
+}
+.train-card-progress-label { margin-top: 15px; margin-bottom: 7px; color: #777a82; font-size: 10px; }
+.train-card-progress-label strong { color: #171717; font-size: 11px; }
+.train-progress { height: 6px; border-radius: 99px; background: #e9eaed; }
+.train-progress span { border-radius: 99px; background: var(--line-color); }
+.train-progress-scale { margin-top: 6px; color: #858891; font-size: 9px; }
+.train-card-actions { gap: 8px; margin-top: 13px; }
+.train-card-actions button {
+  min-height: 38px;
+  padding: 10px 8px;
+  border: 1px solid #e7e7ea;
+  border-radius: 11px;
+  background: #f5f5f7;
+  color: #24252a;
+  font-size: 11px;
+  font-weight: 650;
+  transition: transform .15s ease, background .15s ease;
+}
+.train-card-actions button:active { transform: scale(.98); }
+.train-card-actions button:last-child { background: #171717; border-color: #171717; color: #fff; }
+
+/* 역 상세 화면 */
+.full-popup { background: #f5f5f7; }
+.popup-header {
+  padding: 16px 17px;
+  background: rgba(255,255,255,.96);
+  border-bottom: 1px solid #e8e8eb;
+}
+.popup-stn-name { margin-left: 8px; color: #171717; font-size: 18px; letter-spacing: -.5px; }
+.badge { padding: 5px 9px; border-radius: 8px; font-size: 11px; }
+.close-btn {
+  padding: 8px 11px;
+  border: 1px solid #e7e7ea;
+  border-radius: 10px;
+  background: #f5f5f7;
+  color: #27282c;
+  font-size: 12px;
+}
+.h-map-area { height: 132px; background: #f0f1f3; border-bottom: 1px solid #e3e4e8; }
+.h-track-line { height: 3px; background: #d0d3d8; }
+.h-station-node { background: #fff; box-shadow: 0 0 0 3px #f0f1f3; }
+.h-station-name { color: #666a73; font-size: 10px; }
+.h-train { border: 1px solid #fff; border-radius: 8px; box-shadow: 0 2px 8px #11111118; }
+.popup-body { padding: 14px; background: #f5f5f7; }
+.info-section {
+  margin-bottom: 12px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e9e9ed;
+  border-radius: 16px;
+  box-shadow: none;
+}
+.info-section h3 { margin-bottom: 13px; color: #202126; font-size: 13px; font-weight: 750; letter-spacing: -.25px; }
+.arr-col { padding: 9px; background: #f7f7f9; border: 1px solid #ededf0; border-radius: 11px; }
+.arr-col h4 { color: #777a82; font-size: 11px; font-weight: 650; }
+.arr-item, .tt-item {
+  padding: 9px;
+  background: #fff;
+  border: 1px solid #ededf0;
+  border-left: 3px solid #d0d2d7;
+  border-radius: 9px;
+  font-size: 11px;
+}
+.arr-item.up, .tt-item.up { border-left-color: var(--train-up); }
+.arr-item.down, .tt-item.down { border-left-color: var(--train-down); }
+.arr-time { color: #202126; font-weight: 750; }
+.arr-desc { color: #777a82; }
+.exp-badge { border-radius: 5px; }
+.stat-box { padding: 13px; background: #f7f7f9; border: 1px solid #ededf0; border-radius: 11px; }
+.stat-title { color: #777a82; }
+.stat-value { color: #171717; font-size: 17px; letter-spacing: -.4px; }
+.loading-text { color: #858891; }
+#ttDateType { color: #555963 !important; }
+
+@media (min-width: 700px) {
+  .train-detail-card { right: 22px; bottom: 22px; width: 370px; }
+  .vertical-map-container { width: 280px; }
+  .v-down-line { right: 26px; }
+  .v-train.down { left: 252px; }
+}
+@media (max-width: 360px) {
+  .line-selector { padding: 10px 10px 9px; }
+  .line-button { padding: 0 11px; }
+  .popup-body { padding: 9px; }
+  .info-section { padding: 11px; }
+  .arrival-split { gap: 6px; }
+  .arr-col { padding: 6px; }
+  .train-detail-card { left: 8px; right: 8px; bottom: 8px; padding: 12px; }
+}
+
+
+
+/* Apple-inspired refinement: typography, spacing, and surfaces only */
+:root {
+  --bg: #f5f5f7;
+  --panel: #ffffff;
+  --text: #1d1d1f;
+  --muted: #86868b;
+  --border: #e5e5ea;
+  --accent: #0071e3;
+}
+html, body { background: #f5f5f7; color: #1d1d1f; }
+body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif; letter-spacing: -.15px; }
+.app-container { background: #f5f5f7; }
+.line-selector {
+  padding: 13px 16px 12px;
+  gap: 8px;
+  background: rgba(245,245,247,.94);
+  border-bottom: 1px solid rgba(60,60,67,.12);
+  backdrop-filter: saturate(180%) blur(18px);
+}
+.line-button {
+  height: 31px;
+  min-width: 40px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #e8e8ed;
+  color: #3a3a3c;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -.1px;
+  transition: background .16s ease, color .16s ease, transform .16s ease;
+}
+.line-button.active { box-shadow: none; color: #fff !important; }
+.main-content {
+  padding: 16px 0 120px;
+  background: #f5f5f7;
+  overscroll-behavior-y: contain;
+}
+.map-instruction {
+  margin: 0 0 25px;
+  color: #86868b;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -.05px;
+}
+.v-track-line { background: #d1d1d6; width: 3px; }
+.v-station-node {
+  background: #fff;
+  box-shadow: 0 0 0 4px #f5f5f7;
+  border-width: 3px;
+}
+.v-station-name {
+  color: #1d1d1f;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -.25px;
+  text-shadow: none;
+}
+.v-train {
+  border: 2px solid #f5f5f7;
+  border-radius: 9px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.12);
+  font-size: 10px;
+  font-weight: 700;
+}
+.refresh-widget { right: 16px; bottom: 18px; }
+.refresh-button {
+  width: 44px; height: 44px;
+  background: #1d1d1f;
+  border: 0;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0,0,0,.16);
+}
+.last-refresh {
+  background: rgba(255,255,255,.94);
+  border: 1px solid rgba(60,60,67,.12);
+  color: #6e6e73;
+  box-shadow: 0 2px 7px rgba(0,0,0,.04);
+}
+.train-detail-card {
+  left: 12px; right: 12px; bottom: 12px;
+  padding: 15px 15px 13px;
+  border: 1px solid rgba(60,60,67,.13);
+  border-radius: 20px;
+  background: rgba(255,255,255,.94);
+  color: #1d1d1f;
+  box-shadow: 0 8px 32px rgba(0,0,0,.13);
+  backdrop-filter: saturate(180%) blur(24px);
+}
+.train-line-circle { border-radius: 11px; box-shadow: none; }
+.train-card-title { color: #6e6e73; font-size: 11px; font-weight: 500; }
+.train-card-title strong { color: #1d1d1f; font-size: 16px; font-weight: 700; letter-spacing: -.45px; }
+.train-status-pill { border-radius: 999px; background: #fce8e6; color: #b42318; padding: 4px 7px; }
+.train-card-sub { color: #6e6e73; font-size: 11px; }
+.train-card-refresh { background: #f5f5f7; border-color: #e5e5ea; color: #1d1d1f; }
+.train-card-progress-label { color: #6e6e73; }
+.train-card-progress-label strong { color: #1d1d1f; }
+.train-progress { background: #e5e5ea; }
+.train-progress span { background: var(--line-color); }
+.train-progress-scale { color: #86868b; }
+.train-card-actions button {
+  min-height: 38px;
+  border: 1px solid #e5e5ea;
+  border-radius: 11px;
+  background: #f5f5f7;
+  color: #1d1d1f;
+  font-size: 11px;
+  font-weight: 600;
+}
+.train-card-actions button:last-child { background: #1d1d1f; border-color: #1d1d1f; color: #fff; }
+.full-popup { background: #f5f5f7; }
+.popup-header {
+  padding: 15px 16px;
+  background: rgba(255,255,255,.94);
+  border-bottom: 1px solid rgba(60,60,67,.12);
+  backdrop-filter: saturate(180%) blur(18px);
+}
+.popup-stn-name { color: #1d1d1f; font-size: 18px; font-weight: 700; letter-spacing: -.45px; }
+.badge { border-radius: 8px; font-size: 11px; font-weight: 700; }
+.close-btn { background: #f5f5f7; border: 1px solid #e5e5ea; border-radius: 10px; color: #1d1d1f; font-size: 12px; }
+.h-map-area { background: #f5f5f7; border-bottom: 1px solid #e5e5ea; }
+.h-track-line { background: #d1d1d6; }
+.h-station-node { background: #fff; box-shadow: 0 0 0 3px #f5f5f7; }
+.h-station-name { color: #6e6e73; }
+.h-train { border: 1px solid #fff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+.popup-body { background: #f5f5f7; padding: 14px; }
+.info-section {
+  margin-bottom: 12px;
+  padding: 15px;
+  background: #fff;
+  border: 1px solid rgba(60,60,67,.10);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.02);
+}
+.info-section h3 { color: #1d1d1f; font-size: 13px; font-weight: 700; letter-spacing: -.2px; }
+.arr-col { background: #f5f5f7; border: 1px solid #e5e5ea; border-radius: 11px; }
+.arr-col h4 { color: #6e6e73; font-weight: 600; }
+.arr-item, .tt-item { background: #fff; border: 1px solid #e5e5ea; border-left-width: 3px; border-radius: 9px; }
+.arr-time { color: #1d1d1f; }
+.arr-desc, .stat-title { color: #6e6e73; }
+.stat-box { background: #f5f5f7; border: 1px solid #e5e5ea; border-radius: 11px; }
+.stat-value { color: #1d1d1f; }
+.loading-text { color: #86868b; }
+@media (min-width: 700px) {
+  .train-detail-card { right: 22px; bottom: 22px; width: 370px; }
+}
+@media (max-width: 360px) {
+  .line-selector { padding: 10px 10px 9px; }
+  .popup-body { padding: 9px; }
+  .info-section { padding: 11px; }
+  .train-detail-card { left: 8px; right: 8px; bottom: 8px; padding: 12px; }
+}
+
+/* Final visual pass: restrained Apple-like system UI. Functionality intentionally unchanged. */
+:root {
+  --bg: #f5f5f7;
+  --panel: #ffffff;
+  --text: #1d1d1f;
+  --muted: #6e6e73;
+  --border: #e5e5ea;
+  --accent: #0071e3;
+}
+html, body { background: var(--bg); color: var(--text); }
+body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+.app-container { background: var(--bg); }
+.line-selector {
+  gap: 7px; padding: 11px 14px 10px;
+  background: rgba(245,245,247,.96);
+  border-bottom: 1px solid rgba(60,60,67,.12);
+  box-shadow: none; backdrop-filter: saturate(180%) blur(18px);
+}
+.line-button {
+  height: 32px; padding: 0 13px; min-width: 40px;
+  border: 1px solid #e5e5ea; border-radius: 999px;
+  background: #fff; color: #48484a; font-size: 12px; font-weight: 600;
+  letter-spacing: -.15px; transition: background .16s ease, color .16s ease, transform .16s ease;
+}
+.line-button:active { transform: scale(.97); }
+.line-button.active { color: #fff !important; border-color: var(--line-color) !important; background: var(--line-color) !important; box-shadow: none; }
+.main-content { padding: 13px 0 110px; background: var(--bg); scrollbar-width: none; overscroll-behavior-y: contain; }
+.main-content::-webkit-scrollbar { display:none; }
+.map-instruction { margin: 0 0 24px; padding: 0 18px; color: #86868b; font-size: 11px; font-weight: 500; letter-spacing: -.05px; }
+.vertical-map-container { width: 250px; }
+.v-track-line { width: 3px; background: #d1d1d6; border-radius: 10px; }
+.v-up-line { left: 26px; }
+.v-down-line { right: 26px; }
+.v-station-node { width: 13px; height: 13px; background: #fff; border: 3px solid var(--line-color); box-shadow: 0 0 0 4px var(--bg); }
+.v-station-node:hover { background: var(--line-color); }
+.v-station-name { top: -19px; color: #1d1d1f; font-size: 12px; font-weight: 600; letter-spacing: -.2px; text-shadow: none; }
+.v-train { width: 48px; padding: 6px 3px 5px; border: 2px solid var(--bg); border-radius: 9px; box-shadow: 0 2px 6px rgba(0,0,0,.12); font-size: 10px; font-weight: 700; }
+.v-train.up { left: 28px; }
+.v-train.down { left: 222px; }
+.v-train-status { font-size: 9px; }
+.refresh-widget { right: 16px; bottom: 18px; }
+.refresh-button { width: 44px; height: 44px; background: #1d1d1f; color: #fff; border: 0; box-shadow: 0 4px 14px rgba(0,0,0,.14); }
+.last-refresh { background: rgba(255,255,255,.96); color: #6e6e73; border: 1px solid rgba(60,60,67,.12); box-shadow: 0 2px 7px rgba(0,0,0,.04); }
+.train-detail-card { left: 12px; right: 12px; bottom: 12px; padding: 15px 15px 13px; border: 1px solid rgba(60,60,67,.13); border-radius: 20px; background: rgba(255,255,255,.97); color: #1d1d1f; box-shadow: 0 8px 28px rgba(0,0,0,.12); backdrop-filter: saturate(180%) blur(22px); }
+.train-line-circle { border-radius: 11px; box-shadow: none; }
+.train-card-title { color: #6e6e73; font-size: 11px; font-weight: 500; }
+.train-card-title strong { color: #1d1d1f; font-size: 16px; font-weight: 700; letter-spacing: -.4px; }
+.train-status-pill { border-radius: 999px; background: #fce8e6; color: #b42318; padding: 4px 7px; }
+.train-card-sub, .train-card-progress-label, .train-progress-scale { color: #6e6e73; }
+.train-card-progress-label strong { color: #1d1d1f; }
+.train-card-refresh { background: #f5f5f7; border-color: #e5e5ea; color: #1d1d1f; }
+.train-progress { background: #e5e5ea; }
+.train-progress span { background: var(--line-color); }
+.train-card-actions button { min-height: 39px; border: 1px solid #e5e5ea; border-radius: 11px; background: #f5f5f7; color: #1d1d1f; font-size: 11px; font-weight: 600; }
+.train-card-actions button:last-child { background: #1d1d1f; border-color: #1d1d1f; color: #fff; }
+.full-popup { background: #f5f5f7; }
+.popup-header { padding: 15px 16px; background: rgba(255,255,255,.97); border-bottom: 1px solid rgba(60,60,67,.12); }
+.popup-stn-name { color: #1d1d1f; font-size: 18px; font-weight: 700; letter-spacing: -.4px; }
+.badge { border-radius: 8px; font-size: 11px; font-weight: 700; }
+.close-btn { padding: 8px 11px; background: #f5f5f7; border: 1px solid #e5e5ea; border-radius: 10px; color: #1d1d1f; font-size: 12px; }
+.h-map-area { height: 132px; background: #f5f5f7; border-bottom: 1px solid #e5e5ea; }
+.h-track-line { background: #d1d1d6; }
+.h-station-node { background: #fff; box-shadow: 0 0 0 3px #f5f5f7; }
+.h-station-name { color: #6e6e73; }
+.h-train { border: 1px solid #fff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+.popup-body { padding: 14px; background: #f5f5f7; }
+.info-section { margin-bottom: 12px; padding: 15px; background: #fff; border: 1px solid rgba(60,60,67,.10); border-radius: 15px; box-shadow: none; }
+.info-section h3 { margin-bottom: 12px; color: #1d1d1f; font-size: 13px; font-weight: 700; letter-spacing: -.15px; }
+.arr-col { padding: 9px; background: #f5f5f7; border: 1px solid #e5e5ea; border-radius: 10px; }
+.arr-col h4 { color: #6e6e73; font-size: 11px; font-weight: 600; }
+.arr-item, .tt-item { padding: 9px; background: #fff; border: 1px solid #e5e5ea; border-left-width: 3px; border-radius: 8px; }
+.arr-time { color: #1d1d1f; }
+.arr-desc, .stat-title { color: #6e6e73; }
+.stat-box { padding: 13px; background: #f5f5f7; border: 1px solid #e5e5ea; border-radius: 10px; }
+.stat-value { color: #1d1d1f; }
+.loading-text { color: #86868b; }
+/* Final layout refinement: station labels larger, selector floats over the map */
+.line-selector {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  width: 100%;
+  box-sizing: border-box;
+  background: linear-gradient(to bottom, rgba(245,245,247,.98), rgba(245,245,247,.82));
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+}
+.main-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  padding-top: 58px;
+  box-sizing: border-box;
+  background: var(--bg);
+}
+.v-station-name {
+  top: -21px;
+  color: #1d1d1f;
+  font-size: 14px !important;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -.25px;
+  text-shadow: none;
+  white-space: nowrap;
+}
+@media (min-width:700px) {
+  .train-detail-card { right: 22px; bottom: 22px; width: 370px; }
+  .line-selector { padding-left: 20px; padding-right: 20px; }
+  .vertical-map-container { width: 280px; }
+  .v-train.down { left: 252px; }
+}
+@media (max-width:360px) {
+  .line-selector { padding: 10px; }
+  .main-content { padding-top: 54px; }
+  .v-station-name { font-size: 13px !important; }
+  .popup-body { padding: 9px; }
+  .info-section { padding: 11px; }
+  .arrival-split { gap: 6px; }
+  .arr-col { padding: 6px; }
+  .train-detail-card { left: 8px; right: 8px; bottom: 8px; padding: 12px; }
+}
+
+
+
+/* Final polish: edge-to-edge map, larger station names, seamless selector */
+.line-selector {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding-top: 12px;
+  padding-bottom: 10px;
+}
+.line-button {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.line-button.active {
+  border-color: transparent !important;
+}
+.main-content {
+  width: 100%;
+  padding-top: 0 !important;
+  padding-bottom: 100px;
+  overflow-x: hidden;
+}
+.map-instruction { display: none !important; }
+.vertical-map-container {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+}
+.v-up-line { left: 14%; }
+.v-down-line { right: 14%; }
+.v-train.up {
+  left: 14%;
+  transform: translateX(-50%);
+}
+.v-train.down {
+  left: auto !important;
+  right: 14%;
+  transform: translateX(50%);
+}
+.v-station-name {
+  top: -22px;
+  font-size: 16px !important;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -.3px;
+  color: #202124;
+  text-shadow: none;
+}
+.v-station-node { z-index: 7; }
+.v-trains-container { overflow: visible; }
+@media (max-width: 420px) {
+  .v-up-line, .v-train.up { left: 12%; }
+  .v-down-line { right: 12%; }
+  .v-train.down { right: 12%; }
+  .v-station-name { font-size: 15px !important; }
+}
+
+
+
+/* v3: direction-neutral train styling and responsive station detail */
+.v-train,
+.h-train {
+  background: #ffffff !important;
+  color: #1d1d1f !important;
+  border: 1px solid #d9d9de !important;
+  box-shadow: 0 2px 7px rgba(0,0,0,.13) !important;
+}
+.v-train.up, .v-train.down,
+.h-train.up, .h-train.down {
+  background: #ffffff !important;
+  color: #1d1d1f !important;
+}
+.v-train.express, .h-train.express {
+  background: #e53935 !important;
+  color: #ffffff !important;
+  border-color: #e53935 !important;
+  box-shadow: 0 2px 9px rgba(229,57,53,.28) !important;
+}
+.v-train-status, .h-train-status { color: inherit !important; }
+
+/* Keep the station popup readable instead of stretching its content on wide screens. */
+.full-popup {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+}
+.popup-header {
+  flex: 0 0 auto;
+  min-height: 64px;
+  padding: 14px clamp(14px, 3vw, 28px) !important;
+}
+.popup-stn-name {
+  display: inline-block;
+  max-width: min(65vw, 520px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #1d1d1f !important;
+  font-size: clamp(20px, 2.2vw, 27px) !important;
+  line-height: 1.25;
+  letter-spacing: -.45px;
+}
+.h-map-area {
+  flex: 0 0 145px;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+#hTrackScroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.h-station-name {
+  color: #4b4b50 !important;
+  font-size: 12px !important;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.h-station-node { z-index: 4; }
+.popup-body {
+  width: 100%;
+  padding: 16px clamp(12px, 3vw, 28px) 24px !important;
+  overflow-y: auto;
+}
+.popup-body > * {
+  width: 100%;
+  max-width: 1120px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.info-section { min-width: 0; }
+.arrival-split { align-items: stretch; }
+.arr-col { min-width: 0; }
+.arr-item, .tt-item { overflow-wrap: anywhere; }
+@media (min-width: 760px) {
+  .popup-header { padding-left: max(28px, calc((100vw - 1120px) / 2)) !important; padding-right: max(28px, calc((100vw - 1120px) / 2)) !important; }
+  .popup-body { display: block; }
+  .h-map-area { flex-basis: 155px; }
+}
+@media (max-width: 480px) {
+  .h-map-area { flex-basis: 132px; }
+  .h-station-name { font-size: 11px !important; }
+  .popup-stn-name { max-width: 58vw; }
+  .popup-body { padding: 10px 9px 18px !important; }
+  .info-section { padding: 12px !important; border-radius: 13px; }
+  .arr-col { padding: 6px !important; }
+  .arr-item, .tt-item { padding: 7px !important; font-size: 11px; }
+}
+
+
+/* V4: per-car congestion layout replaces the misleading route-progress bar */
+.train-line-circle.train-symbol { background:#f2f2f7 !important; color:#1d1d1f; font-size:21px; border-radius:12px; }
+.car-crowding-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:16px 0 10px; }
+.car-crowding-heading > div { display:flex; flex-direction:column; gap:3px; }
+.car-crowding-heading strong { font-size:14px; color:#1d1d1f; }
+.car-crowding-heading span { font-size:11px; color:#6e6e73; }
+.crowding-api-status { flex:0 0 auto; padding:5px 8px; border-radius:8px; background:#f2f2f7; color:#6e6e73 !important; font-size:10px !important; }
+.car-crowding-list { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:7px; }
+.car-crowding-item { min-width:0; min-height:73px; padding:8px 4px 7px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; border:1px solid #e5e5ea; border-radius:11px; background:#fafafa; }
+.car-number { display:grid; place-items:center; width:22px; height:22px; border-radius:7px; background:#e9e9ee; color:#3a3a3c; font-size:11px; font-weight:700; }
+.car-mini-people { display:flex; justify-content:center; gap:2px; }
+.car-mini-people i { display:block; width:4px; height:8px; border-radius:3px 3px 1px 1px; background:#c7c7cc; }
+.car-crowding-item strong { font-size:9px; line-height:1; color:#86868b; font-weight:600; }
+.crowding-note { margin:10px 1px 0; color:#86868b; font-size:10px; line-height:1.5; }
+@media (min-width:700px) { .train-detail-card { width:min(440px, calc(100vw - 44px)); } }
+@media (max-width:380px) { .car-crowding-list { gap:4px; } .car-crowding-item { min-height:68px; padding-left:2px; padding-right:2px; } .train-card-sub { max-width:210px; } }
 </style>
 </head>
 
@@ -676,7 +1389,7 @@ button {
   <!-- 세로형 노선 지도 -->
   <main class="main-content" id="mainContent">
     <div class="map-instruction">
-      역을 터치하면 실시간 열차 및 상세 정보가 표시됩니다.
+      열차를 선택하면 운행 정보를 확인할 수 있어요.
     </div>
 
     <div class="vertical-map-container" id="vMapContainer">
@@ -696,13 +1409,13 @@ button {
   </div>
 
   <section class="train-detail-card hidden" id="trainDetailCard" aria-live="polite">
-    <div class="train-card-top"><div class="train-line-circle" id="trainCardLineNum">2</div>
+    <div class="train-card-top"><div class="train-line-circle train-symbol" id="trainCardLineNum" aria-label="열차">🚇</div>
       <div class="train-card-heading"><div class="train-card-title">열차 <strong id="trainCardNo">API없음</strong> <span id="trainCardStatus" class="train-status-pill">API없음</span></div>
       <div class="train-card-sub" id="trainCardLocation">현재 위치: API없음</div></div>
-      <button class="train-card-refresh" id="trainCardRefresh" aria-label="열차 정보 새로고침">↻</button></div>
-    <div class="train-card-progress-label"><span>열차 운행 진행도</span><strong id="trainCardProgressText">API없음</strong></div>
-    <div class="train-progress"><span id="trainCardProgress"></span></div>
-    <div class="train-progress-scale"><span id="trainCardStart">첫 역</span><span id="trainCardMid">중간 역</span><span id="trainCardEnd">종착역</span></div>
+      <button class="train-card-refresh" id="trainCardRefresh" aria-label="열차 정보 새로고침" title="열차 정보 새로고침">↻</button></div>
+    <div class="car-crowding-heading"><div><strong>칸별 혼잡도</strong><span>열차 객실별 혼잡 현황</span></div><span id="carCrowdingSource" class="crowding-api-status">API없음</span></div>
+    <div class="car-crowding-list" id="carCrowdingList" aria-live="polite"></div>
+    <p class="crowding-note" id="carCrowdingNote">칸별 혼잡도 데이터가 제공되지 않아요.</p>
     <div class="train-card-actions"><button id="trainCardAlert">♧ 도착 알림 받기</button><button id="trainCardMap">▣ 전체 노선 지도보기</button></div>
   </section>
 
@@ -1368,7 +2081,7 @@ function openFullPopup(station) {
 
       node.innerHTML =
         `<div class="h-station-name"
-          style="${isCurrent ? 'color:#fff;font-size:13px;top:-26px;' : ''}">
+          style="${isCurrent ? 'color:#1d1d1f;font-size:15px;font-weight:800;top:-30px;background:#fff;padding:4px 7px;border-radius:7px;box-shadow:0 1px 5px rgba(0,0,0,.14);z-index:10;' : ''}">
           ${escapeHtml(stn)}
         </div>`;
 
@@ -1492,7 +2205,8 @@ async function fetchTrainPositions() {
       const statusText = escapeHtml(getTrainStatusText(status));
 
       /* 세로 지도 */
-      let stationIndex = getStationIndex(line.stations, train.statnNm);
+      const stationIndexInLine = getStationIndex(line.circular ? line.stations.slice(0, -1) : line.stations, train.statnNm);
+      let stationIndex = stationIndexInLine;
       if (line.circular && stationIndex >= 0) stationIndex += line.stations.length - 1;
 
       if (stationIndex !== -1) {
@@ -1507,8 +2221,9 @@ async function fetchTrainPositions() {
           element.addEventListener('click', event => { event.stopPropagation(); showTrainDetail(element._trainData); });
         }
 
-        element.className = `v-train ${isUp ? 'up' : 'down'}`;
-        element._trainData = { trainNo, status, statusText, station: train.statnNm || 'API없음', destination: train.bstatnNm || train.statnTnm || 'API없음', isUp, stationIndex: getStationIndex(line.stations, train.statnNm), lineName: requestLine };
+        const isExpress = String(train.btrainSttus || train.trainType || '').includes('급행');
+        element.className = `v-train ${isUp ? 'up' : 'down'}${isExpress ? ' express' : ''}`;
+        element._trainData = { trainNo, status, statusText, station: train.statnNm || 'API없음', destination: train.bstatnNm || train.statnTnm || 'API없음', isUp, stationIndex: stationIndexInLine, lineName: requestLine };
 
         element.innerHTML =
           `<span>${escapeHtml(trainNo)}</span>` +
@@ -1539,7 +2254,8 @@ async function fetchTrainPositions() {
             hTrainsContainer.appendChild(element);
           }
 
-          element.className = `h-train ${isUp ? 'up' : 'down'}`;
+          const isExpress = String(train.btrainSttus || train.trainType || '').includes('급행');
+          element.className = `h-train ${isUp ? 'up' : 'down'}${isExpress ? ' express' : ''}`;
 
           element.innerHTML =
             `<span>${escapeHtml(trainNo)}</span>` +
@@ -1986,20 +2702,22 @@ function fetchStationDetails(
 function showTrainDetail(train) {
   if (!train) return;
   selectedTrainData = train;
-  const line = lineData[train.lineName] || lineData[currentLine];
-  $('trainCardLineNum').textContent = (train.lineName.match(/\\d+/) || ['↻'])[0];
-  $('trainCardLineNum').style.background = line.color;
+  $('trainCardLineNum').textContent = '🚇';
+  $('trainCardLineNum').style.background = '#f2f2f7';
   $('trainCardNo').textContent = train.trainNo || 'API없음';
   $('trainCardStatus').textContent = train.statusText || 'API없음';
   $('trainCardLocation').textContent = `현재 위치: ${train.station || 'API없음'} · ${train.destination || 'API없음'}행`;
-  const stations = line.circular ? line.stations.slice(0,-1) : line.stations;
-  const idx = train.stationIndex;
-  const progress = idx >= 0 && stations.length > 1 ? Math.round(idx / (stations.length - 1) * 100) : null;
-  $('trainCardProgressText').textContent = progress === null ? 'API없음' : `${progress}%`;
-  $('trainCardProgress').style.width = progress === null ? '0%' : `${progress}%`;
-  $('trainCardStart').textContent = stations[0] || 'API없음';
-  $('trainCardMid').textContent = stations[Math.floor(stations.length/2)] || 'API없음';
-  $('trainCardEnd').textContent = stations[stations.length-1] || 'API없음';
+
+  // 연결된 실시간 열차 위치 API에는 객실별 혼잡도 필드가 없어 임의의 수치를 만들지 않음
+  const carList = $('carCrowdingList');
+  carList.innerHTML = Array.from({length:10}, (_, i) => `
+    <div class="car-crowding-item" aria-label="${i+1}호차 혼잡도 API없음">
+      <span class="car-number">${i+1}</span>
+      <div class="car-mini-people" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <strong>API없음</strong>
+    </div>`).join('');
+  $('carCrowdingSource').textContent = 'API없음';
+  $('carCrowdingNote').textContent = '현재 연결된 API에서 칸별 혼잡도 데이터를 제공하지 않아 표시할 수 없어요.';
   $('trainDetailCard').classList.remove('hidden');
 }
 $('trainCardRefresh').addEventListener('click', () => refreshAll());
