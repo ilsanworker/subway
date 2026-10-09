@@ -1149,8 +1149,288 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica
 .stat-box { padding: 13px; background: #f5f5f7; border: 1px solid #e5e5ea; border-radius: 10px; }
 .stat-value { color: #1d1d1f; }
 .loading-text { color: #86868b; }
-@media (min-width:700px) { .train-detail-card { right: 22px; bottom: 22px; width: 370px; } }
-@media (max-width:360px) { .line-selector { padding: 10px; } .popup-body { padding: 9px; } .info-section { padding: 11px; } .arrival-split { gap: 6px; } .arr-col { padding: 6px; } .train-detail-card { left: 8px; right: 8px; bottom: 8px; padding: 12px; } }
+/* Final layout refinement: station labels larger, selector floats over the map */
+.line-selector {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  width: 100%;
+  box-sizing: border-box;
+  background: linear-gradient(to bottom, rgba(245,245,247,.98), rgba(245,245,247,.82));
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+}
+.main-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  padding-top: 58px;
+  box-sizing: border-box;
+  background: var(--bg);
+}
+.v-station-name {
+  top: -21px;
+  color: #1d1d1f;
+  font-size: 14px !important;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -.25px;
+  text-shadow: none;
+  white-space: nowrap;
+}
+@media (min-width:700px) {
+  .train-detail-card { right: 22px; bottom: 22px; width: 370px; }
+  .line-selector { padding-left: 20px; padding-right: 20px; }
+  .vertical-map-container { width: 280px; }
+  .v-train.down { left: 252px; }
+}
+@media (max-width:360px) {
+  .line-selector { padding: 10px; }
+  .main-content { padding-top: 54px; }
+  .v-station-name { font-size: 13px !important; }
+  .popup-body { padding: 9px; }
+  .info-section { padding: 11px; }
+  .arrival-split { gap: 6px; }
+  .arr-col { padding: 6px; }
+  .train-detail-card { left: 8px; right: 8px; bottom: 8px; padding: 12px; }
+}
+
+
+
+/* Final polish: edge-to-edge map, larger station names, seamless selector */
+.line-selector {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding-top: 12px;
+  padding-bottom: 10px;
+}
+.line-button {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.line-button.active {
+  border-color: transparent !important;
+}
+.main-content {
+  width: 100%;
+  padding-top: 0 !important;
+  padding-bottom: 100px;
+  overflow-x: hidden;
+}
+.map-instruction { display: none !important; }
+.vertical-map-container {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+}
+.v-up-line { left: 14%; }
+.v-down-line { right: 14%; }
+.v-train.up {
+  left: 14%;
+  transform: translateX(-50%);
+}
+.v-train.down {
+  left: auto !important;
+  right: 14%;
+  transform: translateX(50%);
+}
+.v-station-name {
+  top: -22px;
+  font-size: 16px !important;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -.3px;
+  color: #202124;
+  text-shadow: none;
+}
+.v-station-node { z-index: 7; }
+.v-trains-container { overflow: visible; }
+@media (max-width: 420px) {
+  .v-up-line, .v-train.up { left: 12%; }
+  .v-down-line { right: 12%; }
+  .v-train.down { right: 12%; }
+  .v-station-name { font-size: 15px !important; }
+}
+
+
+
+/* v3: direction-neutral train styling and responsive station detail */
+.v-train,
+.h-train {
+  background: #ffffff !important;
+  color: #1d1d1f !important;
+  border: 1px solid #d9d9de !important;
+  box-shadow: 0 2px 7px rgba(0,0,0,.13) !important;
+}
+.v-train.up, .v-train.down,
+.h-train.up, .h-train.down {
+  background: #ffffff !important;
+  color: #1d1d1f !important;
+}
+.v-train.express, .h-train.express {
+  background: #e53935 !important;
+  color: #ffffff !important;
+  border-color: #e53935 !important;
+  box-shadow: 0 2px 9px rgba(229,57,53,.28) !important;
+}
+.v-train-status, .h-train-status { color: inherit !important; }
+
+/* Keep the station popup readable instead of stretching its content on wide screens. */
+.full-popup {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+}
+.popup-header {
+  flex: 0 0 auto;
+  min-height: 64px;
+  padding: 14px clamp(14px, 3vw, 28px) !important;
+}
+.popup-stn-name {
+  display: inline-block;
+  max-width: min(65vw, 520px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #1d1d1f !important;
+  font-size: clamp(20px, 2.2vw, 27px) !important;
+  line-height: 1.25;
+  letter-spacing: -.45px;
+}
+.h-map-area {
+  flex: 0 0 145px;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+#hTrackScroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.h-station-name {
+  color: #4b4b50 !important;
+  font-size: 12px !important;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.h-station-node { z-index: 4; }
+.popup-body {
+  width: 100%;
+  padding: 16px clamp(12px, 3vw, 28px) 24px !important;
+  overflow-y: auto;
+}
+.popup-body > * {
+  width: 100%;
+  max-width: 1120px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.info-section { min-width: 0; }
+.arrival-split { align-items: stretch; }
+.arr-col { min-width: 0; }
+.arr-item, .tt-item { overflow-wrap: anywhere; }
+@media (min-width: 760px) {
+  .popup-header { padding-left: max(28px, calc((100vw - 1120px) / 2)) !important; padding-right: max(28px, calc((100vw - 1120px) / 2)) !important; }
+  .popup-body { display: block; }
+  .h-map-area { flex-basis: 155px; }
+}
+@media (max-width: 480px) {
+  .h-map-area { flex-basis: 132px; }
+  .h-station-name { font-size: 11px !important; }
+  .popup-stn-name { max-width: 58vw; }
+  .popup-body { padding: 10px 9px 18px !important; }
+  .info-section { padding: 12px !important; border-radius: 13px; }
+  .arr-col { padding: 6px !important; }
+  .arr-item, .tt-item { padding: 7px !important; font-size: 11px; }
+}
+
+
+/* === Refined controls and responsive station map === */
+.top-controls{position:sticky;top:10px;z-index:80;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px;margin:10px auto 12px;width:min(100%,900px);pointer-events:none;}
+.top-controls button{pointer-events:auto;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(60,60,67,.12);box-shadow:0 5px 18px rgba(0,0,0,.08);}
+.line-picker-trigger{display:flex;align-items:center;gap:12px;min-height:54px;padding:9px 17px;border-radius:17px;background:rgba(255,255,255,.78);color:#1d1d1f;text-align:left;transition:all .25s ease;}
+.line-picker-trigger .line-picker-kicker{font-size:11px;color:#86868b;font-weight:600;}
+.line-picker-trigger strong{font-size:18px;letter-spacing:-.4px;}
+.picker-chevron{font-size:19px;color:#86868b;transition:transform .2s ease;}
+.line-picker-trigger[aria-expanded="true"] .picker-chevron{transform:rotate(180deg);}
+.menu-trigger{width:54px;height:54px;display:grid;place-items:center;border-radius:50%;background:rgba(255,255,255,.78);color:#1d1d1f;font-size:22px;transition:width .25s ease,background .2s ease;}
+.menu-trigger.menu-open{width:98px;border-radius:28px;font-size:14px;font-weight:700;background:rgba(255,255,255,.94);}
+.more-label{white-space:nowrap;}
+.line-selector{position:relative;z-index:70;display:flex;flex-wrap:wrap;justify-content:center;gap:9px;padding:4px 16px 14px;margin:0 auto;max-width:1000px;opacity:1;transform:translateX(0);transition:opacity .28s ease,transform .38s cubic-bezier(.2,.8,.2,1),max-height .3s ease;max-height:300px;overflow:hidden;}
+.line-selector.compact-hidden{opacity:0;transform:translateX(65px);max-height:0;padding-top:0;padding-bottom:0;pointer-events:none;}
+.line-selector.picker-open{opacity:1;transform:translateX(0);max-height:300px;padding:12px 16px 16px;pointer-events:auto;background:rgba(245,245,247,.86);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:0 0 20px 20px;}
+.line-button{min-height:43px!important;min-width:66px!important;padding:10px 17px!important;font-size:14px!important;border-radius:15px!important;}
+.menu-stack{position:fixed;top:77px;right:max(16px,calc((100vw - 868px)/2));z-index:79;width:min(280px,calc(100vw - 32px));display:flex;flex-direction:column;gap:9px;pointer-events:none;}
+.menu-card{display:flex;align-items:center;gap:12px;width:100%;min-height:66px;padding:12px 14px;border:1px solid rgba(60,60,67,.10);border-radius:18px;background:rgba(255,255,255,.91);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 8px 24px rgba(0,0,0,.08);text-align:left;color:#1d1d1f;opacity:0;transform:translateY(-9px) scale(.97);transition:opacity .24s ease,transform .3s cubic-bezier(.2,.8,.2,1);}
+.menu-stack.menu-visible{pointer-events:auto;}
+.menu-stack.menu-visible .menu-card{opacity:1;transform:translateY(0) scale(1);}
+.menu-stack.menu-visible .menu-card:nth-child(1){transition-delay:.03s}.menu-stack.menu-visible .menu-card:nth-child(2){transition-delay:.10s}.menu-stack.menu-visible .menu-card:nth-child(3){transition-delay:.17s}
+.menu-card-icon{width:36px;height:36px;display:grid;place-items:center;flex:none;border-radius:12px;background:#f2f2f7;font-size:18px;color:#3a3a3c;}
+.menu-card>span:nth-child(2){display:flex;flex-direction:column;gap:4px;flex:1}.menu-card strong{font-size:14px;font-weight:700}.menu-card small{font-size:11px;color:#86868b}.menu-card-arrow{font-size:24px;color:#aeaeb2;}
+/* 방향 표시를 뒤집음: 왼쪽은 하행, 오른쪽은 상행 */
+.v-train.up{left:auto!important;right:12%!important;}
+.v-train.down{left:12%!important;right:auto!important;}
+.v-up-line{left:auto!important;right:14%!important;}
+.v-down-line{right:auto!important;left:14%!important;}
+.popup-header>div{display:flex;align-items:center;gap:12px;min-width:0;}
+.popup-stn-name{display:inline-flex;align-items:center;min-height:38px;line-height:1.15;white-space:normal;overflow-wrap:anywhere;font-size:clamp(20px,2.4vw,29px)!important;}
+.popup-header .badge{display:inline-flex;align-items:center;justify-content:center;flex:none;min-height:32px;line-height:1;padding:7px 11px;}
+@media(max-width:600px){.top-controls{top:7px;padding:0 12px;margin:7px auto 8px}.line-picker-trigger,.menu-trigger{min-height:49px;height:49px}.menu-trigger{width:49px}.line-picker-trigger{padding:8px 13px;gap:9px}.line-picker-trigger strong{font-size:16px}.line-button{min-width:58px!important;min-height:40px!important;padding:9px 12px!important}.menu-stack{top:66px;right:12px}.popup-header>div{gap:8px}.popup-stn-name{font-size:21px!important}.popup-header .badge{min-height:30px;padding:6px 9px}}
+
+
+/* ===== 레이아웃 보정: 기본은 노선 칩, 스크롤 시 퀵 컨트롤 ===== */
+.app-container{height:100dvh;overflow:hidden;background:#f5f5f7;}
+.top-controls{position:absolute;top:10px;left:0;right:0;width:100%;max-width:none;margin:0;padding:0 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:90;pointer-events:none;}
+.top-controls button{pointer-events:auto;}
+.line-picker-trigger{display:flex;opacity:0;visibility:hidden;pointer-events:none;transform:translateX(-12px);transition:opacity .25s ease,transform .32s ease,visibility .25s;}
+.line-picker-trigger.trigger-visible{opacity:1;visibility:visible;pointer-events:auto;transform:translateX(0);}
+.menu-trigger{margin-left:auto;flex:none;}
+.top-controls:not(.compact-mode) .menu-trigger{opacity:0;visibility:hidden;pointer-events:none;}
+.top-controls.compact-mode .menu-trigger{opacity:1;visibility:visible;pointer-events:auto;}
+.line-selector{position:relative;flex:0 0 auto;width:100%;max-width:none;min-height:64px;margin:0;padding:10px 14px 12px;display:flex;flex-wrap:nowrap;justify-content:flex-start;align-items:center;gap:9px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;background:rgba(245,245,247,.84);border:0;border-bottom:1px solid rgba(60,60,67,.08);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);opacity:1;transform:translateX(0);max-height:80px;transition:opacity .25s ease,transform .34s cubic-bezier(.2,.8,.2,1),max-height .28s ease,padding .28s ease;z-index:70;}
+.line-selector.compact-hidden{opacity:0;transform:translateX(-100%);max-height:0;min-height:0;padding-top:0;padding-bottom:0;border-bottom:0;pointer-events:none;}
+.line-selector.picker-open{position:absolute;top:64px;left:0;right:0;width:100%;height:auto;max-height:45dvh;min-height:0;flex-wrap:wrap;overflow-y:auto;justify-content:flex-start;padding:14px;background:rgba(245,245,247,.91);border:0;border-radius:0 0 20px 20px;box-shadow:0 12px 28px rgba(0,0,0,.10);}
+.line-button{flex:0 0 auto;}
+.main-content{flex:1 1 auto;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;padding:10px 0 110px;margin:0;background:#f5f5f7;overscroll-behavior-y:contain;}
+.map-instruction{margin:4px 0 20px;}
+.vertical-map-container{position:relative;width:100%;max-width:1000px;margin:0 auto;}
+.v-station-nodes,.v-trains-container{width:100%;}
+/* 선로와 열차는 화면 전체 폭을 활용하되 중앙 역명과 겹치지 않게 배치 */
+.v-up-line{left:35%!important;right:auto!important;}
+.v-down-line{left:65%!important;right:auto!important;}
+.v-train.up{left:35%!important;right:auto!important;}
+.v-train.down{left:65%!important;right:auto!important;}
+.menu-stack{top:74px;}
+@media(max-width:600px){
+ .top-controls{top:8px;padding:0 12px;}
+ .line-selector{min-height:60px;padding:9px 10px;gap:7px;}
+ .line-selector.picker-open{top:60px;padding:12px;}
+ .line-button{min-height:40px!important;min-width:58px!important;padding:9px 12px!important;}
+ .line-picker-trigger{min-height:49px;height:49px;padding:8px 13px;gap:8px;}
+ .menu-trigger{min-height:49px;height:49px;width:49px;}
+ .main-content{padding-top:8px;}
+ .vertical-map-container{width:100%;}
+ .v-up-line,.v-train.up{left:25%!important;}
+ .v-down-line,.v-train.down{left:75%!important;}
+ .v-station-name{font-size:13px;}
+ .menu-stack{top:66px;right:12px;}
+}
+@media(prefers-reduced-motion:reduce){.line-selector,.line-picker-trigger,.menu-trigger{transition:none!important;}}
 
 </style>
 </head>
@@ -1158,9 +1438,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica
 <body>
 <div class="app-container">
 
-  <!-- 헤더 대신 가로형 노선 선택 -->
-  <nav class="line-selector" id="lineSelector"
-       aria-label="지하철 노선 선택"></nav>
+  <!-- 상단 퀵 컨트롤 -->
+  <div class="top-controls" id="topControls">
+    <button type="button" class="line-picker-trigger" id="linePickerTrigger" aria-expanded="false">
+      <span class="line-picker-kicker">노선 선택</span><strong id="currentLineLabel">2호선</strong><span class="picker-chevron">⌄</span>
+    </button>
+    <button type="button" class="menu-trigger" id="menuTrigger" aria-label="메뉴 열기" aria-expanded="false">☰</button>
+  </div>
+  <nav class="line-selector" id="lineSelector" aria-label="지하철 노선 선택"></nav>
+  <div class="menu-stack" id="menuStack" aria-hidden="true">
+    <button type="button" class="menu-card" data-menu="login"><span class="menu-card-icon">↗</span><span><strong>로그인</strong><small>계정 및 개인 설정</small></span><span class="menu-card-arrow">›</span></button>
+    <button type="button" class="menu-card" data-menu="developer"><span class="menu-card-icon">⌘</span><span><strong>개발자</strong><small>앱 정보 및 제작자</small></span><span class="menu-card-arrow">›</span></button>
+    <button type="button" class="menu-card" data-menu="api"><span class="menu-card-icon">⌁</span><span><strong>API 정보</strong><small>데이터 제공 및 상태</small></span><span class="menu-card-arrow">›</span></button>
+  </div>
 
   <!-- 세로형 노선 지도 -->
   <main class="main-content" id="mainContent">
@@ -1186,10 +1476,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica
 
   <section class="train-detail-card hidden" id="trainDetailCard" aria-live="polite">
     <div class="train-card-top"><div class="train-line-circle" id="trainCardLineNum">2</div>
-      <div class="train-card-heading"><div class="train-card-title">열차 <strong id="trainCardNo">API없음</strong> <span id="trainCardStatus" class="train-status-pill">API없음</span></div>
-      <div class="train-card-sub" id="trainCardLocation">현재 위치: API없음</div></div>
+      <div class="train-card-heading"><div class="train-card-title">열차 <strong id="trainCardNo">현재 정보 없음</strong> <span id="trainCardStatus" class="train-status-pill">현재 정보 없음</span></div>
+      <div class="train-card-sub" id="trainCardLocation">현재 위치: 현재 정보 없음</div></div>
       <button class="train-card-refresh" id="trainCardRefresh" aria-label="열차 정보 새로고침">↻</button></div>
-    <div class="train-card-progress-label"><span>열차 운행 진행도</span><strong id="trainCardProgressText">API없음</strong></div>
+    <div class="train-card-progress-label"><span>열차 운행 진행도</span><strong id="trainCardProgressText">현재 정보 없음</strong></div>
     <div class="train-progress"><span id="trainCardProgress"></span></div>
     <div class="train-progress-scale"><span id="trainCardStart">첫 역</span><span id="trainCardMid">중간 역</span><span id="trainCardEnd">종착역</span></div>
     <div class="train-card-actions"><button id="trainCardAlert">♧ 도착 알림 받기</button><button id="trainCardMap">▣ 전체 노선 지도보기</button></div>
@@ -1225,11 +1515,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica
         <div class="arrival-split">
           <div class="arr-col">
             <h4>상행 / 내선</h4>
-            <div id="arrUpList">API없음</div>
+            <div id="arrUpList">현재 정보 없음</div>
           </div>
           <div class="arr-col">
             <h4>하행 / 외선</h4>
-            <div id="arrDownList">API없음</div>
+            <div id="arrDownList">현재 정보 없음</div>
           </div>
         </div>
       </section>
@@ -1269,11 +1559,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica
         <div class="arrival-split">
           <div class="arr-col">
             <h4>상행 / 내선</h4>
-            <div id="ttUpList" class="tt-list">API없음</div>
+            <div id="ttUpList" class="tt-list">현재 정보 없음</div>
           </div>
           <div class="arr-col">
             <h4>하행 / 외선</h4>
-            <div id="ttDownList" class="tt-list">API없음</div>
+            <div id="ttDownList" class="tt-list">현재 정보 없음</div>
           </div>
         </div>
       </section>
@@ -1695,6 +1985,7 @@ function renderLineButtons() {
 }
 
 function updateActiveLineButton() {
+  const label = document.getElementById('currentLineLabel'); if (label) label.textContent = currentLine || '노선 선택';
   document.querySelectorAll('.line-button').forEach(button => {
     const active = button.dataset.line === currentLine;
 
@@ -1857,7 +2148,7 @@ function openFullPopup(station) {
 
       node.innerHTML =
         `<div class="h-station-name"
-          style="${isCurrent ? 'color:#fff;font-size:13px;top:-26px;' : ''}">
+          style="${isCurrent ? 'color:#1d1d1f;font-size:15px;font-weight:800;top:-30px;background:#fff;padding:4px 7px;border-radius:7px;box-shadow:0 1px 5px rgba(0,0,0,.14);z-index:10;' : ''}">
           ${escapeHtml(stn)}
         </div>`;
 
@@ -1981,7 +2272,8 @@ async function fetchTrainPositions() {
       const statusText = escapeHtml(getTrainStatusText(status));
 
       /* 세로 지도 */
-      let stationIndex = getStationIndex(line.stations, train.statnNm);
+      const stationIndexInLine = getStationIndex(line.circular ? line.stations.slice(0, -1) : line.stations, train.statnNm);
+      let stationIndex = stationIndexInLine;
       if (line.circular && stationIndex >= 0) stationIndex += line.stations.length - 1;
 
       if (stationIndex !== -1) {
@@ -1996,8 +2288,9 @@ async function fetchTrainPositions() {
           element.addEventListener('click', event => { event.stopPropagation(); showTrainDetail(element._trainData); });
         }
 
-        element.className = `v-train ${isUp ? 'up' : 'down'}`;
-        element._trainData = { trainNo, status, statusText, station: train.statnNm || 'API없음', destination: train.bstatnNm || train.statnTnm || 'API없음', isUp, stationIndex: getStationIndex(line.stations, train.statnNm), lineName: requestLine };
+        const isExpress = String(train.btrainSttus || train.trainType || '').includes('급행');
+        element.className = `v-train ${isUp ? 'up' : 'down'}${isExpress ? ' express' : ''}`;
+        element._trainData = { trainNo, status, statusText, station: train.statnNm || '현재 정보 없음', destination: train.bstatnNm || train.statnTnm || '현재 정보 없음', isUp, stationIndex: stationIndexInLine, lineName: requestLine };
 
         element.innerHTML =
           `<span>${escapeHtml(trainNo)}</span>` +
@@ -2028,7 +2321,8 @@ async function fetchTrainPositions() {
             hTrainsContainer.appendChild(element);
           }
 
-          element.className = `h-train ${isUp ? 'up' : 'down'}`;
+          const isExpress = String(train.btrainSttus || train.trainType || '').includes('급행');
+          element.className = `h-train ${isUp ? 'up' : 'down'}${isExpress ? ' express' : ''}`;
 
           element.innerHTML =
             `<span>${escapeHtml(trainNo)}</span>` +
@@ -2181,19 +2475,19 @@ async function fetchArrivalInfo(station, requestId) {
 
     arrUpList.innerHTML =
       upHTML ||
-      '<div class="arr-item">API없음</div>';
+      '<div class="arr-item">현재 정보 없음</div>';
 
     arrDownList.innerHTML =
       downHTML ||
-      '<div class="arr-item">API없음</div>';
+      '<div class="arr-item">현재 정보 없음</div>';
 
   } catch (error) {
     if (requestId === popupRequestId) {
       arrUpList.innerHTML =
-        '<div class="arr-item">API없음</div>';
+        '<div class="arr-item">현재 정보 없음</div>';
 
       arrDownList.innerHTML =
-        '<div class="arr-item">API없음</div>';
+        '<div class="arr-item">현재 정보 없음</div>';
     }
   } finally {
     if (requestId === popupRequestId) {
@@ -2250,8 +2544,8 @@ async function fetchStatistics(station, requestId) {
 
   } catch (error) {
     if (requestId === popupRequestId) {
-      timeRideNum.textContent = 'API없음';
-      timeAlightNum.textContent = 'API없음';
+      timeRideNum.textContent = '현재 정보 없음';
+      timeAlightNum.textContent = '현재 정보 없음';
     }
   } finally {
     if (requestId === popupRequestId) {
@@ -2351,10 +2645,10 @@ async function fetchTimetable(station, requestId) {
   } catch (error) {
     if (requestId === popupRequestId) {
       ttUpList.innerHTML =
-        '<div class="tt-item">시간표 API없음</div>';
+        '<div class="tt-item">시간표 현재 정보 없음</div>';
 
       ttDownList.innerHTML =
-        '<div class="tt-item">시간표 API없음</div>';
+        '<div class="tt-item">시간표 현재 정보 없음</div>';
     }
   } finally {
     if (requestId === popupRequestId) {
@@ -2365,7 +2659,7 @@ async function fetchTimetable(station, requestId) {
 
 function renderTimetable(rows, isUp) {
   if (!rows.length) {
-    return '<div class="tt-item">시간표 API없음</div>';
+    return '<div class="tt-item">시간표 현재 정보 없음</div>';
   }
 
   const now = new Date();
@@ -2478,17 +2772,17 @@ function showTrainDetail(train) {
   const line = lineData[train.lineName] || lineData[currentLine];
   $('trainCardLineNum').textContent = (train.lineName.match(/\\d+/) || ['↻'])[0];
   $('trainCardLineNum').style.background = line.color;
-  $('trainCardNo').textContent = train.trainNo || 'API없음';
-  $('trainCardStatus').textContent = train.statusText || 'API없음';
-  $('trainCardLocation').textContent = `현재 위치: ${train.station || 'API없음'} · ${train.destination || 'API없음'}행`;
+  $('trainCardNo').textContent = train.trainNo || '현재 정보 없음';
+  $('trainCardStatus').textContent = train.statusText || '현재 정보 없음';
+  $('trainCardLocation').textContent = `현재 위치: ${train.station || '현재 정보 없음'} · ${train.destination || '현재 정보 없음'}행`;
   const stations = line.circular ? line.stations.slice(0,-1) : line.stations;
   const idx = train.stationIndex;
   const progress = idx >= 0 && stations.length > 1 ? Math.round(idx / (stations.length - 1) * 100) : null;
-  $('trainCardProgressText').textContent = progress === null ? 'API없음' : `${progress}%`;
+  $('trainCardProgressText').textContent = progress === null ? '현재 정보 없음' : `${progress}%`;
   $('trainCardProgress').style.width = progress === null ? '0%' : `${progress}%`;
-  $('trainCardStart').textContent = stations[0] || 'API없음';
-  $('trainCardMid').textContent = stations[Math.floor(stations.length/2)] || 'API없음';
-  $('trainCardEnd').textContent = stations[stations.length-1] || 'API없음';
+  $('trainCardStart').textContent = stations[0] || '현재 정보 없음';
+  $('trainCardMid').textContent = stations[Math.floor(stations.length/2)] || '현재 정보 없음';
+  $('trainCardEnd').textContent = stations[stations.length-1] || '현재 정보 없음';
   $('trainDetailCard').classList.remove('hidden');
 }
 $('trainCardRefresh').addEventListener('click', () => refreshAll());
@@ -2502,6 +2796,69 @@ $('trainCardAlert').addEventListener('click', async () => {
   const btn = $('trainCardAlert');
   if ('Notification' in window && Notification.permission === 'default') await Notification.requestPermission();
   btn.textContent = '✓ 알림 기능 선택됨';
+});
+
+/* ========================================
+   상단 노선 선택 / 더보기 메뉴
+======================================== */
+const topControls = $('topControls');
+const linePickerTrigger = $('linePickerTrigger');
+const currentLineLabel = $('currentLineLabel');
+const menuTrigger = $('menuTrigger');
+const menuStack = $('menuStack');
+let lineMenuOpen = false;
+let moreMenuOpen = false;
+function syncCurrentLineLabel() { currentLineLabel.textContent = currentLine || '노선 선택'; }
+menuTrigger.addEventListener('click', () => {
+  moreMenuOpen = !moreMenuOpen;
+  menuTrigger.classList.toggle('menu-open', moreMenuOpen);
+  menuTrigger.setAttribute('aria-expanded', String(moreMenuOpen));
+  menuTrigger.innerHTML = moreMenuOpen ? '<span class="more-label">더보기</span>' : '☰';
+  menuStack.classList.toggle('menu-visible', moreMenuOpen);
+  menuStack.setAttribute('aria-hidden', String(!moreMenuOpen));
+});
+menuStack.querySelectorAll('.menu-card').forEach(card => card.addEventListener('click', () => {
+  const label = card.querySelector('strong').textContent;
+  if (card.dataset.menu === 'login') alert('로그인 기능은 아직 준비 중이에요.');
+  else if (card.dataset.menu === 'developer') alert('서울 지하철 대시보드 개발자 정보');
+  else alert('연결된 실시간 열차 위치 API 및 데이터 제공 정보를 표시합니다.');
+}));
+// 실제 스크롤은 window가 아니라 mainContent 안에서 발생합니다.
+// 처음에는 노선 버튼만 보이고, 아래로 내릴 때 노선 버튼은 왼쪽으로 접히며
+// 같은 높이에 '노선 선택'과 '더보기'가 나타납니다. 위로 스크롤하면 원상복구됩니다.
+const mainContent = $('mainContent');
+let lastScrollY = mainContent.scrollTop;
+let compactMode = false;
+function setCompactMode(compact) {
+  compactMode = compact;
+  topControls.classList.toggle('compact-mode', compact);
+  lineSelector.classList.toggle('compact-hidden', compact && !lineMenuOpen);
+  linePickerTrigger.classList.toggle('trigger-visible', compact || lineMenuOpen);
+  if (!compact && !lineMenuOpen) {
+    lineMenuOpen = false;
+    linePickerTrigger.setAttribute('aria-expanded', 'false');
+    lineSelector.classList.remove('picker-open');
+  }
+}
+mainContent.addEventListener('scroll', () => {
+  const y = mainContent.scrollTop;
+  if (y > lastScrollY + 2 && y > 45) {
+    setCompactMode(true);
+  } else if (y < lastScrollY - 2 || y <= 45) {
+    setCompactMode(false);
+  }
+  lastScrollY = y;
+}, {passive:true});
+linePickerTrigger.addEventListener('click', () => {
+  lineMenuOpen = !lineMenuOpen;
+  linePickerTrigger.setAttribute('aria-expanded', String(lineMenuOpen));
+  lineSelector.classList.toggle('picker-open', lineMenuOpen);
+  if (lineMenuOpen) {
+    lineSelector.classList.remove('compact-hidden');
+    linePickerTrigger.classList.add('trigger-visible');
+  } else if (!compactMode) {
+    linePickerTrigger.classList.remove('trigger-visible');
+  }
 });
 
 /* ========================================
