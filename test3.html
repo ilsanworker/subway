@@ -1781,10 +1781,16 @@ body.popup-open .menu-stack{
 <style id="feature-photo-and-drag-fix-v24">
 /* 역 노드 중심 X좌표에 고정된 특징 건물 사진: 노선 라인을 가로질러 배치되고 지도 스크롤과 함께 움직임 */
 .feature-photo-layer{display:none!important;}
-.station-feature-photo-pair{position:absolute;left:50%;top:50%;width:calc(100vw - 24px);display:flex;align-items:center;justify-content:space-between;gap:12px;transform:translate(-50%,-50%);pointer-events:none;z-index:3;}
-.station-feature-photo{display:block;width:clamp(76px,12vw,118px);height:clamp(62px,9vw,88px);flex:0 0 auto;object-fit:cover;object-position:center;border:0;border-radius:10px;background:transparent;box-shadow:none;opacity:.94;pointer-events:none;-webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);}
-.station-feature-photo:last-child{-webkit-mask-image:linear-gradient(to left,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);mask-image:linear-gradient(to left,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);}
-@media(max-width:600px){.station-feature-photo-pair{width:calc(100vw - 16px);}.station-feature-photo{width:68px;height:56px;border-radius:8px;}}
+/* 각 설정 키는 사진 한 장만 표시: ml=화면 왼쪽 끝, mr=화면 오른쪽 끝 */
+.station-feature-photo-positioner{position:absolute;left:50%;top:50%;width:calc(100vw - 24px);height:0;transform:translate(-50%,-50%);pointer-events:none;z-index:3;}
+.station-feature-photo{position:absolute;top:0;display:block;width:clamp(76px,12vw,118px);height:clamp(62px,9vw,88px);object-fit:cover;object-position:center;border:0;border-radius:10px;background:transparent;box-shadow:none;opacity:.94;pointer-events:none;}
+.station-feature-photo.pos-ml,.station-feature-photo.pos-tl,.station-feature-photo.pos-bl{left:0;-webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);}
+.station-feature-photo.pos-mr,.station-feature-photo.pos-tr,.station-feature-photo.pos-br{right:0;-webkit-mask-image:linear-gradient(to left,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);mask-image:linear-gradient(to left,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);}
+.station-feature-photo.pos-tl,.station-feature-photo.pos-tc,.station-feature-photo.pos-tr{transform:translateY(calc(-100% - 18px));}
+.station-feature-photo.pos-bl,.station-feature-photo.pos-bc,.station-feature-photo.pos-br{transform:translateY(18px);}
+.station-feature-photo.pos-tc,.station-feature-photo.pos-bc{left:50%;transform:translate(-50%,0);}
+.station-feature-photo.pos-tc{transform:translate(-50%,calc(-100% - 18px));}
+@media(max-width:600px){.station-feature-photo-positioner{width:calc(100vw - 16px);}.station-feature-photo{width:68px;height:56px;border-radius:8px;}}
 /* drag affordance: pointer capture is handled in JS; fixed-size cap prevents runaway handles */
 .transfer-arm{height:62px;max-height:92px;overflow:visible;touch-action:none!important;user-select:none;-webkit-user-select:none;}
 .transfer-arm span{pointer-events:none;}
@@ -2474,9 +2480,9 @@ function initMaps(lineName) {
       `<button type="button" class="transfer-arm arm-${armIndex % 3}" data-transfer-line="${escapeHtml(connection.name)}" style="--arm-color:${connection.color}" aria-label="${escapeHtml(connection.name)}으로 이동" title="끌어서 ${escapeHtml(connection.name)}으로 이동"><span>${escapeHtml(connection.name.replace('호선',''))}</span></button>`
     ).join('');
     const featureConfig = getFeaturePhotoConfig(station);
-    const featurePhotoUrl = featureConfig && featureConfig.photos.mr ? String(featureConfig.photos.mr).trim() : '';
-    const featurePhotoMarkup = featurePhotoUrl
-      ? `<div class="station-feature-photo-pair" aria-label="${escapeHtml(featureConfig.name)} 주변 건물"><img class="station-feature-photo" src="${escapeHtml(featurePhotoUrl)}" alt="${escapeHtml(featureConfig.name)} 주변 건물 사진 왼쪽" loading="eager" decoding="async" onerror="this.remove()"><img class="station-feature-photo" src="${escapeHtml(featurePhotoUrl)}" alt="${escapeHtml(featureConfig.name)} 주변 건물 사진 오른쪽" loading="eager" decoding="async" onerror="this.remove()"></div>`
+    const featureEntries = featureConfig ? Object.entries(featureConfig.photos).filter(([position, url]) => /^(tl|tc|tr|ml|mr|bl|bc|br)$/.test(position) && typeof url === 'string' && url.trim()) : [];
+    const featurePhotoMarkup = featureEntries.length
+      ? `<div class="station-feature-photo-positioner" aria-label="${escapeHtml(featureConfig.name)} 주변 건물">${featureEntries.map(([position, url]) => `<img class="station-feature-photo pos-${position}" src="${escapeHtml(url.trim())}" alt="${escapeHtml(featureConfig.name)} 주변 건물 사진 ${position}" loading="eager" decoding="async" onerror="this.remove()">`).join('')}</div>`
       : '';
     node.innerHTML = `<div class="v-station-name">${escapeHtml(station)}</div>${featurePhotoMarkup}${connections.length ? `<div class="transfer-hub" aria-label="환승 노선 선택"><span class="transfer-hub-core"></span>${transferArms}</div>` : ''}`;
     // 역 노드 클릭은 언제나 역 팝업을 연다. 노선 막대는 드래그로만 노선 이동.
