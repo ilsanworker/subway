@@ -1855,8 +1855,8 @@ body.popup-open .menu-stack{
    실제 서비스에서는 API 키를 서버에서 관리하세요.
 ======================================== */
 
-const REALTIME_API_KEY = '76716f6677696c7336344b67715451';
-const OPEN_API_KEY = '76716f6677696c7336344b67715451';
+const REALTIME_API_KEY = '486c77684e696c7331303157766b6779';
+const OPEN_API_KEY = '486c77684e696c7331303157766b6779';
 
 const IS_LOCAL =
   location.hostname === 'localhost' ||
@@ -2356,7 +2356,6 @@ function initMaps(lineName) {
   stations.forEach((station, index) => {
     const node = document.createElement('div');
     const connections = getStationLineConnections(station);
-    const railTypes = RAIL_STATION_TYPES[normalizeStationName(station)] || [];
     node.className = `v-station-node${connections.length ? ' is-transfer' : ''}`;
     node.style.top = `${index * V_SPACING}px`;
     node.dataset.station = station;
@@ -2470,8 +2469,6 @@ function openFullPopup(station) {
 
   fullPopup.classList.remove('hidden');
   document.body.classList.add('popup-open');
-  renderLandmarks();
-  closeLandmarkEditor();
 
   pName.textContent = `${station}역`;
   pBadge.textContent = currentLine;
@@ -3391,51 +3388,3 @@ elapsedTimer = setInterval(updateRefreshLabel, 1000);
 </style>
 
 
-<style id="v16-landmark-styles">
-.landmark-section { overflow:hidden; }
-.landmark-heading-row { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
-.landmark-heading-row h3 { margin:0 0 5px; }
-.landmark-subtitle { color:#86868b; font-size:12px; margin:0; }
-.landmark-edit-toggle,.landmark-form-actions button { border:1px solid #d2d2d7; border-radius:999px; padding:9px 14px; background:rgba(255,255,255,.8); color:#1d1d1f; font-weight:700; cursor:pointer; transition:transform .2s,background .2s,box-shadow .2s; }
-.landmark-edit-toggle:hover,.landmark-form-actions button:hover { transform:translateY(-1px); box-shadow:0 5px 15px #00000012; }
-.landmark-orbit { display:grid; grid-template-columns:minmax(0,1fr) minmax(92px,132px) minmax(0,1fr); gap:clamp(8px,2vw,24px); align-items:stretch; margin:18px 0 8px; min-height:240px; }
-.landmark-side { display:grid; grid-template-rows:repeat(3,minmax(70px,1fr)); gap:9px; min-width:0; }
-.landmark-station-core { align-self:center; justify-self:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; width:100%; min-height:100px; border-radius:24px; background:linear-gradient(145deg,#fff,#f5f5f7); border:1px solid #e5e5ea; box-shadow:0 8px 24px #0000000b; text-align:center; padding:10px 4px; }
-.landmark-core-dot { width:18px;height:18px;border:5px solid var(--line-color,#0b57a5);background:white;border-radius:50%;box-shadow:0 0 0 5px color-mix(in srgb,var(--line-color,#0b57a5) 12%,transparent); }
-.landmark-station-core strong { font-size:15px; line-height:1.2; overflow-wrap:anywhere; }
-.landmark-station-core small { color:#86868b;font-size:10px; }
-.landmark-card { display:flex; align-items:center; gap:9px; min-width:0; width:100%; padding:7px; border:1px solid #e5e5ea; border-radius:15px; background:#fff; box-shadow:0 3px 10px #00000008; text-align:left; position:relative; animation:landmark-in .28s cubic-bezier(.2,.8,.2,1) both; }
-.landmark-card img { width:62px;height:54px;flex:0 0 62px;object-fit:cover;border-radius:10px;background:#f2f2f7; }
-.landmark-card-copy { min-width:0; flex:1; }
-.landmark-card-copy strong { display:block;font-size:12px;line-height:1.3;overflow-wrap:anywhere; }
-.landmark-card-copy small { display:block;color:#86868b;font-size:10px;margin-top:4px; }
-.landmark-card-actions { display:flex;gap:3px;flex-direction:column; }
-.landmark-card-actions button { border:0;background:#f5f5f7;color:#515154;border-radius:7px;padding:4px 6px;font-size:10px;cursor:pointer; }
-.landmark-slot-empty { display:flex;align-items:center;justify-content:center;gap:6px;border:1px dashed #d2d2d7;border-radius:15px;color:#a1a1a6;font-size:11px;min-height:66px;background:#ffffff70; }
-.landmark-empty-note { color:#86868b;font-size:12px;text-align:center;padding:4px 0 8px; }
-.landmark-editor { margin-top:12px;padding:15px;border-radius:18px;background:#fff;border:1px solid #e5e5ea;box-shadow:0 8px 25px #00000008; }
-.landmark-editor.hidden { display:none; }
-.landmark-form-title { font-size:14px;font-weight:800;margin-bottom:12px; }
-.landmark-form-grid { display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:10px; }
-.landmark-form-grid label { display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;color:#6e6e73;min-width:0; }
-.landmark-form-grid input,.landmark-form-grid select { width:100%;min-width:0;box-sizing:border-box;border:1px solid #d2d2d7;border-radius:10px;padding:10px;font:inherit;font-size:12px;color:#1d1d1f;background:#fff; }
-.landmark-form-actions { display:flex;gap:8px;margin-top:12px; }
-.landmark-form-actions .landmark-save-btn { background:#0b57a5;color:#fff;border-color:#0b57a5; }
-.landmark-editor-hint { font-size:11px;color:#86868b;margin:10px 0 0; }
-@keyframes landmark-in { from { opacity:0; transform:translateY(7px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
-@media(max-width:640px) {
- .landmark-orbit { grid-template-columns:minmax(0,1fr) 72px minmax(0,1fr); gap:6px; min-height:210px; }
- .landmark-side { gap:6px;grid-template-rows:repeat(3,minmax(62px,1fr)); }
- .landmark-card { padding:5px;gap:5px;border-radius:12px; }
- .landmark-card img { width:43px;height:43px;flex-basis:43px;border-radius:8px; }
- .landmark-card-copy strong { font-size:10px; }
- .landmark-card-copy small { font-size:9px; }
- .landmark-card-actions { display:flex;gap:2px; }
- .landmark-card-actions button {font-size:8px;padding:3px 4px;}
- .landmark-slot-empty {font-size:9px;text-align:center;padding:3px;}
- .landmark-station-core {border-radius:17px;min-height:84px;}
- .landmark-station-core strong {font-size:12px;}
- .landmark-station-core small {font-size:9px;}
- .landmark-form-grid { grid-template-columns:1fr; }
-}
-</style>
