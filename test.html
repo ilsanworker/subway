@@ -1762,6 +1762,35 @@ body.popup-open .menu-stack{
 }
 </style>
 
+
+<style id="v23-spacing-performance-fix">
+/* v23: 역 간격 확대, 환승 막대 최대 길이 제한, 모바일 렌더링 부담 완화 */
+:root { --v-spacing: 132px; --h-spacing: 128px; }
+.v-station-node { contain: layout style; }
+.v-station-name { line-height: 1.3 !important; }
+.transfer-arm { max-height: 104px; will-change: height; }
+.transfer-arm span { white-space: nowrap; }
+@media (max-width:600px) {
+  .v-station-name { font-size: 18px !important; }
+  .transfer-arm { max-height: 96px; }
+}
+@media (prefers-reduced-motion: reduce) { .transfer-arm { will-change: auto; } }
+</style>
+
+
+<style id="feature-photo-and-drag-fix-v24">
+/* 역 노드에 붙는 특징 건물 사진: 지도 스크롤과 함께 움직이고 배경과 자연스럽게 섞임 */
+.feature-photo-layer{display:none!important;}
+.station-feature-photo{position:absolute;left:25px;top:50%;width:clamp(76px,22vw,118px);height:clamp(62px,17vw,88px);transform:translateY(-50%);object-fit:cover;object-position:center;border:0;border-radius:10px;background:transparent;box-shadow:none;opacity:.94;pointer-events:none;z-index:3;-webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);}
+@media(max-width:600px){.station-feature-photo{left:22px;width:76px;height:62px;border-radius:8px;}}
+/* drag affordance: pointer capture is handled in JS; fixed-size cap prevents runaway handles */
+.transfer-arm{height:62px;max-height:92px;overflow:visible;touch-action:none!important;user-select:none;-webkit-user-select:none;}
+.transfer-arm span{pointer-events:none;}
+</style>
+
+
+
+
 </head>
 
 <body>
@@ -1793,6 +1822,7 @@ body.popup-open .menu-stack{
       <div id="vStationNodes" class="v-station-nodes"></div>
       <div id="vTrainsContainer" class="v-trains-container"></div>
     </div>
+    <div id="featurePhotoLayer" class="feature-photo-layer" aria-label="선택한 역 주변 특징 건물 사진"></div>
   </main>
 
   <!-- 오른쪽 하단 새로고침 -->
@@ -2169,8 +2199,8 @@ const timeAlightNum = $('timeAlightNum');
 
 const ttDateType = $('ttDateType');
 
-const V_SPACING = 110;
-const H_SPACING = 120;
+const V_SPACING = 132;
+const H_SPACING = 128;
 
 
 /* ========================================
@@ -2396,10 +2426,31 @@ function navigateToLineStation(lineName, station) {
   }));
 }
 
+// 역 이름별 특징 건물 사진. 지도 최초 표시 시 자동으로 역 노드에 배치됩니다.
+// 공식 성신여대 홈페이지에 게시된 돈암수정캠퍼스 사진을 기본값으로 사용합니다.
+// 위치 키: tl/tc/tr/ml/mr/bl/bc/br (역 노드 기준의 위치)
+const FEATURE_PHOTOS_BY_STATION = {
+  '성신여대입구': {
+    mr: 'https://www.sungshin.ac.kr/editorUpload/images/000685/001.jpg'
+  }
+};
+function getFeaturePhotoConfig(stationName = ''){
+  const normalizePhotoStation = value => String(value || '').replace(/역$/,'').replace(/\s+/g,'').trim();
+  const key = Object.keys(FEATURE_PHOTOS_BY_STATION).find(name => normalizePhotoStation(name) === normalizePhotoStation(stationName));
+  return key ? { name:key, photos:FEATURE_PHOTOS_BY_STATION[key] } : null;
+}
+function renderFeaturePhotos(){
+  // 사진은 별도 화면 레이어가 아니라 해당 역 노드 안에 생성되어 노선도와 함께 이동합니다.
+  const layer = $('featurePhotoLayer');
+  if (layer) layer.replaceChildren();
+}
+renderFeaturePhotos();
+
 function initMaps(lineName) {
   if (refreshInterval) clearInterval(refreshInterval);
   mapRequestId++;
   currentLine = lineName;
+  renderFeaturePhotos();
   const line = lineData[currentLine];
   if (!line) return;
   updateActiveLineButton();
@@ -2410,6 +2461,7 @@ function initMaps(lineName) {
   const stations = isCircular ? [...baseStations, ...baseStations, ...baseStations] : baseStations;
   circularCycleHeight = baseStations.length * V_SPACING;
   vMapContainer.style.height = `${Math.max(1, stations.length - 1) * V_SPACING + 60}px`;
+  const stationFragment = document.createDocumentFragment();
   stations.forEach((station, index) => {
     const node = document.createElement('div');
     const connections = getStationLineConnections(station);
@@ -2419,62 +2471,58 @@ function initMaps(lineName) {
     const transferArms = connections.map((connection, armIndex) =>
       `<button type="button" class="transfer-arm arm-${armIndex % 3}" data-transfer-line="${escapeHtml(connection.name)}" style="--arm-color:${connection.color}" aria-label="${escapeHtml(connection.name)}으로 이동" title="끌어서 ${escapeHtml(connection.name)}으로 이동"><span>${escapeHtml(connection.name.replace('호선',''))}</span></button>`
     ).join('');
-    node.innerHTML = `<div class="v-station-name">${escapeHtml(station)}</div>${connections.length ? `<div class="transfer-hub" aria-label="환승 노선 선택"><span class="transfer-hub-core"></span>${transferArms}</div>` : ''}`;
+    const featureConfig = getFeaturePhotoConfig(station);
+    const featurePhotoUrl = featureConfig && featureConfig.photos.mr ? String(featureConfig.photos.mr).trim() : '';
+    const featurePhotoMarkup = featurePhotoUrl
+      ? `<img class="station-feature-photo" src="${escapeHtml(featurePhotoUrl)}" alt="${escapeHtml(featureConfig.name)} 주변 건물" loading="eager" decoding="async" onerror="this.remove()">`
+      : '';
+    node.innerHTML = `<div class="v-station-name">${escapeHtml(station)}</div>${featurePhotoMarkup}${connections.length ? `<div class="transfer-hub" aria-label="환승 노선 선택"><span class="transfer-hub-core"></span>${transferArms}</div>` : ''}`;
     // 역 노드 클릭은 언제나 역 팝업을 연다. 노선 막대는 드래그로만 노선 이동.
     node.addEventListener('click', () => openFullPopup(station));
     node.querySelectorAll('[data-transfer-line]').forEach(handle => {
-      let startX = 0, startY = 0, dragged = false, pointerId = null;
-      handle.addEventListener('pointerdown', event => {
-        startX = event.clientX; startY = event.clientY; dragged = false; pointerId = event.pointerId;
-        handle.dataset.dragCompleted = '0';
-        try { handle.setPointerCapture(event.pointerId); } catch (_) {}
-      });
-      handle.addEventListener('pointermove', event => {
-        if (pointerId !== event.pointerId) return;
-        const distance = Math.hypot(event.clientX - startX, event.clientY - startY);
-        if (distance >= 18) dragged = true;
-        if (dragged) {
-          // 손가락을 움직이는 동안 막대가 실제로 길어지도록 시각적으로 피드백한다.
-          const extended = Math.min(150, 62 + distance);
-          handle.style.height = `${extended}px`;
-          const label = handle.querySelector('span');
-          if (label) label.style.top = `${extended + 2}px`;
-        }
-      });
-      handle.addEventListener('pointerup', event => {
-        if (pointerId !== event.pointerId) return;
+      let startX=0, startY=0, dragged=false, pointerId=null, lastY=0;
+      const resetHandle=()=>{handle.style.height=''; const label=handle.querySelector('span'); if(label) label.style.top='';};
+      handle.addEventListener('pointerdown', event=>{
         event.preventDefault(); event.stopPropagation();
-        pointerId = null;
-        handle.style.height = '';
-        const label = handle.querySelector('span');
-        if (label) label.style.top = '';
-        if (dragged) {
-          handle.dataset.dragCompleted = '1';
-          navigateToLineStation(handle.dataset.transferLine, station);
-          setTimeout(() => { handle.dataset.dragCompleted = '0'; }, 500);
+        startX=event.clientX; startY=event.clientY; lastY=event.clientY; dragged=false; pointerId=event.pointerId;
+        handle.dataset.dragCompleted='0';
+        try{handle.setPointerCapture(event.pointerId);}catch(_){}
+      }, {passive:false});
+      handle.addEventListener('pointermove', event=>{
+        if(pointerId!==event.pointerId) return;
+        event.preventDefault(); event.stopPropagation(); lastY=event.clientY;
+        const dx=event.clientX-startX, dy=event.clientY-startY;
+        if(Math.hypot(dx,dy)>=12) dragged=true;
+        if(dragged){
+          // 막대 방향(아래쪽)으로 당긴 거리만 반영하고 최대 길이를 고정한다.
+          const pull=Math.max(0,dy);
+          const extended=Math.min(92,62+pull*.45);
+          handle.style.height=`${extended}px`;
+          const label=handle.querySelector('span'); if(label) label.style.top=`${extended+2}px`;
         }
-      });
-      handle.addEventListener('pointercancel', () => {
-        pointerId = null; dragged = false; handle.style.height = '';
-        const label = handle.querySelector('span'); if (label) label.style.top = '';
-      });
-      // 탭만 한 경우엔 이동하지 않고 이벤트가 역 노드로 전파되는 것도 막는다.
-      handle.addEventListener('click', event => {
-        event.preventDefault();
-        event.stopPropagation();
-        if (handle.dataset.dragCompleted === '1') {
-          handle.dataset.dragCompleted = '0';
+      }, {passive:false});
+      const finishDrag=event=>{
+        if(pointerId!==event.pointerId) return;
+        event.preventDefault(); event.stopPropagation();
+        const didDrag=dragged && Math.max(0,lastY-startY)>=18;
+        pointerId=null; resetHandle();
+        if(didDrag){
+          handle.dataset.dragCompleted='1';
+          navigateToLineStation(handle.dataset.transferLine,station);
+          setTimeout(()=>{handle.dataset.dragCompleted='0';},600);
         }
-      }, true);
-      handle.addEventListener('keydown', event => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault(); event.stopPropagation();
-          showToastMessage?.('노선 막대를 길게 끌어 해당 노선으로 이동하세요.');
-        }
+        dragged=false;
+      };
+      handle.addEventListener('pointerup',finishDrag,{passive:false});
+      handle.addEventListener('pointercancel',event=>{if(pointerId===event.pointerId){pointerId=null;dragged=false;resetHandle();}},{passive:true});
+      handle.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();},{capture:true});
+      handle.addEventListener('keydown',event=>{
+        if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();showToastMessage?.('막대를 아래쪽으로 18px 이상 끌어 해당 노선으로 이동하세요.');}
       });
     });
-    vStationNodes.appendChild(node);
+    stationFragment.appendChild(node);
   });
+  vStationNodes.appendChild(stationFragment);
   const main = $('mainContent');
   main.onscroll = null;
   if (isCircular) {
@@ -2640,7 +2688,6 @@ function openFullPopup(station) {
 closePopupBtn.addEventListener('click', () => {
   fullPopup.classList.add('hidden');
   document.body.classList.remove('popup-open');
-
   popupRequestId++;
 
   if (popupRefreshTimer) {
