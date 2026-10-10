@@ -1787,6 +1787,8 @@ body.popup-open .menu-stack{
 .station-feature-photo.pos-ml,.station-feature-photo.pos-tl,.station-feature-photo.pos-bl{left:0;-webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);}
 .station-feature-photo.pos-mr,.station-feature-photo.pos-tr,.station-feature-photo.pos-br{right:0;-webkit-mask-image:linear-gradient(to left,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);mask-image:linear-gradient(to left,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);}
 .station-feature-photo.pos-tl,.station-feature-photo.pos-tc,.station-feature-photo.pos-tr{transform:translateY(calc(-100% - 18px));}
+/* Middle positions are vertically centered on the station node, not placed below it. */
+.station-feature-photo.pos-ml,.station-feature-photo.pos-mr{top:0;transform:translateY(-50%);}
 .station-feature-photo.pos-bl,.station-feature-photo.pos-bc,.station-feature-photo.pos-br{transform:translateY(18px);}
 .station-feature-photo.pos-tc,.station-feature-photo.pos-bc{left:50%;transform:translate(-50%,0);}
 .station-feature-photo.pos-tc{transform:translate(-50%,calc(-100% - 18px));}
