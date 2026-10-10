@@ -1451,6 +1451,174 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica
 .main-content{padding-top:10px!important;}
 @media(max-width:600px){.top-controls{top:8px!important;padding:0 12px!important}.line-picker-trigger,.menu-trigger{height:49px!important;min-height:49px!important}.line-picker-trigger{min-width:120px!important;padding:0 15px!important}.menu-trigger{width:49px!important}.line-selector{min-height:60px!important;padding:9px 10px!important;max-height:76px!important}.line-selector.picker-open{top:8px!important;left:8px!important;right:66px!important;height:49px!important;min-height:49px!important;max-height:49px!important;padding:4px 7px!important}.line-button{min-height:39px!important;min-width:56px!important;padding:8px 11px!important}.menu-stack{top:65px!important;right:12px!important}}
 @media(prefers-reduced-motion:reduce){.line-selector,.line-picker-trigger,.menu-trigger,.line-button{transition:none!important;}}
+
+
+/* V7 corrections: visible first station, transparent route row, fixed hamburger */
+.top-controls{
+  position:fixed!important;top:10px!important;left:0!important;right:0!important;
+  width:100%!important;max-width:none!important;padding:0 14px!important;margin:0!important;
+  z-index:300!important;pointer-events:none!important;display:flex!important;
+  align-items:center!important;justify-content:space-between!important;
+}
+.top-controls button{pointer-events:auto!important;}
+/* Hamburger remains a round icon button in every state */
+.menu-trigger{
+  position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;
+  visibility:visible!important;opacity:1!important;pointer-events:auto!important;
+  flex:0 0 50px!important;width:50px!important;height:50px!important;min-height:50px!important;
+  padding:0!important;border-radius:50%!important;font-size:23px!important;line-height:1!important;
+  color:#1d1d1f!important;background:rgba(255,255,255,.68)!important;
+  backdrop-filter:blur(22px) saturate(1.45)!important;-webkit-backdrop-filter:blur(22px) saturate(1.45)!important;
+  border:1px solid rgba(255,255,255,.78)!important;box-shadow:0 6px 22px rgba(20,20,30,.09)!important;
+}
+.menu-trigger .more-label{display:none!important;}
+/* No wrapper/card behind route chips, with a reserved lane for the fixed menu button */
+.line-selector{
+  position:relative!important;top:auto!important;left:auto!important;right:auto!important;
+  width:100%!important;max-width:none!important;box-sizing:border-box!important;
+  display:flex!important;align-items:center!important;flex-wrap:nowrap!important;
+  gap:8px!important;padding:10px 76px 10px 14px!important;margin:0!important;
+  min-height:62px!important;max-height:72px!important;overflow-x:auto!important;overflow-y:hidden!important;
+  background:transparent!important;border:0!important;border-bottom:0!important;box-shadow:none!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+  transition:opacity .48s cubic-bezier(.22,1,.36,1),transform .58s cubic-bezier(.22,1,.36,1),visibility .48s!important;
+}
+.line-selector::-webkit-scrollbar{display:none!important;}
+.line-button{
+  flex:0 0 auto!important;position:relative!important;z-index:1!important;
+  background:rgba(255,255,255,.67)!important;border:1px solid rgba(60,60,67,.10)!important;
+  backdrop-filter:blur(16px) saturate(1.25)!important;-webkit-backdrop-filter:blur(16px) saturate(1.25)!important;
+  box-shadow:0 2px 9px rgba(0,0,0,.035)!important;
+  transition:transform .42s cubic-bezier(.22,1,.36,1),opacity .42s cubic-bezier(.22,1,.36,1),background .25s ease!important;
+}
+.line-button:active{transform:scale(.96)!important;}
+/* Scrolled mode: swap the selector and the plain-text trigger in exactly the same lane */
+.line-picker-trigger{
+  position:absolute!important;left:14px!important;top:0!important;
+  min-width:0!important;width:auto!important;height:50px!important;min-height:50px!important;
+  padding:0 18px!important;border-radius:999px!important;gap:0!important;
+  color:#1d1d1f!important;background:rgba(255,255,255,.70)!important;
+  border:1px solid rgba(255,255,255,.78)!important;box-shadow:0 6px 22px rgba(20,20,30,.08)!important;
+  backdrop-filter:blur(22px) saturate(1.4)!important;-webkit-backdrop-filter:blur(22px) saturate(1.4)!important;
+}
+.line-picker-trigger .picker-label{font-size:15px!important;font-weight:650!important;white-space:nowrap!important;}
+.line-picker-trigger .current-line-label,#currentLineLabel{display:none!important;}
+.top-controls:not(.compact-mode) .line-picker-trigger{opacity:0!important;visibility:hidden!important;pointer-events:none!important;}
+.top-controls.compact-mode .line-picker-trigger.trigger-visible{opacity:1!important;visibility:visible!important;pointer-events:auto!important;transform:translateX(0)!important;}
+.top-controls.compact-mode .menu-trigger{opacity:1!important;visibility:visible!important;pointer-events:auto!important;}
+.line-selector.compact-hidden{
+  opacity:0!important;visibility:hidden!important;pointer-events:none!important;
+  transform:translateX(-34px)!important;max-height:0!important;min-height:0!important;
+  height:0!important;padding-top:0!important;padding-bottom:0!important;margin:0!important;overflow:hidden!important;
+}
+.line-selector.picker-open{
+  position:absolute!important;top:0!important;left:0!important;right:0!important;
+  width:calc(100% - 64px)!important;height:50px!important;min-height:50px!important;max-height:50px!important;
+  padding:4px 8px 4px 14px!important;margin:0!important;opacity:1!important;visibility:visible!important;
+  transform:translateX(0)!important;overflow-x:auto!important;overflow-y:hidden!important;
+  background:transparent!important;border:0!important;box-shadow:none!important;
+}
+.top-controls.compact-mode .line-selector.picker-open{margin-left:0!important;}
+/* Keep the menu stack aligned under its permanently fixed circular button */
+.menu-stack{position:fixed!important;top:70px!important;right:14px!important;z-index:299!important;}
+/* Add breathing room above the first station label, which is positioned above its node */
+.main-content{padding-top:38px!important;}
+.vertical-map-container{margin-top:12px!important;}
+@media(max-width:600px){
+ .top-controls{top:8px!important;padding:0 12px!important;}
+ .menu-trigger{width:47px!important;height:47px!important;min-height:47px!important;flex-basis:47px!important;}
+ .line-selector{min-height:59px!important;max-height:68px!important;padding:8px 67px 8px 12px!important;gap:7px!important;}
+ .line-picker-trigger{left:12px!important;height:47px!important;min-height:47px!important;padding:0 16px!important;}
+ .line-selector.picker-open{width:calc(100% - 59px)!important;height:47px!important;min-height:47px!important;max-height:47px!important;padding:3px 5px 3px 12px!important;}
+ .menu-stack{top:63px!important;right:12px!important;}
+ .main-content{padding-top:34px!important;}
+}
+@media(prefers-reduced-motion:reduce){.line-selector,.line-picker-trigger,.menu-trigger,.line-button{transition:none!important;}}
+
+
+/* ===== V8 precise layout fixes ===== */
+/* Keep the line chips in their own lane and reserve the fixed hamburger's space. */
+.line-selector{
+  box-sizing:border-box!important;
+  width:calc(100% - 88px)!important;
+  max-width:calc(100% - 88px)!important;
+  margin:0 76px 0 0!important;
+  padding:10px 8px 12px 16px!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  overflow-x:auto!important;
+  scrollbar-width:none!important;
+}
+.line-selector::-webkit-scrollbar{display:none!important;}
+.line-selector.picker-open{
+  width:calc(100% - 88px)!important;
+  max-width:calc(100% - 88px)!important;
+  margin-right:76px!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  padding-left:16px!important;
+  padding-right:8px!important;
+  flex-wrap:nowrap!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  max-height:84px!important;
+}
+.line-button{flex:0 0 auto!important;}
+/* The down-side train card had been positioned by its left edge, not its center.
+   Center it directly on the right rail so it cannot appear to leave the track. */
+.v-down-line{left:76%!important;right:auto!important;}
+.v-train.down{
+  left:76%!important;
+  right:auto!important;
+  transform:translateX(-50%)!important;
+}
+@media(max-width:600px){
+  .line-selector,.line-selector.picker-open{
+    width:calc(100% - 76px)!important;
+    max-width:calc(100% - 76px)!important;
+    margin-right:68px!important;
+    padding-left:10px!important;
+    padding-right:4px!important;
+  }
+  .v-down-line{left:76%!important;right:auto!important;}
+  .v-train.down{left:76%!important;right:auto!important;transform:translateX(-50%)!important;}
+}
+/* Hamburger remains a circular icon even while its menu is open. */
+.menu-trigger.menu-open{
+  width:52px!important;
+  min-width:52px!important;
+  border-radius:50%!important;
+}
+
+
+/* V9: keep the two vertical tracks mirrored at every viewport width. */
+.vertical-map-container{position:relative!important;width:100%!important;max-width:100%!important;}
+.v-up-line,.v-train.up{left:24%!important;right:auto!important;transform:translateX(-50%)!important;}
+.v-down-line,.v-train.down{left:76%!important;right:auto!important;transform:translateX(-50%)!important;}
+@media(min-width:900px){
+  .v-up-line,.v-train.up{left:32%!important;right:auto!important;transform:translateX(-50%)!important;}
+  .v-down-line,.v-train.down{left:68%!important;right:auto!important;transform:translateX(-50%)!important;}
+}
+@media(max-width:600px){
+  .v-up-line,.v-train.up{left:24%!important;right:auto!important;transform:translateX(-50%)!important;}
+  .v-down-line,.v-train.down{left:76%!important;right:auto!important;transform:translateX(-50%)!important;}
+}
+/* While station details are open, hide route controls and the fixed menu trigger. */
+body.popup-open .top-controls,
+body.popup-open #lineSelector,
+body.popup-open #linePickerTrigger,
+body.popup-open #menuTrigger,
+body.popup-open .menu-stack{
+  opacity:0!important;visibility:hidden!important;pointer-events:none!important;
+  transition:opacity .18s ease,visibility .18s ease!important;
+}
+
 </style>
 </head>
 
@@ -2121,6 +2289,7 @@ function openFullPopup(station) {
   const requestId = popupRequestId;
 
   fullPopup.classList.remove('hidden');
+  document.body.classList.add('popup-open');
 
   pName.textContent = `${station}역`;
   pBadge.textContent = currentLine;
@@ -2209,6 +2378,7 @@ function openFullPopup(station) {
 
 closePopupBtn.addEventListener('click', () => {
   fullPopup.classList.add('hidden');
+  document.body.classList.remove('popup-open');
 
   popupRequestId++;
 
@@ -2825,6 +2995,7 @@ const linePickerTrigger = $('linePickerTrigger');
 const currentLineLabel = $('currentLineLabel');
 const menuTrigger = $('menuTrigger');
 const menuStack = $('menuStack');
+menuTrigger.innerHTML = '☰';
 let lineMenuOpen = false;
 let moreMenuOpen = false;
 function syncCurrentLineLabel() { currentLineLabel.textContent = currentLine || '노선 선택'; }
@@ -2832,7 +3003,7 @@ menuTrigger.addEventListener('click', () => {
   moreMenuOpen = !moreMenuOpen;
   menuTrigger.classList.toggle('menu-open', moreMenuOpen);
   menuTrigger.setAttribute('aria-expanded', String(moreMenuOpen));
-  menuTrigger.innerHTML = moreMenuOpen ? '<span class="more-label">더보기</span>' : '☰';
+  menuTrigger.innerHTML = '☰';
   menuStack.classList.toggle('menu-visible', moreMenuOpen);
   menuStack.setAttribute('aria-hidden', String(!moreMenuOpen));
 });
