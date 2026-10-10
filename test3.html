@@ -1779,13 +1779,10 @@ body.popup-open .menu-stack{
 
 
 <style id="feature-photo-and-drag-fix-v24">
-/* 개발자가 FEATURE_PHOTOS 설정에 URL을 넣으면 메인 화면 6개 위치에 주변 건물 사진이 표시됩니다. */
-.feature-photo-layer{position:sticky;left:0;right:0;bottom:0;height:0;z-index:18;pointer-events:none;}
-.feature-photo{position:absolute;width:clamp(58px,16vw,92px);height:clamp(58px,16vw,92px);padding:3px;border:1px solid rgba(0,0,0,.12);border-radius:12px;background:rgba(255,255,255,.94);box-shadow:0 3px 12px #00000016;object-fit:cover;pointer-events:auto;}
-.feature-photo.pos-tl{left:10px;top:10px}.feature-photo.pos-tc{left:50%;top:10px;transform:translateX(-50%)}.feature-photo.pos-tr{right:10px;top:10px}
-.feature-photo.pos-ml{left:10px;top:calc(50% - 46px)}.feature-photo.pos-mr{right:10px;top:calc(50% - 46px)}
-.feature-photo.pos-bl{left:10px;bottom:12px}.feature-photo.pos-bc{left:50%;bottom:12px;transform:translateX(-50%)}.feature-photo.pos-br{right:10px;bottom:12px}
-@media(max-width:600px){.feature-photo{width:58px;height:58px;border-radius:9px}.feature-photo.pos-ml,.feature-photo.pos-mr{top:calc(50% - 29px)}}
+/* 역 노드 중심 X좌표에 고정된 특징 건물 사진: 노선 라인을 가로질러 배치되고 지도 스크롤과 함께 움직임 */
+.feature-photo-layer{display:none!important;}
+.station-feature-photo{position:absolute;left:50%;top:50%;width:clamp(76px,22vw,118px);height:clamp(62px,17vw,88px);transform:translate(-50%,-50%);object-fit:cover;object-position:center;border:0;border-radius:10px;background:transparent;box-shadow:none;opacity:.94;pointer-events:none;z-index:3;-webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);}
+@media(max-width:600px){.station-feature-photo{left:50%;width:76px;height:62px;border-radius:8px;}}
 /* drag affordance: pointer capture is handled in JS; fixed-size cap prevents runaway handles */
 .transfer-arm{height:62px;max-height:92px;overflow:visible;touch-action:none!important;user-select:none;-webkit-user-select:none;}
 .transfer-arm span{pointer-events:none;}
@@ -2429,35 +2426,31 @@ function navigateToLineStation(lineName, station) {
   }));
 }
 
-// 개발자 설정: 역 이름별로 사진 URL을 등록합니다. 비워 둔 URL은 표시하지 않습니다.
-// 위치 키: tl(왼쪽 위), tc(중앙 위), tr(오른쪽 위), ml(왼쪽 중앙), mr(오른쪽 중앙), bl(왼쪽 아래), bc(중앙 아래), br(오른쪽 아래)
-// 예: 성신여대입구역 팝업을 닫고 지도 화면으로 돌아왔을 때 오른쪽 중앙에 표시
+// 역 이름별 특징 건물 사진. 지도 최초 표시 시 자동으로 역 노드에 배치됩니다.
+// 공식 성신여대 홈페이지에 게시된 돈암수정캠퍼스 사진을 기본값으로 사용합니다.
+// 위치 키: tl/tc/tr/ml/mr/bl/bc/br (역 노드 기준의 위치)
 const FEATURE_PHOTOS_BY_STATION = {
   '성신여대입구': {
-    mr: 'images/sungshin.jpg' // 사진 URL 또는 상대 경로 입력: 'images/sungshin.jpg'
+    mr: 'https://www.sungshin.ac.kr/editorUpload/images/000685/001.jpg'
   }
 };
-function renderFeaturePhotos(stationName = ''){
-  const layer = $('featurePhotoLayer');
-  if (!layer) return;
-  const labels = {tl:'왼쪽 위 특징 건물',tc:'중앙 위 특징 건물',tr:'오른쪽 위 특징 건물',ml:'왼쪽 중앙 특징 건물',mr:'오른쪽 중앙 특징 건물',bl:'왼쪽 아래 특징 건물',bc:'중앙 아래 특징 건물',br:'오른쪽 아래 특징 건물'};
-  layer.replaceChildren();
-  const normalize = value => String(value || '').replace(/역$/,'').replace(/\s+/g,'').trim();
-  const configKey = Object.keys(FEATURE_PHOTOS_BY_STATION).find(name => normalize(name) === normalize(stationName));
-  if (!configKey) return;
-  Object.entries(FEATURE_PHOTOS_BY_STATION[configKey] || {}).forEach(([pos,url])=>{
-    if(typeof url!=='string' || !url.trim()) return;
-    const img=document.createElement('img'); img.className=`feature-photo pos-${pos}`; img.src=url.trim(); img.alt=`${configKey} 주변 ${labels[pos]||'특징 건물'}`; img.loading='lazy'; img.decoding='async';
-    img.onerror=()=>img.remove(); layer.appendChild(img);
-  });
+function getFeaturePhotoConfig(stationName = ''){
+  const normalizePhotoStation = value => String(value || '').replace(/역$/,'').replace(/\s+/g,'').trim();
+  const key = Object.keys(FEATURE_PHOTOS_BY_STATION).find(name => normalizePhotoStation(name) === normalizePhotoStation(stationName));
+  return key ? { name:key, photos:FEATURE_PHOTOS_BY_STATION[key] } : null;
 }
-renderFeaturePhotos('');
+function renderFeaturePhotos(){
+  // 사진은 별도 화면 레이어가 아니라 해당 역 노드 안에 생성되어 노선도와 함께 이동합니다.
+  const layer = $('featurePhotoLayer');
+  if (layer) layer.replaceChildren();
+}
+renderFeaturePhotos();
 
 function initMaps(lineName) {
   if (refreshInterval) clearInterval(refreshInterval);
   mapRequestId++;
   currentLine = lineName;
-  renderFeaturePhotos('');
+  renderFeaturePhotos();
   const line = lineData[currentLine];
   if (!line) return;
   updateActiveLineButton();
@@ -2478,7 +2471,12 @@ function initMaps(lineName) {
     const transferArms = connections.map((connection, armIndex) =>
       `<button type="button" class="transfer-arm arm-${armIndex % 3}" data-transfer-line="${escapeHtml(connection.name)}" style="--arm-color:${connection.color}" aria-label="${escapeHtml(connection.name)}으로 이동" title="끌어서 ${escapeHtml(connection.name)}으로 이동"><span>${escapeHtml(connection.name.replace('호선',''))}</span></button>`
     ).join('');
-    node.innerHTML = `<div class="v-station-name">${escapeHtml(station)}</div>${connections.length ? `<div class="transfer-hub" aria-label="환승 노선 선택"><span class="transfer-hub-core"></span>${transferArms}</div>` : ''}`;
+    const featureConfig = getFeaturePhotoConfig(station);
+    const featurePhotoUrl = featureConfig && featureConfig.photos.mr ? String(featureConfig.photos.mr).trim() : '';
+    const featurePhotoMarkup = featurePhotoUrl
+      ? `<img class="station-feature-photo" src="${escapeHtml(featurePhotoUrl)}" alt="${escapeHtml(featureConfig.name)} 주변 건물" loading="eager" decoding="async" onerror="this.remove()">`
+      : '';
+    node.innerHTML = `<div class="v-station-name">${escapeHtml(station)}</div>${featurePhotoMarkup}${connections.length ? `<div class="transfer-hub" aria-label="환승 노선 선택"><span class="transfer-hub-core"></span>${transferArms}</div>` : ''}`;
     // 역 노드 클릭은 언제나 역 팝업을 연다. 노선 막대는 드래그로만 노선 이동.
     node.addEventListener('click', () => openFullPopup(station));
     node.querySelectorAll('[data-transfer-line]').forEach(handle => {
@@ -2690,8 +2688,6 @@ function openFullPopup(station) {
 closePopupBtn.addEventListener('click', () => {
   fullPopup.classList.add('hidden');
   document.body.classList.remove('popup-open');
-  renderFeaturePhotos(currentStation);
-
   popupRequestId++;
 
   if (popupRefreshTimer) {
