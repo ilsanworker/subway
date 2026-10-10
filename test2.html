@@ -1712,4 +1712,1843 @@ body.popup-open .menu-stack{
 
     <div class="vertical-map-container" id="vMapContainer">
       <div class="v-track-line v-up-line"></div>
-      <div class="v-tr
+      <div class="v-track-line v-down-line"></div>
+      <div id="vStationNodes" class="v-station-nodes"></div>
+      <div id="vTrainsContainer" class="v-trains-container"></div>
+    </div>
+  </main>
+
+  <!-- 오른쪽 하단 새로고침 -->
+  <div class="refresh-widget">
+    <button class="refresh-button" id="refreshButton"
+            aria-label="실시간 열차 정보 새로고침"
+            title="새로고침">↻</button>
+    <span class="last-refresh" id="lastRefresh">새로고침 대기 중</span>
+  </div>
+
+  <section class="train-detail-card hidden" id="trainDetailCard" aria-live="polite">
+    <div class="train-card-top"><div class="train-line-circle" id="trainCardLineNum">2</div>
+      <div class="train-card-heading"><div class="train-card-title">열차 <strong id="trainCardNo">현재 정보 없음</strong> <span id="trainCardStatus" class="train-status-pill">현재 정보 없음</span></div>
+      <div class="train-card-sub" id="trainCardLocation">현재 위치: 현재 정보 없음</div></div>
+      <button class="train-card-refresh" id="trainCardRefresh" aria-label="열차 정보 새로고침">↻</button></div>
+    <div class="train-card-progress-label"><span>현재 열차 정보</span><strong id="trainCardProgressText">현재 정보 없음</strong></div>
+    <div class="train-progress"><span id="trainCardProgress"></span></div>
+    <div class="train-progress-scale"><span id="trainCardStart">현재 역</span><span id="trainCardMid">운행 상태</span><span id="trainCardEnd">종착역</span></div>
+    <div class="train-card-actions"><button id="trainCardAlert">♧ 도착 알림 받기</button><button id="trainCardMap">▣ 전체 노선 지도보기</button></div>
+  </section>
+
+  <!-- 역 상세 팝업 -->
+  <div class="full-popup hidden" id="fullPopup">
+
+    <div class="popup-header">
+      <div>
+        <span class="badge" id="panelLineBadge">2호선</span>
+        <span id="panelStationName" class="popup-stn-name">강남역</span>
+      </div>
+      <button class="close-btn" id="closePopup">✕ 닫기</button>
+    </div>
+
+    <section class="h-map-area">
+      <div class="h-track-scroll-container" id="hTrackScroll">
+        <div class="h-track-wrapper" id="hTrackWrapper">
+          <div class="h-track-line h-up-line"></div>
+          <div class="h-track-line h-down-line"></div>
+          <div id="hStationNodes" class="h-station-nodes"></div>
+          <div id="hTrainsContainer" class="h-trains-container"></div>
+        </div>
+      </div>
+    </section>
+
+
+      <section class="info-section landmark-section" id="landmarkSection">
+        <div class="landmark-heading-row">
+          <div><h3>📍 역 주변 주요 명소</h3><p class="landmark-subtitle">역을 중심으로 사진을 배치해 보세요. 이 브라우저에 자동 저장돼요.</p></div>
+          <button type="button" class="landmark-edit-toggle" id="landmarkEditToggle" aria-expanded="false">＋ 명소 편집</button>
+        </div>
+        <div class="landmark-orbit" id="landmarkOrbit">
+          <div class="landmark-side landmark-left" id="landmarkLeft"></div>
+          <div class="landmark-station-core"><span class="landmark-core-dot"></span><strong id="landmarkCoreName">역</strong><small>현재 선택 역</small></div>
+          <div class="landmark-side landmark-right" id="landmarkRight"></div>
+        </div>
+        <div class="landmark-empty-note" id="landmarkEmptyNote">아직 등록된 명소가 없어요. ‘명소 편집’에서 사진과 이름을 추가해 주세요.</div>
+        <form class="landmark-editor hidden" id="landmarkEditor">
+          <div class="landmark-form-title">명소 추가 / 수정</div>
+          <div class="landmark-form-grid">
+            <label>명소 이름<input id="landmarkNameInput" maxlength="50" placeholder="예: 경복궁" required></label>
+            <label>이미지 주소<input id="landmarkImageInput" type="url" placeholder="https://...jpg" required></label>
+            <label>배치 위치<select id="landmarkPositionInput"><option value="left-top">왼쪽 위</option><option value="left-center">왼쪽 중앙</option><option value="left-bottom">왼쪽 아래</option><option value="right-top">오른쪽 위</option><option value="right-center">오른쪽 중앙</option><option value="right-bottom">오른쪽 아래</option></select></label>
+          </div>
+          <div class="landmark-form-actions"><button type="submit" class="landmark-save-btn">명소 추가</button><button type="button" id="landmarkCancelEdit">취소</button></div>
+          <p class="landmark-editor-hint">사진 URL을 입력하면 작은 사진 카드로 표시돼요. 같은 위치에 추가하면 기존 명소를 교체합니다.</p>
+        </form>
+      </section>
+
+    <div class="popup-body">
+
+      <section class="info-section">
+        <h3>⏱️ 실시간 도착 정보</h3>
+        <div id="arrLoading" class="loading-text">불러오는 중...</div>
+        <div class="arrival-split">
+          <div class="arr-col">
+            <h4>상행 / 내선</h4>
+            <div id="arrUpList">현재 정보 없음</div>
+          </div>
+          <div class="arr-col">
+            <h4>하행 / 외선</h4>
+            <div id="arrDownList">현재 정보 없음</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="info-section">
+        <h3>📊 승하차 통계</h3>
+        <div id="statLoading" class="loading-text">데이터 분석 중...</div>
+        <div class="stat-grid">
+          <div class="stat-box">
+            <div class="stat-title">조회 날짜 승차</div>
+            <div class="stat-value" id="timeRideNum">-</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-title">조회 날짜 하차</div>
+            <div class="stat-value" id="timeAlightNum">-</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="info-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+          <h3 style="margin:0">🕒 역 시간표</h3>
+          <span id="ttDateType"
+                style="font-size:12px;font-weight:bold;color:var(--accent)">
+            평일 기준
+          </span>
+        </div>
+
+        <p style="font-size:11px;color:#64748b">
+          현재 시간 이후의 열차를 표시합니다.
+        </p>
+
+        <div id="ttLoading" class="loading-text">
+          시간표 데이터를 불러오는 중입니다...
+        </div>
+
+        <div class="arrival-split">
+          <div class="arr-col">
+            <h4>상행 / 내선</h4>
+            <div id="ttUpList" class="tt-list">현재 정보 없음</div>
+          </div>
+          <div class="arr-col">
+            <h4>하행 / 외선</h4>
+            <div id="ttDownList" class="tt-list">현재 정보 없음</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ========================================
+   API 설정
+
+   실제 서비스에서는 API 키를 서버에서 관리하세요.
+======================================== */
+
+const REALTIME_API_KEY = '486c77684e696c7331303157766b6779';
+const OPEN_API_KEY = '486c77684e696c7331303157766b6779';
+
+const IS_LOCAL =
+  location.hostname === 'localhost' ||
+  location.hostname === '127.0.0.1' ||
+  location.hostname === '';
+
+const BASE_SW = IS_LOCAL
+  ? 'http://swopenapi.seoul.go.kr/api/subway'
+  : '/api/sw';
+
+const BASE_OPEN = IS_LOCAL
+  ? 'http://openapi.seoul.go.kr:8088'
+  : '/api/open';
+
+
+/* ========================================
+   노선 데이터
+
+   2호선은 시청에서 시작해 순환한 뒤
+   시청으로 돌아오는 순서로 정의합니다.
+
+   성수·신설동 및 신도림·까치산 지선은
+   본선과 별도로 취급해야 실제 열차 위치가
+   정확해집니다.
+======================================== */
+
+const lineData = {
+
+  '1호선': {
+    color:'#0052A4',
+    id:'1001',
+    apiName:'1호선',
+    stations:[
+      '연천','전곡','청산','소요산','동두천','보산','동두천중앙',
+      '지행','덕정','덕계','양주','녹양','가능','의정부','회룡',
+      '망월사','도봉산','도봉','방학','창동','녹천','월계','광운대',
+      '석계','신이문','외대앞','회기','청량리','제기동','신설동',
+      '동묘앞','동대문','종로5가','종로3가','종각','시청','서울역',
+      '남영','용산','노량진','대방','신길','영등포','신도림','구로',
+      '가산디지털단지','독산','금천구청','석수','관악','안양','명학',
+      '금정','군포','당정','의왕','성균관대','화서','수원','세류',
+      '병점','세마','오산대','오산','진위','송탄','서정리','평택지제',
+      '평택','성환','직산','두정','천안'
+    ]
+  },
+
+  '2호선': {
+    color:'#009D3E',
+    id:'1002',
+    apiName:'2호선',
+    circular:true,
+    stations:[
+      '시청','을지로입구','을지로3가','을지로4가',
+      '동대문역사문화공원','신당','상왕십리','왕십리',
+      '한양대','뚝섬','성수','건대입구','구의','강변',
+      '잠실나루','잠실','잠실새내','종합운동장','삼성',
+      '선릉','역삼','강남','교대','서초','방배','사당',
+      '낙성대','서울대입구','봉천','신림','신대방',
+      '구로디지털단지','대림','신도림','문래','영등포구청',
+      '당산','합정','홍대입구','신촌','이대','아현',
+      '충정로','시청'
+    ],
+    branches:{
+      '성수':['성수','용답','신답','용두','신설동','용두','신답','용답','성수'],
+      '신도림':['신도림','도림천','양천구청','신정네거리','까치산']
+    }
+  },
+
+  '3호선': {
+    color:'#EF7C1C',
+    id:'1003',
+    apiName:'3호선',
+    stations:[
+      '대화','주엽','정발산','마두','백석','대곡','화정','원당',
+      '원흥','삼송','지축','구파발','연신내','불광','녹번','홍제',
+      '무악재','독립문','경복궁','안국','종로3가','을지로3가',
+      '충무로','동대입구','약수','금호','옥수','압구정','신사',
+      '잠원','고속터미널','교대','남부터미널','양재','매봉',
+      '도곡','대치','학여울','대청','일원','수서','가락시장',
+      '경찰병원','오금'
+    ]
+  },
+
+  '4호선': {
+    color:'#00A5DE',
+    id:'1004',
+    apiName:'4호선',
+    stations:[
+      '진접','오남','별내별가람','당고개','상계','노원','창동',
+      '쌍문','수유','미아','미아사거리','길음','성신여대입구',
+      '한성대입구','혜화','동대문','동대문역사문화공원',
+      '충무로','명동','회현','서울역','숙대입구','삼각지',
+      '신용산','이촌','동작','총신대입구','사당','남태령',
+      '선바위','경마공원','대공원','과천','정부과천청사',
+      '인덕원','평촌','범계','금정','산본','수리산','대야미',
+      '반월','상록수','한대앞','중앙','고잔','초지','안산',
+      '신길온천','정왕','오이도'
+    ]
+  },
+
+  '5호선': {
+    color:'#996CAC',
+    id:'1005',
+    apiName:'5호선',
+    stations:[
+      '방화','개화산','김포공항','송정','마곡','발산','우장산',
+      '화곡','까치산','신정','목동','오목교','양평','영등포구청',
+      '영등포시장','신길','여의도','여의나루','마포','공덕',
+      '애오개','충정로','서대문','광화문','종로3가','을지로4가',
+      '동대문역사문화공원','청구','신금호','행당','왕십리',
+      '마장','답십리','장한평','군자','아차산','광나루','천호',
+      '강동','길동','굽은다리','명일','고덕','상일동','강일',
+      '미사','하남풍산','하남시청','하남검단산'
+    ]
+  },
+
+  '6호선': {
+    color:'#CD7C2F',
+    id:'1006',
+    apiName:'6호선',
+    stations:[
+      '응암','역촌','불광','독바위','연신내','구산','새절','증산',
+      '디지털미디어시티','월드컵경기장','마포구청','망원','합정',
+      '상수','광흥창','대흥','공덕','효창공원앞','삼각지','녹사평',
+      '이태원','한강진','버티고개','약수','청구','신당','동묘앞',
+      '창신','보문','안암','고려대','월곡','상월곡','돌곶이',
+      '석계','태릉입구','화랑대','봉화산','신내'
+    ]
+  },
+
+  '7호선': {
+    color:'#747F00',
+    id:'1007',
+    apiName:'7호선',
+    stations:[
+      '장암','도봉산','수락산','마들','노원','중계','하계','공릉',
+      '태릉입구','먹골','중화','상봉','면목','용마산','중곡',
+      '군자','어린이대공원','건대입구','자양','청담','강남구청',
+      '학동','논현','반포','고속터미널','내방','총신대입구',
+      '남성','숭실대입구','상도','장승배기','신대방삼거리',
+      '보라매','신풍','대림','남구로','가산디지털단지','철산',
+      '광명사거리','천왕','온수','까치울','부천종합운동장',
+      '춘의','신중동','부천시청','상동','삼산체육관','굴포천',
+      '부평구청','산곡','석남'
+    ]
+  },
+
+  '8호선': {
+    color:'#E6186C',
+    id:'1008',
+    apiName:'8호선',
+    stations:[
+      '별내','다산','동구릉','구리','장자호수공원','암사역사공원',
+      '암사','천호','강동구청','몽촌토성','잠실','석촌','송파',
+      '가락시장','문정','장지','복정','남위례','산성','단대오거리',
+      '신흥','수진','모란'
+    ]
+  },
+
+  '9호선': {
+    color:'#BDB092',
+    id:'1009',
+    apiName:'9호선',
+    stations:[
+      '개화','김포공항','공항시장','신방화','마곡나루','양천향교',
+      '가양','증미','등촌','염창','신목동','선유도','당산',
+      '국회의사당','여의도','샛강','노량진','노들','흑석','동작',
+      '구반포','신반포','고속터미널','사평','신논현','언주',
+      '선정릉','삼성중앙','봉은사','종합운동장','삼전',
+      '석촌고분','석촌','송파나루','한성백제','올림픽공원',
+      '둔촌오륜','중앙보훈병원'
+    ]
+  },
+
+  'GTX-A': {
+    color:'#905A89',
+    id:'1032',
+    apiName:'GTX-A',
+    stations:[
+      '운정중앙','킨텍스','대곡','연신내','서울역',
+      '수서','성남','구성','동탄'
+    ]
+  },
+
+  '경의중앙선': {
+    color:'#77C4A3',
+    id:'1063',
+    apiName:'경의중앙선',
+    stations:[
+      '도라산','임진강','문산','파주','월롱','금촌','금릉',
+      '운정','야당','탄현','일산','풍산','백마','곡산','대곡',
+      '능곡','행신','강매','화전','수색','디지털미디어시티',
+      '가좌','홍대입구','서강대','공덕','효창공원앞','용산',
+      '이촌','서빙고','한남','옥수','응봉','왕십리','청량리',
+      '회기','중랑','상봉','망우','양원','구리','도농','양정',
+      '덕소','도심','팔당','운길산','양수','신원','아신',
+      '오빈','양평','원덕','용문','지평'
+    ]
+  }
+};
+
+
+/* ========================================
+   앱 상태
+======================================== */
+
+let currentLine = '2호선';
+let currentStation = '';
+let currentPopupStations = [];
+let selectedTrainData = null;
+let circularCycleHeight = 0;
+let isLoopAdjusting = false;
+
+let refreshInterval = null;
+let popupRefreshTimer = null;
+let elapsedTimer = null;
+
+let mapRequestId = 0;
+let popupRequestId = 0;
+let lastRefreshTime = null;
+let isRefreshing = false;
+
+
+/* ========================================
+   DOM
+======================================== */
+
+const $ = id => document.getElementById(id);
+
+const lineSelector = $('lineSelector');
+const fullPopup = $('fullPopup');
+const closePopupBtn = $('closePopup');
+const refreshButton = $('refreshButton');
+
+const vMapContainer = $('vMapContainer');
+const vStationNodes = $('vStationNodes');
+const vTrainsContainer = $('vTrainsContainer');
+
+const hTrackWrapper = $('hTrackWrapper');
+const hStationNodes = $('hStationNodes');
+const hTrainsContainer = $('hTrainsContainer');
+
+const pName = $('panelStationName');
+const pBadge = $('panelLineBadge');
+
+const arrUpList = $('arrUpList');
+const arrDownList = $('arrDownList');
+const ttUpList = $('ttUpList');
+const ttDownList = $('ttDownList');
+
+const timeRideNum = $('timeRideNum');
+const timeAlightNum = $('timeAlightNum');
+
+const ttDateType = $('ttDateType');
+
+const V_SPACING = 110;
+const H_SPACING = 120;
+
+
+/* ========================================
+   유틸리티
+======================================== */
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#039;'
+  })[char]);
+}
+
+function normalizeStationName(name) {
+  return String(name || '')
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/[（(][^）)]*[）)]/g, '')
+    .replace(/역$/, '')
+    .replace(/[·ㆍ]/g, '');
+}
+
+function getStationIndex(stations, name) {
+  const target = normalizeStationName(name);
+
+  if (!target) return -1;
+
+  return stations.findIndex(station =>
+    normalizeStationName(station) === target
+  );
+}
+
+function getWeekTag() {
+  const day = new Date().getDay();
+
+  if (day === 6) return { tag:'2', name:'토요일 기준' };
+  if (day === 0) return { tag:'3', name:'휴일 기준' };
+
+  return { tag:'1', name:'평일 기준' };
+}
+
+function timeToSeconds(time) {
+  if (!time) return 0;
+
+  const parts = String(time).split(':');
+  let hours = parseInt(parts[0], 10) || 0;
+
+  if (hours < 4) hours += 24;
+
+  return hours * 3600
+    + (parseInt(parts[1], 10) || 0) * 60
+    + (parseInt(parts[2], 10) || 0);
+}
+
+function getTrainStatusText(status) {
+  return ({
+    '0':'진입',
+    '1':'도착',
+    '2':'출발',
+    '3':'전역출발'
+  })[String(status)] || '운행 중';
+}
+
+function setLoading(id, visible) {
+  $(id).classList.toggle('hidden', !visible);
+}
+
+
+/* ========================================
+   마지막 새로고침 시간
+======================================== */
+
+function updateRefreshLabel() {
+  if (!lastRefreshTime) {
+    $('lastRefresh').textContent = '새로고침 대기 중';
+    return;
+  }
+
+  const seconds = Math.max(
+    0,
+    Math.floor((Date.now() - lastRefreshTime) / 1000)
+  );
+
+  if (seconds < 60) {
+    $('lastRefresh').textContent = `${seconds}초 전`;
+  } else if (seconds < 3600) {
+    $('lastRefresh').textContent =
+      `${Math.floor(seconds / 60)}분 전`;
+  } else {
+    $('lastRefresh').textContent =
+      `${Math.floor(seconds / 3600)}시간 전`;
+  }
+}
+
+function markRefreshed() {
+  lastRefreshTime = Date.now();
+  updateRefreshLabel();
+}
+
+
+/* ========================================
+   노선 선택 버튼 생성
+======================================== */
+
+function renderLineButtons() {
+  lineSelector.innerHTML = '';
+
+  Object.entries(lineData).forEach(([name, data]) => {
+    const button = document.createElement('button');
+
+    button.type = 'button';
+    button.className = 'line-button';
+    button.textContent = name;
+    button.dataset.line = name;
+    button.style.setProperty('--button-color', data.color);
+
+    button.addEventListener('click', () => {
+      if (currentLine === name) return;
+
+      fullPopup.classList.add('hidden');
+      $('trainDetailCard').classList.add('hidden');
+
+      if (popupRefreshTimer) {
+        clearInterval(popupRefreshTimer);
+        popupRefreshTimer = null;
+      }
+
+      popupRequestId++;
+      initMaps(name);
+
+      button.scrollIntoView({
+        behavior:'smooth',
+        block:'nearest',
+        inline:'center'
+      });
+    });
+
+    lineSelector.appendChild(button);
+  });
+
+  updateActiveLineButton();
+}
+
+function updateActiveLineButton() {
+  const label = document.getElementById('currentLineLabel'); if (label) label.textContent = currentLine || '노선 선택';
+  document.querySelectorAll('.line-button').forEach(button => {
+    const active = button.dataset.line === currentLine;
+
+    button.classList.toggle('active', active);
+
+    if (active) {
+      button.style.background = lineData[currentLine].color;
+      button.style.borderColor = lineData[currentLine].color;
+      button.style.color = '#fff';
+    } else {
+      button.style.background = '#f8fafc';
+      button.style.borderColor = '#e2e8f0';
+      button.style.color = '#475569';
+    }
+  });
+
+  document.documentElement.style.setProperty(
+    '--line-color',
+    lineData[currentLine].color
+  );
+}
+
+
+/* ========================================
+   세로 지도 초기화
+======================================== */
+
+let toastTimer = null;
+function showToastMessage(message) {
+  let toast = document.getElementById('appToast');
+  if (!toast) { toast = document.createElement('div'); toast.id = 'appToast'; toast.className = 'app-toast'; document.body.appendChild(toast); }
+  toast.textContent = message;
+  toast.classList.add('visible');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('visible'), 2400);
+}
+
+// 환승 연결은 현재 등록된 노선 데이터에 같은 역명이 존재하는 경우에만 표시합니다.
+const RAIL_STATION_TYPES = {
+  '서울역': ['KTX', '일반열차'],
+  '용산': ['KTX', '일반열차'],
+  '청량리': ['KTX', '일반열차'],
+  '수원': ['KTX', '일반열차'],
+  '천안': ['KTX', '일반열차'],
+  '영등포': ['일반열차'],
+  '평택': ['일반열차'],
+  '제천': ['KTX', '일반열차'],
+  '대전': ['KTX', '일반열차'],
+  '동대구': ['KTX', '일반열차'],
+  '부산': ['KTX', '일반열차'],
+  '광주송정': ['KTX', '일반열차'],
+  '익산': ['KTX', '일반열차'],
+  '전주': ['일반열차'],
+  '춘천': ['일반열차']
+};
+
+function getStationLineConnections(station) {
+  const normalized = normalizeStationName(station);
+  return Object.entries(lineData)
+    .filter(([name, data]) => name !== currentLine && data.stations.some(s => normalizeStationName(s) === normalized))
+    .map(([name, data]) => ({ name, color: data.color }));
+}
+
+function navigateToLineStation(lineName, station) {
+  const targetLine = lineData[lineName];
+  if (!targetLine) return;
+  const normalized = normalizeStationName(station);
+  const targetIndex = targetLine.stations.findIndex(s => normalizeStationName(s) === normalized);
+  if (targetIndex < 0) {
+    showToastMessage?.(`${lineName}에서 같은 이름의 역을 찾을 수 없어요.`);
+    return;
+  }
+  fullPopup.classList.add('hidden');
+  document.body.classList.remove('popup-open');
+  $('trainDetailCard')?.classList.add('hidden');
+  if (popupRefreshTimer) { clearInterval(popupRefreshTimer); popupRefreshTimer = null; }
+  lineMenuOpen = false;
+  if (typeof setCompactMode === 'function' && compactMode) setCompactMode(true);
+  initMaps(lineName);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const main = $('mainContent');
+    const baseCount = targetLine.circular ? targetLine.stations.length - 1 : targetLine.stations.length;
+    // 순환 노선은 가운데 복제본으로 이동해 양방향으로 계속 스크롤할 수 있게 합니다.
+    const index = targetLine.circular ? baseCount + (targetIndex % baseCount) : targetIndex;
+    main.scrollTo({ top: Math.max(0, index * V_SPACING - main.clientHeight * .38), behavior: 'smooth' });
+    const targetNode = [...vStationNodes.querySelectorAll('.v-station-node')].find(node => normalizeStationName(node.dataset.station || '') === normalized && Math.abs(parseFloat(node.style.top || '0') - index * V_SPACING) < 2);
+    if (targetNode) {
+      targetNode.classList.add('station-arrive-pulse');
+      setTimeout(() => targetNode.classList.remove('station-arrive-pulse'), 1000);
+    }
+  }));
+}
+
+function initMaps(lineName) {
+  if (refreshInterval) clearInterval(refreshInterval);
+  mapRequestId++;
+  currentLine = lineName;
+  const line = lineData[currentLine];
+  if (!line) return;
+  updateActiveLineButton();
+  vStationNodes.innerHTML = '';
+  vTrainsContainer.innerHTML = '';
+  const isCircular = Boolean(line.circular);
+  const baseStations = isCircular ? line.stations.slice(0, -1) : line.stations;
+  const stations = isCircular ? [...baseStations, ...baseStations, ...baseStations] : baseStations;
+  circularCycleHeight = baseStations.length * V_SPACING;
+  vMapContainer.style.height = `${Math.max(1, stations.length - 1) * V_SPACING + 60}px`;
+  stations.forEach((station, index) => {
+    const node = document.createElement('div');
+    const connections = getStationLineConnections(station);
+    const railTypes = RAIL_STATION_TYPES[normalizeStationName(station)] || [];
+    node.className = `v-station-node${connections.length ? ' is-transfer' : ''}`;
+    node.style.top = `${index * V_SPACING}px`;
+    node.dataset.station = station;
+    const transferTags = connections.map(connection =>
+      `<button type="button" class="v-transfer-tag" data-transfer-line="${escapeHtml(connection.name)}" title="${escapeHtml(connection.name)}으로 이동">${escapeHtml(connection.name)}</button>`
+    ).join('');
+    const railTags = railTypes.map(type =>
+      `<button type="button" class="v-rail-tag ${type === 'KTX' ? 'ktx' : 'rail'}" data-rail-type="${escapeHtml(type)}" title="${escapeHtml(type)} 정차역">${escapeHtml(type)}</button>`
+    ).join('');
+    node.innerHTML = `<div class="v-station-name">${escapeHtml(station)}</div>${(connections.length || railTypes.length) ? `<div class="v-station-meta"><div class="v-station-tags">${connections.length ? `<span class="v-transfer-count">환승 ${connections.length + 1}개 노선</span>` : ''}${railTags}</div>${connections.length ? `<div class="v-station-tags">${transferTags}</div>` : ''}</div>` : ''}`;
+    node.addEventListener('click', event => {
+      if (event.target.closest('[data-transfer-line]')) {
+        event.stopPropagation();
+        navigateToLineStation(event.target.closest('[data-transfer-line]').dataset.transferLine, station);
+        return;
+      }
+      if (event.target.closest('[data-rail-type]')) {
+        event.stopPropagation();
+        const type = event.target.closest('[data-rail-type]').dataset.railType;
+        showToastMessage(`${station}역 · ${type} 정차역 표시입니다. 실시간 열차 정보는 연결되어 있지 않아요.`);
+        return;
+      }
+      openFullPopup(station);
+    });
+    vStationNodes.appendChild(node);
+  });
+  const main = $('mainContent');
+  main.onscroll = null;
+  if (isCircular) {
+    requestAnimationFrame(() => { main.scrollTop = circularCycleHeight; });
+    main.onscroll = () => {
+      if (isLoopAdjusting) return;
+      if (main.scrollTop < circularCycleHeight * 0.45) {
+        isLoopAdjusting = true; main.scrollTop += circularCycleHeight;
+        requestAnimationFrame(() => { isLoopAdjusting = false; });
+      } else if (main.scrollTop > circularCycleHeight * 1.55) {
+        isLoopAdjusting = true; main.scrollTop -= circularCycleHeight;
+        requestAnimationFrame(() => { isLoopAdjusting = false; });
+      }
+    };
+  } else {
+    requestAnimationFrame(() => { main.scrollTop = 0; });
+  }
+  refreshAll();
+  refreshInterval = setInterval(refreshAll, 10000);
+}
+
+/* ========================================
+   전체 새로고침
+======================================== */
+
+async function refreshAll() {
+  if (isRefreshing) return;
+
+  isRefreshing = true;
+  refreshButton.classList.add('loading');
+
+  try {
+    await fetchTrainPositions();
+
+    if (!fullPopup.classList.contains('hidden') && currentStation) {
+      const requestId = popupRequestId;
+
+      await fetchStationDetails(
+        currentStation,
+        true,
+        requestId
+      );
+    }
+
+    markRefreshed();
+  } finally {
+    isRefreshing = false;
+    refreshButton.classList.remove('loading');
+  }
+}
+
+refreshButton.addEventListener('click', () => {
+  refreshAll();
+});
+
+
+/* ========================================
+   역 상세 팝업
+======================================== */
+
+function openFullPopup(station) {
+  currentStation = station;
+
+  popupRequestId++;
+  const requestId = popupRequestId;
+
+  fullPopup.classList.remove('hidden');
+  document.body.classList.add('popup-open');
+  renderLandmarks();
+  closeLandmarkEditor();
+
+  pName.textContent = `${station}역`;
+  pBadge.textContent = currentLine;
+
+  [
+    'arrLoading',
+    'statLoading',
+    'ttLoading'
+  ].forEach(id => setLoading(id, true));
+
+  timeRideNum.textContent = '-';
+  timeAlightNum.textContent = '-';
+
+  arrUpList.innerHTML = '';
+  arrDownList.innerHTML = '';
+  ttUpList.innerHTML = '';
+  ttDownList.innerHTML = '';
+
+  const stations = lineData[currentLine].stations;
+  const centerIndex = getStationIndex(stations, station);
+
+  currentPopupStations = [];
+
+  if (centerIndex !== -1) {
+    const start = Math.max(0, centerIndex - 3);
+    const end = Math.min(stations.length - 1, centerIndex + 3);
+
+    currentPopupStations = stations.slice(start, end + 1);
+
+    hStationNodes.innerHTML = '';
+    hTrainsContainer.innerHTML = '';
+
+    hTrackWrapper.style.width =
+      `${Math.max(1, currentPopupStations.length - 1) * H_SPACING + 60}px`;
+
+    currentPopupStations.forEach((stn, index) => {
+      const node = document.createElement('div');
+
+      node.className = 'h-station-node';
+      node.style.left = `${index * H_SPACING}px`;
+
+      const isCurrent =
+        normalizeStationName(stn) === normalizeStationName(station);
+
+      node.innerHTML =
+        `<div class="h-station-name"
+          style="${isCurrent ? 'color:#1d1d1f;font-size:15px;font-weight:800;top:-30px;background:#fff;padding:4px 7px;border-radius:7px;box-shadow:0 1px 5px rgba(0,0,0,.14);z-index:10;' : ''}">
+          ${escapeHtml(stn)}
+        </div>`;
+
+      hStationNodes.appendChild(node);
+    });
+
+    const scroll = $('hTrackScroll');
+    const centerPosition = centerIndex - start;
+
+    requestAnimationFrame(() => {
+      // Track wrapper begins after the scroll container's 40px horizontal padding.
+      // Center the selected station itself in the visible viewport.
+      const stationX = 40 + centerPosition * H_SPACING;
+      scroll.scrollTo({ left: Math.max(0, stationX - scroll.clientWidth / 2), behavior: 'smooth' });
+
+    });
+  }
+
+  if (popupRefreshTimer) {
+    clearInterval(popupRefreshTimer);
+  }
+
+  fetchStationDetails(station, false, requestId);
+  fetchTrainPositions();
+
+  popupRefreshTimer = setInterval(() => {
+    if (
+      fullPopup.classList.contains('hidden') ||
+      requestId !== popupRequestId
+    ) {
+      clearInterval(popupRefreshTimer);
+      popupRefreshTimer = null;
+      return;
+    }
+
+    fetchStationDetails(station, true, requestId);
+    fetchTrainPositions();
+  }, 10000);
+}
+
+closePopupBtn.addEventListener('click', () => {
+  fullPopup.classList.add('hidden');
+  document.body.classList.remove('popup-open');
+
+  popupRequestId++;
+
+  if (popupRefreshTimer) {
+    clearInterval(popupRefreshTimer);
+    popupRefreshTimer = null;
+  }
+});
+
+
+/* ========================================
+   실시간 열차 위치
+======================================== */
+
+// Latest live positions keyed by train number, used to cross-check distance labels.
+let latestPositionByTrainNo = new Map();
+
+async function fetchTrainPositions() {
+  const requestLine = currentLine;
+  const requestId = mapRequestId;
+  const line = lineData[requestLine];
+
+  if (!line) return;
+
+  try {
+    const apiLine = line.apiName || requestLine;
+
+    const url =
+      `${BASE_SW}/${REALTIME_API_KEY}` +
+      `/json/realtimePosition/0/100/` +
+      `${encodeURIComponent(apiLine)}`;
+
+    const response = await fetch(url, {
+      cache:'no-store'
+    });
+
+    if (!response.ok) throw new Error('열차 위치 조회 실패');
+
+    const data = await response.json();
+
+    if (
+      requestLine !== currentLine ||
+      requestId !== mapRequestId
+    ) return;
+
+    if (data.errorMessage && data.errorMessage.code !== 'INFO-000') {
+      throw new Error(data.errorMessage.message || 'API 오류');
+    }
+
+    const activeVertical = new Set();
+    const activeHorizontal = new Set();
+
+    const trains = Array.isArray(data.realtimePositionList)
+      ? data.realtimePositionList
+      : [];
+
+    const positionCache = new Map();
+    trains.forEach(train => {
+      if (String(train.subwayId || '') !== String(line.id)) return;
+      const no = String(train.trainNo || '').trim();
+      const stationName = String(train.statnNm || '').trim();
+      if (no && stationName) {
+        positionCache.set(no, {
+          stationName,
+          stationIndex: getStationIndex(line.circular ? line.stations.slice(0, -1) : line.stations, stationName),
+          direction: String(train.updnLine || '')
+        });
+      }
+    });
+    latestPositionByTrainNo = positionCache;
+
+    trains.forEach(train => {
+      // Selected-line isolation: missing IDs are not safe to display as this line.
+      if (String(train.subwayId || '') !== String(line.id)) return;
+
+      const trainNo = String(train.trainNo || '').trim();
+
+      if (!trainNo) return;
+
+      const isUp = String(train.updnLine) === '0';
+      const direction = isUp ? 1 : -1;
+      const status = String(train.trainSttus ?? '');
+
+      let offset = 0;
+
+      if (status === '0' || status === '3') {
+        offset = -35 * direction;
+      } else if (status === '2') {
+        offset = 35 * direction;
+      }
+
+      const domKey =
+        `${line.id}-${train.updnLine}-${trainNo}`
+          .replace(/[^a-zA-Z0-9_-]/g, '_');
+
+      const statusText = getTrainStatusText(status);
+
+      /* 세로 지도 */
+      // Circular route nodes are repeated three times and the initial viewport
+      // starts on the middle cycle. Place live trains on that same cycle.
+      const baseStations = line.circular ? line.stations.slice(0, -1) : line.stations;
+      const stationIndexInLine = getStationIndex(baseStations, train.statnNm);
+      const stationIndex = line.circular && stationIndexInLine >= 0
+        ? stationIndexInLine + baseStations.length
+        : stationIndexInLine;
+
+      if (stationIndexInLine !== -1) {
+        // 2호선은 세 번 반복된 지도에 열차도 세 벌 배치한다.
+        // 가운데 복제본에만 배치하면 스크롤 루프 경계/일부 구간에서 열차가 사라진 것처럼 보인다.
+        const cycleIndexes = line.circular ? [0, 1, 2] : [0];
+        cycleIndexes.forEach(cycleIndex => {
+          const verticalKey = line.circular
+            ? `${domKey}-cycle${cycleIndex}`
+            : domKey;
+          activeVertical.add(verticalKey);
+
+          let element = document.getElementById(`v-train-${verticalKey}`);
+
+          if (!element) {
+            element = document.createElement('div');
+            element.id = `v-train-${verticalKey}`;
+            vTrainsContainer.appendChild(element);
+            element.addEventListener('click', event => {
+              event.stopPropagation();
+              showTrainDetail(element._trainData);
+            });
+          }
+
+          const trainType = String(train.btrainSttus || train.trainType || '');
+          const isExpress = String(train.directAt ?? '') === '1' || trainType.includes('급행');
+          const isSpecial = String(train.directAt ?? '') === '7' || trainType.includes('특급');
+          element.className = `v-train ${isUp ? 'up' : 'down'}${isExpress ? ' express' : ''}${isSpecial ? ' special' : ''}`;
+          element._trainData = {
+            trainNo, status, statusText,
+            station: train.statnNm || '현재 정보 없음',
+            destination: train.bstatnNm || train.statnTnm || '현재 정보 없음',
+            isUp, stationIndex: stationIndexInLine, lineName: requestLine
+          };
+
+          element.innerHTML =
+            `<span>${escapeHtml(trainNo)}</span>` +
+            `<div class="v-train-status">${statusText}</div>`;
+
+          const repeatedIndex = line.circular
+            ? cycleIndex * baseStations.length + stationIndexInLine
+            : stationIndexInLine;
+          element.style.top = `${repeatedIndex * V_SPACING + offset}px`;
+        });
+      }
+
+      /* 팝업 가로 지도 */
+      if (
+        !fullPopup.classList.contains('hidden') &&
+        currentPopupStations.length > 0
+      ) {
+        const horizontalIndex = getStationIndex(
+          currentPopupStations,
+          train.statnNm
+        );
+
+        if (horizontalIndex !== -1) {
+          activeHorizontal.add(domKey);
+
+          let element = document.getElementById(`h-train-${domKey}`);
+
+          if (!element) {
+            element = document.createElement('div');
+            element.id = `h-train-${domKey}`;
+            hTrainsContainer.appendChild(element);
+          }
+
+          const trainType = String(train.btrainSttus || train.trainType || '');
+          const isExpress = String(train.directAt ?? '') === '1' || trainType.includes('급행');
+          const isSpecial = String(train.directAt ?? '') === '7' || trainType.includes('특급');
+          element.className = `h-train ${isUp ? 'up' : 'down'}${isExpress ? ' express' : ''}${isSpecial ? ' special' : ''}`;
+
+          element.innerHTML =
+            `<span>${escapeHtml(trainNo)}</span>` +
+            `<div class="h-train-status">${statusText}</div>`;
+
+          element.style.left =
+            `${horizontalIndex * H_SPACING + offset}px`;
+        }
+      }
+    });
+
+    Array.from(vTrainsContainer.children).forEach(element => {
+      const key = element.id.replace('v-train-', '');
+
+      if (!activeVertical.has(key)) element.remove();
+    });
+
+    Array.from(hTrainsContainer.children).forEach(element => {
+      const key = element.id.replace('h-train-', '');
+
+      if (!activeHorizontal.has(key)) element.remove();
+    });
+
+  } catch (error) {
+    console.error('실시간 열차 위치 오류:', error);
+  }
+}
+
+
+
+/* ETA 표시를 초 단위로 감소시켜 API 갱신 사이에도 숫자가 멈춰 보이지 않게 함. */
+function tickArrivalCountdowns() {
+  document.querySelectorAll('.arr-item[data-eta-seconds]').forEach(item => {
+    const raw = item.dataset.etaSeconds;
+    if (raw === '') return;
+    const base = Number(raw);
+    const updatedAt = Number(item.dataset.etaUpdated || Date.now());
+    const elapsed = Math.floor((Date.now() - updatedAt) / 1000);
+    const remaining = Math.max(0, base - elapsed);
+    const label = item.querySelector('[data-eta-label]');
+    if (!label) return;
+    if (remaining <= 0) {
+      label.textContent = '도착';
+    } else {
+      label.textContent = `약 ${Math.floor(remaining / 60)}분 ${remaining % 60}초 후`;
+    }
+  });
+}
+setInterval(tickArrivalCountdowns, 1000);
+
+/* ========================================
+   실시간 도착 정보
+======================================== */
+
+async function fetchArrivalInfo(station, requestId) {
+  try {
+    const stationName = normalizeStationName(station);
+
+    const url =
+      `${BASE_SW}/${REALTIME_API_KEY}` +
+      `/json/realtimeStationArrival/0/30/` +
+      `${encodeURIComponent(stationName)}`;
+
+    const response = await fetch(url, {
+      cache:'no-store'
+    });
+
+    if (!response.ok) throw new Error('도착 정보 조회 실패');
+
+    const data = await response.json();
+
+    if (requestId !== popupRequestId) return;
+
+    const all = Array.isArray(data.realtimeArrivalList)
+      ? data.realtimeArrivalList
+      : [];
+
+    const targetId = String(lineData[currentLine].id);
+
+    // 환승역에서 다른 노선은 제외하고, 같은 열차가 중복 반환된 경우 한 번만 표시.
+    const lineTrains = all.filter(train =>
+      String(train.subwayId || '') === targetId
+    );
+    const seenTrainKeys = new Set();
+    const trains = lineTrains.filter(train => {
+      const direction = String(train.updnLine || '');
+      const trainNo = String(train.btrainNo || '').trim();
+      // 열차번호가 있으면 방향+열차번호로 중복 제거. 번호가 없을 때만 API 순번과 메시지 조합 사용.
+      const key = trainNo
+        ? `${direction}|train:${trainNo}`
+        : `${direction}|ord:${String(train.ordkey || '')}|dest:${String(train.bstatnNm || '')}|msg:${String(train.arvlMsg2 || '')}|${String(train.arvlMsg3 || '')}`;
+      if (seenTrainKeys.has(key)) return false;
+      seenTrainKeys.add(key);
+      return true;
+    });
+
+    const getEtaSeconds = train => {
+      const message = String(train.arvlMsg2 || '');
+      const code = String(train.arvlCd ?? '');
+      const raw = Number.parseInt(train.barvlDt, 10);
+
+      // barvlDt가 0인 것만으로 '도착'으로 판단하지 않는다.
+      // API가 0/빈 값으로 주는 경우 메시지와 도착코드를 우선 확인한다.
+      if (Number.isFinite(raw) && raw > 0) return raw;
+      if (code === '1' || /도착/.test(message)) return 0;
+      if (code === '0' || /진입/.test(message)) return 5;
+      if (code === '2' || /출발/.test(message)) return 15;
+
+      const match = message.match(/(\d+)\s*분(?:\s*(\d+)\s*초)?/);
+      if (match) return Number(match[1]) * 60 + Number(match[2] || 0);
+
+      const secondsMatch = message.match(/(\d+)\s*초/);
+      if (secondsMatch) return Number(secondsMatch[1]);
+
+      return Number.POSITIVE_INFINITY;
+    };
+
+    // Sort by the numeric ETA whenever the API provides it, not by message wording.
+    trains.sort((a, b) => getEtaSeconds(a) - getEtaSeconds(b));
+
+    // Show the nearest few trains per direction, rather than flooding the popup with 30 records.
+    const upTrains = [];
+    const downTrains = [];
+    trains.forEach(train => {
+      const dir = String(train.updnLine || '');
+      const isUp = dir === '상행' || dir === '내선' || dir === '0';
+      const bucket = isUp ? upTrains : downTrains;
+      if (bucket.length < 5) bucket.push(train);
+    });
+
+    let upHTML = '';
+    let downHTML = '';
+
+    [...upTrains, ...downTrains].forEach(train => {
+      const directionText = String(train.updnLine || '');
+
+      const isUp =
+        directionText === '상행' ||
+        directionText === '내선' ||
+        directionText === '0';
+
+      const rawMessage = String(train.arvlMsg2 || '');
+      const etaSeconds = getEtaSeconds(train);
+      const etaIsKnown = Number.isFinite(etaSeconds);
+      let status = '운행 중';
+
+      if (/진입/.test(rawMessage)) status = '진입';
+      else if (/도착/.test(rawMessage)) status = '도착';
+      else if (/출발/.test(rawMessage)) status = '출발';
+
+      const trainType = String(train.btrainSttus || '');
+      const badgeText = trainType.includes('급행')
+        ? '급행'
+        : trainType.includes('특급') || trainType.includes('ITX')
+          ? '특급'
+          : '일반';
+
+      const badgeClass = badgeText === '급행'
+        ? 'exp-express'
+        : badgeText === '특급'
+          ? 'exp-special'
+          : '';
+
+      // API의 '[20]번째 전역' 문구는 오래된 수신 시각/순번으로 실제 위치와 어긋날 수 있다.
+      // 열차번호가 실시간 위치 API와 매칭될 때만 노선 역순서로 가까운 위치를 계산해 표시한다.
+      const arrivalTrainNo = String(train.btrainNo || '').trim();
+      const livePosition = arrivalTrainNo ? latestPositionByTrainNo.get(arrivalTrainNo) : null;
+      const routeStations = lineData[currentLine].circular
+        ? lineData[currentLine].stations.slice(0, -1)
+        : lineData[currentLine].stations;
+      const targetStationIndex = getStationIndex(routeStations, station);
+      let distanceMessage = '';
+      if (livePosition && livePosition.stationIndex >= 0 && targetStationIndex >= 0) {
+        const distance = Math.abs(targetStationIndex - livePosition.stationIndex);
+        // 가까운 경우만 계산된 위치를 보여준다. 방향/분기 노선이 애매하거나 멀면 API의 오래된 숫자를 쓰지 않는다.
+        if (distance === 0) distanceMessage = `현재 역 (${livePosition.stationName})`;
+        else if (distance <= 5) distanceMessage = `${distance}개 역 전 (${livePosition.stationName})`;
+      }
+      let initialEtaText;
+      if (status === '도착' || /도착/.test(rawMessage)) {
+        initialEtaText = '도착';
+      } else if (status === '진입' || /진입/.test(rawMessage)) {
+        initialEtaText = '진입';
+      } else if (status === '출발' || /출발/.test(rawMessage)) {
+        initialEtaText = '출발';
+      } else if (etaIsKnown && etaSeconds > 0) {
+        initialEtaText = `약 ${Math.floor(etaSeconds / 60)}분 ${etaSeconds % 60}초 후`;
+      } else {
+        // Never show an unverified API distance like '[20]번째 전역' as if it were current.
+        const apiDistanceOnly = /\d+\s*번째\s*전역/.test(rawMessage);
+        initialEtaText = distanceMessage || (apiDistanceOnly ? '현재 정보 없음' : rawMessage || '현재 정보 없음');
+      }
+      const extraLocation = distanceMessage && distanceMessage !== initialEtaText
+        ? `<br>위치 정보: ${escapeHtml(distanceMessage)}`
+        : '';
+
+      const html = `
+        <div class="arr-item ${isUp ? 'up' : 'down'}" data-eta-seconds="${etaIsKnown && !/도착|진입|출발/.test(rawMessage) ? etaSeconds : ''}" data-eta-updated="${Date.now()}">
+          <div class="arr-top-row">
+            <span class="arr-time" data-eta-label>${escapeHtml(initialEtaText)}</span>
+            <span class="exp-badge ${badgeClass}">${escapeHtml(badgeText)}</span>
+          </div>
+          <div class="arr-desc">
+            ${escapeHtml(train.bstatnNm || train.statnTnm || '방면')}행
+            <br>
+            현재: ${escapeHtml(train.arvlMsg3 || train.statnNm || '운행 중')}
+            (${escapeHtml(status)})${extraLocation}
+          </div>
+        </div>
+      `;
+
+      if (isUp) upHTML += html;
+      else downHTML += html;
+    });
+
+    arrUpList.innerHTML =
+      upHTML ||
+      '<div class="arr-item">현재 정보 없음</div>';
+
+    arrDownList.innerHTML =
+      downHTML ||
+      '<div class="arr-item">현재 정보 없음</div>';
+
+  } catch (error) {
+    if (requestId === popupRequestId) {
+      arrUpList.innerHTML =
+        '<div class="arr-item">현재 정보 없음</div>';
+
+      arrDownList.innerHTML =
+        '<div class="arr-item">현재 정보 없음</div>';
+    }
+  } finally {
+    if (requestId === popupRequestId) {
+      setLoading('arrLoading', false);
+    }
+  }
+}
+
+
+/* ========================================
+   승하차 통계
+======================================== */
+
+async function fetchStatistics(station, requestId) {
+  try {
+    const date = new Date();
+
+    date.setDate(date.getDate() - 3);
+
+    const dateString =
+      `${date.getFullYear()}` +
+      `${String(date.getMonth() + 1).padStart(2, '0')}` +
+      `${String(date.getDate()).padStart(2, '0')}`;
+
+    const url =
+      `${BASE_OPEN}/${OPEN_API_KEY}` +
+      `/json/CardSubwayStatsNew/1/1000/${dateString}`;
+
+    const response = await fetch(url, {
+      cache:'no-store'
+    });
+
+    if (!response.ok) throw new Error('통계 조회 실패');
+
+    const data = await response.json();
+
+    if (requestId !== popupRequestId) return;
+
+    const rows = data.CardSubwayStatsNew?.row || [];
+
+    const target = normalizeStationName(station);
+
+    const match = rows.find(row =>
+      normalizeStationName(row.SUB_STA_NM) === target
+    );
+
+    if (!match) throw new Error('통계 없음');
+
+    timeRideNum.textContent =
+      `${Number(match.RIDE_PASGR_NUM).toLocaleString()}명`;
+
+    timeAlightNum.textContent =
+      `${Number(match.ALIGHT_PASGR_NUM).toLocaleString()}명`;
+
+  } catch (error) {
+    if (requestId === popupRequestId) {
+      timeRideNum.textContent = '현재 정보 없음';
+      timeAlightNum.textContent = '현재 정보 없음';
+    }
+  } finally {
+    if (requestId === popupRequestId) {
+      setLoading('statLoading', false);
+    }
+  }
+}
+
+
+/* ========================================
+   시간표 조회
+======================================== */
+
+async function fetchTimetable(station, requestId) {
+  const week = getWeekTag();
+
+  ttDateType.textContent = week.name;
+
+  try {
+    const stationName = normalizeStationName(station);
+
+    const searchURL =
+      `${BASE_OPEN}/${OPEN_API_KEY}` +
+      `/json/SearchInfoBySubwayNameService/1/50/` +
+      `${encodeURIComponent(stationName)}`;
+
+    const searchResponse = await fetch(searchURL, {
+      cache:'no-store'
+    });
+
+    if (!searchResponse.ok) throw new Error('역 조회 실패');
+
+    const searchData = await searchResponse.json();
+
+    const rows =
+      searchData.SearchInfoBySubwayNameService?.row || [];
+
+    const lineName = currentLine;
+
+    const match = rows.find(row => {
+      const value = String(row.LINE_NUM || '');
+
+      if (lineName === 'GTX-A') {
+        return value.includes('GTX');
+      }
+
+      if (lineName === '경의중앙선') {
+        return value.includes('경의') || value.includes('중앙');
+      }
+
+      const number = lineName.match(/\d+/)?.[0];
+
+      return number ? value.includes(number) : false;
+    });
+
+    if (!match) {
+      throw new Error('노선별 역 코드 없음');
+    }
+
+    const stationCode = match.STATION_CD;
+
+    const upURL =
+      `${BASE_OPEN}/${OPEN_API_KEY}` +
+      `/json/SearchSTTimeTableByIDService/1/500/` +
+      `${stationCode}/${week.tag}/1/`;
+
+    const downURL =
+      `${BASE_OPEN}/${OPEN_API_KEY}` +
+      `/json/SearchSTTimeTableByIDService/1/500/` +
+      `${stationCode}/${week.tag}/2/`;
+
+    const [upResponse, downResponse] = await Promise.all([
+      fetch(upURL, {cache:'no-store'}),
+      fetch(downURL, {cache:'no-store'})
+    ]);
+
+    if (!upResponse.ok || !downResponse.ok) {
+      throw new Error('시간표 조회 실패');
+    }
+
+    const [upData, downData] = await Promise.all([
+      upResponse.json(),
+      downResponse.json()
+    ]);
+
+    if (requestId !== popupRequestId) return;
+
+    const upRows =
+      upData.SearchSTTimeTableByIDService?.row || [];
+
+    const downRows =
+      downData.SearchSTTimeTableByIDService?.row || [];
+
+    ttUpList.innerHTML = renderTimetable(upRows, true);
+    ttDownList.innerHTML = renderTimetable(downRows, false);
+
+  } catch (error) {
+    if (requestId === popupRequestId) {
+      ttUpList.innerHTML =
+        '<div class="tt-item">시간표 현재 정보 없음</div>';
+
+      ttDownList.innerHTML =
+        '<div class="tt-item">시간표 현재 정보 없음</div>';
+    }
+  } finally {
+    if (requestId === popupRequestId) {
+      setLoading('ttLoading', false);
+    }
+  }
+}
+
+function renderTimetable(rows, isUp) {
+  if (!rows.length) {
+    return '<div class="tt-item">시간표 현재 정보 없음</div>';
+  }
+
+  const now = new Date();
+
+  let hour = now.getHours();
+
+  if (hour < 4) hour += 24;
+
+  const currentSeconds =
+    hour * 3600 +
+    now.getMinutes() * 60 +
+    now.getSeconds();
+
+  function getTime(row) {
+    if (row.ARRIVETIME && row.ARRIVETIME !== '00:00:00') {
+      return row.ARRIVETIME;
+    }
+
+    if (row.LEFTTIME && row.LEFTTIME !== '00:00:00') {
+      return row.LEFTTIME;
+    }
+
+    return '';
+  }
+
+  const valid = rows
+    .filter(row => {
+      const time = getTime(row);
+
+      return time && timeToSeconds(time) >= currentSeconds;
+    })
+    .sort((a, b) =>
+      timeToSeconds(getTime(a)) - timeToSeconds(getTime(b))
+    )
+    .slice(0, 10);
+
+  if (!valid.length) {
+    return '<div class="tt-item">금일 운행 종료</div>';
+  }
+
+  return valid.map(row => {
+    const time = getTime(row).substring(0, 5);
+
+    const express =
+      ['G','D','E'].includes(String(row.EXPRESS_YN)) ||
+      String(row.FL_FLAG || '').includes('급행');
+
+    const special =
+      row.EXPRESS_YN === 'S' ||
+      String(row.FL_FLAG || '').includes('특급');
+
+    const badge = express
+      ? '급행'
+      : special
+        ? '특급'
+        : '일반';
+
+    const badgeClass = express
+      ? 'exp-express'
+      : special
+        ? 'exp-special'
+        : '';
+
+    return `
+      <div class="tt-item ${isUp ? 'up' : 'down'}">
+        <div class="arr-top-row">
+          <strong>${escapeHtml(time)}</strong>
+          <span class="exp-badge ${badgeClass}">${badge}</span>
+        </div>
+        <div class="arr-desc">
+          ${escapeHtml(
+            row.SUBWAYENAME ||
+            row.SUBWAYSNAME ||
+            row.DESTSTATION ||
+            '방면'
+          )}행
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+
+/* ========================================
+   통합 상세 정보 조회
+======================================== */
+
+function fetchStationDetails(
+  station,
+  isSilent = false,
+  requestId = popupRequestId
+) {
+  if (!isSilent) {
+    [
+      'arrLoading',
+      'statLoading',
+      'ttLoading'
+    ].forEach(id => setLoading(id, true));
+  }
+
+  fetchArrivalInfo(station, requestId);
+  fetchStatistics(station, requestId);
+  fetchTimetable(station, requestId);
+}
+
+
+function showTrainDetail(train) {
+  if (!train) return;
+  selectedTrainData = train;
+  const line = lineData[train.lineName] || lineData[currentLine];
+  $('trainCardLineNum').textContent = (train.lineName.match(/\\d+/) || ['↻'])[0];
+  $('trainCardLineNum').style.background = line.color;
+  $('trainCardNo').textContent = train.trainNo || '현재 정보 없음';
+  $('trainCardStatus').textContent = train.statusText || '현재 정보 없음';
+  $('trainCardLocation').textContent = `현재 위치: ${train.station || '현재 정보 없음'} · ${train.destination || '현재 정보 없음'}행`;
+  const stations = line.circular ? line.stations.slice(0,-1) : line.stations;
+  const idx = train.stationIndex;
+  const progress = idx >= 0 && stations.length > 1 ? Math.round(idx / (stations.length - 1) * 100) : null;
+  $('trainCardProgressText').textContent = progress === null ? '현재 정보 없음' : `${progress}%`;
+  $('trainCardProgress').style.width = progress === null ? '0%' : `${progress}%`;
+  $('trainCardStart').textContent = stations[0] || '현재 정보 없음';
+  $('trainCardMid').textContent = stations[Math.floor(stations.length/2)] || '현재 정보 없음';
+  $('trainCardEnd').textContent = stations[stations.length-1] || '현재 정보 없음';
+  $('trainDetailCard').classList.remove('hidden');
+}
+$('trainCardRefresh').addEventListener('click', () => refreshAll());
+$('trainCardMap').addEventListener('click', () => {
+  if (selectedTrainData?.station) {
+    $('trainDetailCard').classList.add('hidden');
+    openFullPopup(selectedTrainData.station);
+  }
+});
+$('trainCardAlert').addEventListener('click', async () => {
+  const btn = $('trainCardAlert');
+  if ('Notification' in window && Notification.permission === 'default') await Notification.requestPermission();
+  btn.textContent = '✓ 알림 기능 선택됨';
+});
+
+/* ========================================
+   상단 노선 선택 / 더보기 메뉴
+======================================== */
+const topControls = $('topControls');
+const linePickerTrigger = $('linePickerTrigger');
+const currentLineLabel = $('currentLineLabel');
+const menuTrigger = $('menuTrigger');
+const menuStack = $('menuStack');
+menuTrigger.innerHTML = '☰';
+let lineMenuOpen = false;
+let moreMenuOpen = false;
+function syncCurrentLineLabel() { currentLineLabel.textContent = currentLine || '노선 선택'; }
+menuTrigger.addEventListener('click', () => {
+  moreMenuOpen = !moreMenuOpen;
+  menuTrigger.classList.toggle('menu-open', moreMenuOpen);
+  menuTrigger.setAttribute('aria-expanded', String(moreMenuOpen));
+  menuTrigger.innerHTML = '☰';
+  menuStack.classList.toggle('menu-visible', moreMenuOpen);
+  menuStack.setAttribute('aria-hidden', String(!moreMenuOpen));
+});
+menuStack.querySelectorAll('.menu-card').forEach(card => card.addEventListener('click', () => {
+  const label = card.querySelector('strong').textContent;
+  if (card.dataset.menu === 'login') alert('로그인 기능은 아직 준비 중이에요.');
+  else if (card.dataset.menu === 'developer') alert('서울 지하철 대시보드 개발자 정보');
+  else alert('연결된 실시간 열차 위치 API 및 데이터 제공 정보를 표시합니다.');
+}));
+// 노선 목록과 퀵 버튼은 같은 자리를 교체하며, 더보기 버튼은 항상 표시합니다.
+const mainContent = $('mainContent');
+let lastScrollY = mainContent.scrollTop;
+let compactMode = false;
+function setCompactMode(compact) {
+  compactMode = compact;
+  topControls.classList.toggle('compact-mode', compact);
+  lineSelector.classList.toggle('compact-hidden', compact && !lineMenuOpen);
+  lineSelector.classList.toggle('picker-open', compact && lineMenuOpen);
+  linePickerTrigger.classList.toggle('trigger-visible', compact && !lineMenuOpen);
+  linePickerTrigger.setAttribute('aria-expanded', String(compact && !lineMenuOpen));
+}
+mainContent.addEventListener('scroll', () => {
+  const y = mainContent.scrollTop;
+  if (y > lastScrollY + 2 && y > 45) {
+    setCompactMode(true);
+  } else if (y < lastScrollY - 2 || y <= 45) {
+    lineMenuOpen = false;
+    setCompactMode(false);
+  }
+  lastScrollY = y;
+}, {passive:true});
+linePickerTrigger.addEventListener('click', () => {
+  // 누르면 버튼 자리에 노선 칩이 들어옵니다. 버튼 아래로 펼치지 않습니다.
+  lineMenuOpen = !lineMenuOpen;
+  linePickerTrigger.classList.toggle('trigger-visible', compactMode && !lineMenuOpen);
+  linePickerTrigger.setAttribute('aria-expanded', String(compactMode && !lineMenuOpen));
+  lineSelector.classList.toggle('compact-hidden', compactMode && !lineMenuOpen);
+  lineSelector.classList.toggle('picker-open', compactMode && lineMenuOpen);
+});
+// 노선을 고르면 컴팩트 모드에서는 노선 칩을 접고 '노선 선택' 버튼으로 돌아갑니다.
+lineSelector.addEventListener('click', (event) => {
+  if (event.target.closest('.line-button') && compactMode) {
+    lineMenuOpen = false;
+    setCompactMode(true);
+  }
+});
+
+
+/* ========================================
+   역 주변 명소: 역별 브라우저 저장 + 6방향 배치
+======================================== */
+const landmarkPositions = [
+  {id:'left-top', label:'왼쪽 위', side:'left'},
+  {id:'left-center', label:'왼쪽 중앙', side:'left'},
+  {id:'left-bottom', label:'왼쪽 아래', side:'left'},
+  {id:'right-top', label:'오른쪽 위', side:'right'},
+  {id:'right-center', label:'오른쪽 중앙', side:'right'},
+  {id:'right-bottom', label:'오른쪽 아래', side:'right'}
+];
+const landmarkStoreKey = 'seoulSubwayLandmarksV16';
+let landmarkEditingPosition = null;
+function getLandmarkStore() {
+  try { return JSON.parse(localStorage.getItem(landmarkStoreKey) || '{}'); }
+  catch (_) { return {}; }
+}
+function landmarkStationKey() {
+  return `${currentLine || ''}::${normalizeStationName(currentStation || '')}`;
+}
+function getCurrentLandmarks() {
+  const store = getLandmarkStore();
+  return store[landmarkStationKey()] || {};
+}
+function saveCurrentLandmarks(items) {
+  const store = getLandmarkStore();
+  store[landmarkStationKey()] = items;
+  try { localStorage.setItem(landmarkStoreKey, JSON.stringify(store)); }
+  catch (_) { alert('저장 공간이 부족해요. 이미지 주소를 사용하거나 일부 명소를 삭제해 주세요.'); }
+}
+function renderLandmarks() {
+  const stationName = currentStation || '역';
+  const core = document.getElementById('landmarkCoreName');
+  const left = document.getElementById('landmarkLeft');
+  const right = document.getElementById('landmarkRight');
+  if (!core || !left || !right) return;
+  core.textContent = `${stationName}역`;
+  const items = getCurrentLandmarks();
+  left.innerHTML = ''; right.innerHTML = '';
+  let count = 0;
+  landmarkPositions.forEach(pos => {
+    const item = items[pos.id];
+    const side = pos.side === 'left' ? left : right;
+    if (!item) {
+      const empty = document.createElement('div');
+      empty.className = 'landmark-slot-empty';
+      empty.innerHTML = '<span>＋</span><span>명소 추가</span>';
+      empty.title = `${pos.label}에 명소 추가`;
+      empty.addEventListener('click', () => openLandmarkEditor(pos.id));
+      empty.style.cursor = 'pointer';
+      side.appendChild(empty);
+      return;
+    }
+    count++;
+    const card = document.createElement('div'); card.className = 'landmark-card';
+    const img = document.createElement('img'); img.src = item.image; img.alt = item.name;
+    img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
+    img.onerror = () => { img.removeAttribute('src'); img.alt = '이미지를 불러올 수 없음'; img.style.background = 'linear-gradient(135deg,#e9e9ef,#f7f7fa)'; };
+    const copy = document.createElement('div'); copy.className = 'landmark-card-copy';
+    const title = document.createElement('strong'); title.textContent = item.name;
+    const subtitle = document.createElement('small'); subtitle.textContent = pos.label;
+    copy.append(title, subtitle);
+    const actions = document.createElement('div'); actions.className = 'landmark-card-actions';
+    const edit = document.createElement('button'); edit.type='button'; edit.textContent='수정'; edit.addEventListener('click',()=>openLandmarkEditor(pos.id));
+    const remove = document.createElement('button'); remove.type='button'; remove.textContent='삭제'; remove.addEventListener('click',()=>removeLandmark(pos.id));
+    actions.append(edit,remove); card.append(img,copy,actions); side.appendChild(card);
+  });
+  document.getElementById('landmarkEmptyNote').classList.toggle('hidden', count > 0);
+  const form = document.getElementById('landmarkEditor');
+  if (!form.classList.contains('hidden')) document.getElementById('landmarkSaveButton')?.focus();
+}
+function openLandmarkEditor(positionId) {
+  landmarkEditingPosition = positionId || null;
+  const form = document.getElementById('landmarkEditor');
+  const item = positionId ? getCurrentLandmarks()[positionId] : null;
+  document.getElementById('landmarkNameInput').value = item?.name || '';
+  document.getElementById('landmarkImageInput').value = item?.image || '';
+  document.getElementById('landmarkPositionInput').value = positionId || 'left-top';
+  document.getElementById('landmarkPositionInput').disabled = false;
+  document.getElementById('landmarkEditToggle').setAttribute('aria-expanded','true');
+  document.getElementById('landmarkEditToggle').textContent = '편집 중';
+  form.classList.remove('hidden');
+  document.getElementById('landmarkNameInput').focus();
+}
+function closeLandmarkEditor() {
+  document.getElementById('landmarkEditor').classList.add('hidden');
+  document.getElementById('landmarkPositionInput').disabled = false;
+  document.getElementById('landmarkEditToggle').setAttribute('aria-expanded','false');
+  document.getElementById('landmarkEditToggle').textContent = '＋ 명소 편집';
+  landmarkEditingPosition = null;
+}
+function removeLandmark(positionId) {
+  const items = getCurrentLandmarks(); delete items[positionId]; saveCurrentLandmarks(items); renderLandmarks();
+}
+document.getElementById('landmarkEditToggle').addEventListener('click', () => {
+  const form = document.getElementById('landmarkEditor');
+  if (!form.classList.contains('hidden')) { closeLandmarkEditor(); return; }
+  const items = getCurrentLandmarks();
+  const empty = landmarkPositions.find(p => !items[p.id]);
+  openLandmarkEditor(empty?.id || 'left-top');
+  if (empty && items[empty.id]) document.getElementById('landmarkPositionInput').disabled = false;
+});
+document.getElementById('landmarkCancelEdit').addEventListener('click', closeLandmarkEditor);
+document.getElementById('landmarkEditor').addEventListener('submit', event => {
+  event.preventDefault();
+  const name = document.getElementById('landmarkNameInput').value.trim();
+  const image = document.getElementById('landmarkImageInput').value.trim();
+  const position = document.getElementById('landmarkPositionInput').value;
+  if (!name || !/^https?:\/\//i.test(image)) { alert('명소 이름과 http(s) 이미지 주소를 입력해 주세요.'); return; }
+  const items = getCurrentLandmarks();
+  if (landmarkEditingPosition && landmarkEditingPosition !== position) delete items[landmarkEditingPosition];
+  items[position] = {name, image};
+  saveCurrentLandmarks(items); renderLandmarks(); closeLandmarkEditor();
+});
+
+/* ========================================
+   앱 시작
+======================================== */
+
+renderLineButtons();
+initMaps('2호선');
+
+elapsedTimer = setInterval(updateRefreshLabel, 1000);
+</script>
+</body>
+</html>
+<style id="v10-train-corrections">
+/* 급행은 빨강, 일반 열차는 흰색. 특급은 중립색으로 구분 */
+.v-train.express, .h-train.express {
+  background: #e53935 !important;
+  border-color: #c62828 !important;
+  color: #fff !important;
+}
+.v-train.special, .h-train.special {
+  background: #f5f5f7 !important;
+  border-color: #a1a1aa !important;
+  color: #252525 !important;
+}
+.v-train-status, .h-train-status { color: inherit !important; }
+
+/* 상세 팝업의 방향별 카드 색은 노선도 열차 색상과 일치시킴 */
+.exp-badge.exp-express { background: #e53935 !important; color: #fff !important; }
+</style>
+
+<style id="v11-line-isolation">
+/* Make the selected line's trains visually clear; express only is red. */
+.v-train:not(.express):not(.special),
+.h-train:not(.express):not(.special) {
+  background: #fff !important;
+  color: #202124 !important;
+}
+.v-train.express, .h-train.express {
+  background: #e53935 !important;
+  border-color: #c62828 !important;
+  color: #fff !important;
+}
+.v-train.special, .h-train.special {
+  background: #f5f5f7 !important;
+  border-color: #a1a1aa !important;
+  color: #202124 !important;
+}
+</style>
+
+
+<style id="v16-landmark-styles">
+.landmark-section { overflow:hidden; }
+.landmark-heading-row { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+.landmark-heading-row h3 { margin:0 0 5px; }
+.landmark-subtitle { color:#86868b; font-size:12px; margin:0; }
+.landmark-edit-toggle,.landmark-form-actions button { border:1px solid #d2d2d7; border-radius:999px; padding:9px 14px; background:rgba(255,255,255,.8); color:#1d1d1f; font-weight:700; cursor:pointer; transition:transform .2s,background .2s,box-shadow .2s; }
+.landmark-edit-toggle:hover,.landmark-form-actions button:hover { transform:translateY(-1px); box-shadow:0 5px 15px #00000012; }
+.landmark-orbit { display:grid; grid-template-columns:minmax(0,1fr) minmax(92px,132px) minmax(0,1fr); gap:clamp(8px,2vw,24px); align-items:stretch; margin:18px 0 8px; min-height:240px; }
+.landmark-side { display:grid; grid-template-rows:repeat(3,minmax(70px,1fr)); gap:9px; min-width:0; }
+.landmark-station-core { align-self:center; justify-self:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; width:100%; min-height:100px; border-radius:24px; background:linear-gradient(145deg,#fff,#f5f5f7); border:1px solid #e5e5ea; box-shadow:0 8px 24px #0000000b; text-align:center; padding:10px 4px; }
+.landmark-core-dot { width:18px;height:18px;border:5px solid var(--line-color,#0b57a5);background:white;border-radius:50%;box-shadow:0 0 0 5px color-mix(in srgb,var(--line-color,#0b57a5) 12%,transparent); }
+.landmark-station-core strong { font-size:15px; line-height:1.2; overflow-wrap:anywhere; }
+.landmark-station-core small { color:#86868b;font-size:10px; }
+.landmark-card { display:flex; align-items:center; gap:9px; min-width:0; width:100%; padding:7px; border:1px solid #e5e5ea; border-radius:15px; background:#fff; box-shadow:0 3px 10px #00000008; text-align:left; position:relative; animation:landmark-in .28s cubic-bezier(.2,.8,.2,1) both; }
+.landmark-card img { width:62px;height:54px;flex:0 0 62px;object-fit:cover;border-radius:10px;background:#f2f2f7; }
+.landmark-card-copy { min-width:0; flex:1; }
+.landmark-card-copy strong { display:block;font-size:12px;line-height:1.3;overflow-wrap:anywhere; }
+.landmark-card-copy small { display:block;color:#86868b;font-size:10px;margin-top:4px; }
+.landmark-card-actions { display:flex;gap:3px;flex-direction:column; }
+.landmark-card-actions button { border:0;background:#f5f5f7;color:#515154;border-radius:7px;padding:4px 6px;font-size:10px;cursor:pointer; }
+.landmark-slot-empty { display:flex;align-items:center;justify-content:center;gap:6px;border:1px dashed #d2d2d7;border-radius:15px;color:#a1a1a6;font-size:11px;min-height:66px;background:#ffffff70; }
+.landmark-empty-note { color:#86868b;font-size:12px;text-align:center;padding:4px 0 8px; }
+.landmark-editor { margin-top:12px;padding:15px;border-radius:18px;background:#fff;border:1px solid #e5e5ea;box-shadow:0 8px 25px #00000008; }
+.landmark-editor.hidden { display:none; }
+.landmark-form-title { font-size:14px;font-weight:800;margin-bottom:12px; }
+.landmark-form-grid { display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:10px; }
+.landmark-form-grid label { display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;color:#6e6e73;min-width:0; }
+.landmark-form-grid input,.landmark-form-grid select { width:100%;min-width:0;box-sizing:border-box;border:1px solid #d2d2d7;border-radius:10px;padding:10px;font:inherit;font-size:12px;color:#1d1d1f;background:#fff; }
+.landmark-form-actions { display:flex;gap:8px;margin-top:12px; }
+.landmark-form-actions .landmark-save-btn { background:#0b57a5;color:#fff;border-color:#0b57a5; }
+.landmark-editor-hint { font-size:11px;color:#86868b;margin:10px 0 0; }
+@keyframes landmark-in { from { opacity:0; transform:translateY(7px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
+@media(max-width:640px) {
+ .landmark-orbit { grid-template-columns:minmax(0,1fr) 72px minmax(0,1fr); gap:6px; min-height:210px; }
+ .landmark-side { gap:6px;grid-template-rows:repeat(3,minmax(62px,1fr)); }
+ .landmark-card { padding:5px;gap:5px;border-radius:12px; }
+ .landmark-card img { width:43px;height:43px;flex-basis:43px;border-radius:8px; }
+ .landmark-card-copy strong { font-size:10px; }
+ .landmark-card-copy small { font-size:9px; }
+ .landmark-card-actions { display:flex;gap:2px; }
+ .landmark-card-actions button {font-size:8px;padding:3px 4px;}
+ .landmark-slot-empty {font-size:9px;text-align:center;padding:3px;}
+ .landmark-station-core {border-radius:17px;min-height:84px;}
+ .landmark-station-core strong {font-size:12px;}
+ .landmark-station-core small {font-size:9px;}
+ .landmark-form-grid { grid-template-columns:1fr; }
+}
+</style>
