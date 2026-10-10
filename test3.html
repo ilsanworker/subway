@@ -1535,107 +1535,69 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica
 }
 @media(prefers-reduced-motion:reduce){.line-selector,.line-picker-trigger,.menu-trigger,.line-button{transition:none!important;}}
 
-</style>
-<style id="v8-layout-fixes">\n
-/* V8: keep the route chips out of the fixed menu-button area */
-.top-controls {
-  position: sticky !important;
-  top: 8px !important;
-  z-index: 1000 !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-  padding: 8px 12px !important;
-  background: rgba(245,245,247,.68) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(1.35) !important;
-  backdrop-filter: blur(18px) saturate(1.35) !important;
+
+/* ===== V8 precise layout fixes ===== */
+/* Keep the line chips in their own lane and reserve the fixed hamburger's space. */
+.line-selector{
+  box-sizing:border-box!important;
+  width:calc(100% - 88px)!important;
+  max-width:calc(100% - 88px)!important;
+  margin:0 76px 0 0!important;
+  padding:10px 8px 12px 16px!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  overflow-x:auto!important;
+  scrollbar-width:none!important;
 }
-.menu-trigger {
-  flex: 0 0 48px !important;
-  width: 48px !important;
-  min-width: 48px !important;
-  height: 48px !important;
-  border-radius: 50% !important;
-  position: relative !important;
-  z-index: 1002 !important;
-  background: rgba(255,255,255,.72) !important;
-  border: 1px solid rgba(60,60,67,.13) !important;
-  -webkit-backdrop-filter: blur(18px) !important;
-  backdrop-filter: blur(18px) !important;
+.line-selector::-webkit-scrollbar{display:none!important;}
+.line-selector.picker-open{
+  width:calc(100% - 88px)!important;
+  max-width:calc(100% - 88px)!important;
+  margin-right:76px!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  padding-left:16px!important;
+  padding-right:8px!important;
+  flex-wrap:nowrap!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  max-height:84px!important;
 }
-.line-picker-trigger {
-  flex: 1 1 auto !important;
-  min-width: 0 !important;
-  max-width: calc(100% - 58px) !important;
-  justify-content: center !important;
-  background: rgba(255,255,255,.70) !important;
-  border: 1px solid rgba(60,60,67,.12) !important;
-  -webkit-backdrop-filter: blur(18px) !important;
-  backdrop-filter: blur(18px) !important;
+.line-button{flex:0 0 auto!important;}
+/* The down-side train card had been positioned by its left edge, not its center.
+   Center it directly on the right rail so it cannot appear to leave the track. */
+.v-down-line{left:76%!important;right:auto!important;}
+.v-train.down{
+  left:76%!important;
+  right:auto!important;
+  transform:translateX(-50%)!important;
 }
-.line-selector {
-  box-sizing: border-box !important;
-  width: calc(100% - 70px) !important;
-  max-width: calc(100% - 70px) !important;
-  margin-right: 70px !important;
-  padding: 8px 10px !important;
-  gap: 7px !important;
-  border: 0 !important;
-  background: transparent !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  position: relative !important;
-  z-index: 999 !important;
-}
-.line-selector.picker-open {
-  width: calc(100% - 70px) !important;
-  max-width: calc(100% - 70px) !important;
-  margin-right: 70px !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  border: 0 !important;
-}
-.line-selector .line-button {
-  flex: 0 0 auto !important;
-  background: rgba(255,255,255,.72) !important;
-  border: 1px solid rgba(60,60,67,.13) !important;
-  -webkit-backdrop-filter: blur(14px) !important;
-  backdrop-filter: blur(14px) !important;
-}
-.line-selector.compact-hidden {
-  pointer-events: none !important;
-}
-/* Keep the right-side train centered on the right-hand track, not outside it. */
-.vertical-map-container {
-  width: min(320px, calc(100vw - 40px)) !important;
-  box-sizing: border-box !important;
-  overflow: visible !important;
-}
-.v-down-line {
-  right: 28px !important;
-  left: auto !important;
-}
-.v-trains-container .v-train.down {
-  left: calc(100% - 28px) !important;
-  right: auto !important;
-  transform: translateX(-50%) !important;
-  max-width: 44px !important;
-  box-sizing: border-box !important;
-}
-@media (max-width: 480px) {
-  .top-controls { padding-left: 10px !important; padding-right: 10px !important; }
-  .menu-trigger { flex-basis: 44px !important; width: 44px !important; min-width: 44px !important; height: 44px !important; }
-  .line-picker-trigger { max-width: calc(100% - 52px) !important; }
-  .line-selector, .line-selector.picker-open {
-    width: calc(100% - 58px) !important;
-    max-width: calc(100% - 58px) !important;
-    margin-right: 58px !important;
+@media(max-width:600px){
+  .line-selector,.line-selector.picker-open{
+    width:calc(100% - 76px)!important;
+    max-width:calc(100% - 76px)!important;
+    margin-right:68px!important;
+    padding-left:10px!important;
+    padding-right:4px!important;
   }
-  .vertical-map-container { width: min(320px, calc(100vw - 28px)) !important; }
+  .v-down-line{left:76%!important;right:auto!important;}
+  .v-train.down{left:76%!important;right:auto!important;transform:translateX(-50%)!important;}
 }
-\n</style>\n</head>
+/* Hamburger remains a circular icon even while its menu is open. */
+.menu-trigger.menu-open{
+  width:52px!important;
+  min-width:52px!important;
+  border-radius:50%!important;
+}
+
+</style>
+</head>
 
 <body>
 <div class="app-container">
