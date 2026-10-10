@@ -1624,6 +1624,67 @@ body.popup-open .menu-stack{
 }
 
 </style>
+
+<style id="v15-transfer-rail-polish">
+:root { --v-spacing: 118px; --h-spacing: 128px; }
+.line-selector { padding: 10px 12px; gap: 10px; }
+.line-button { height: 36px; min-width: 42px; padding: 0 14px; font-size: 13px; }
+.main-content { padding-top: 14px; scroll-behavior:smooth; }
+.v-station-nodes { transition:opacity .18s ease; }
+.v-trains-container { transition:opacity .18s ease; }
+.map-instruction { font-size: 13px; margin-bottom: 28px; }
+.vertical-map-container { transition: width .42s cubic-bezier(.2,.8,.2,1); }
+.v-track-line { width: 5px; background: color-mix(in srgb, var(--line-color) 24%, #d1d5db); }
+.v-station-node { width: 17px; height: 17px; background: #fff; border-width: 4px; box-shadow: 0 0 0 5px rgba(255,255,255,.78), 0 3px 10px #00000012; transition: transform .28s cubic-bezier(.2,.8,.2,1), box-shadow .28s ease, background .25s ease; }
+.v-station-node:hover { transform: translateX(-50%) scale(1.18); box-shadow: 0 0 0 7px color-mix(in srgb, var(--line-color) 13%, transparent), 0 5px 16px #0002; }
+.v-station-name { top: -24px; color: #17181c; font-size: 15px; text-shadow: none; letter-spacing: -.25px; }
+.v-station-node.is-transfer { border-color: var(--line-color); box-shadow: 0 0 0 4px #fff, 0 0 0 7px color-mix(in srgb, var(--line-color) 18%, transparent), 0 4px 12px #00000012; }
+.v-station-node.is-transfer::after { content: ''; position:absolute; inset:-7px; border:1px solid color-mix(in srgb, var(--line-color) 48%, transparent); border-radius:50%; pointer-events:none; }
+.v-station-meta { position:absolute; top: 1px; left: calc(50% + 18px); display:flex; flex-direction:column; align-items:flex-start; gap:4px; max-width:140px; z-index:9; }
+.v-station-tags { display:flex; gap:3px; align-items:center; flex-wrap:wrap; }
+.v-transfer-tag, .v-rail-tag { appearance:none; border:1px solid #e5e7eb; border-radius:7px; padding:3px 5px; font-size:9px; line-height:1.1; font-weight:800; white-space:nowrap; background:rgba(255,255,255,.94); color:#34363b; box-shadow:0 2px 7px #0000000d; backdrop-filter:blur(12px); cursor:pointer; transition:transform .22s ease, background .22s ease, box-shadow .22s ease; }
+.v-transfer-tag { color:var(--line-color); border-color:color-mix(in srgb, var(--line-color) 30%, white); }
+.v-transfer-tag:active, .v-rail-tag:active { transform:scale(.94); }
+.v-rail-tag.ktx { color:#7c3aed; background:#f5f0ff; border-color:#e9d5ff; }
+.v-rail-tag.rail { color:#0369a1; background:#eff8ff; border-color:#bae6fd; }
+.v-train { width:52px; padding:6px 2px; border-radius:10px; font-size:12px; box-shadow:0 5px 15px #00000020; transition:top .85s cubic-bezier(.22,1,.36,1), transform .3s ease, box-shadow .3s ease; }
+.v-train-status { font-size:10px; }
+.h-map-area { height:160px; }
+.h-track-scroll-container { scroll-behavior:smooth; }
+.h-station-node { width:17px; height:17px; }
+.h-station-name { font-size:12px; }
+.h-train { width:52px; padding:6px 2px; border-radius:10px; font-size:11px; box-shadow:0 5px 15px #00000020; }
+.popup-header { padding:14px 18px; }
+.popup-stn-name { font-size:21px; }
+.badge { padding:6px 10px; font-size:13px; }
+.info-section { border-radius:20px; }
+.arr-col h4 { font-size:13px; }
+.arr-item, .tt-item { padding:14px; }
+.refresh-button { width:58px; height:58px; }
+@media(max-width:600px) {
+  :root { --v-spacing: 114px; }
+  .v-station-name { font-size:14px; }
+  .v-station-meta { left: calc(50% + 17px); max-width:105px; }
+  .v-transfer-tag, .v-rail-tag { font-size:8px; padding:3px 4px; }
+  .v-train { width:48px; }
+  .h-map-area { height:150px; }
+}
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition-duration:.01ms!important; animation-duration:.01ms!important; } }
+</style>
+
+
+<style id="v15-transfer-tag-polish">
+.v-transfer-count { display:inline-block; padding:3px 5px; border-radius:7px; background:color-mix(in srgb,var(--line-color) 10%,white); color:var(--line-color); border:1px solid color-mix(in srgb,var(--line-color) 22%,white); font-size:8px; font-weight:900; white-space:nowrap; }
+.station-arrive-pulse { animation:stationArrivePulse .9s cubic-bezier(.2,.8,.2,1); }
+@keyframes stationArrivePulse { 0%{box-shadow:0 0 0 4px #fff,0 0 0 7px color-mix(in srgb,var(--line-color) 18%,transparent)} 45%{box-shadow:0 0 0 8px #fff,0 0 0 16px color-mix(in srgb,var(--line-color) 24%,transparent);transform:translateX(-50%) scale(1.25)} 100%{box-shadow:0 0 0 4px #fff,0 0 0 7px color-mix(in srgb,var(--line-color) 18%,transparent)} }
+.v-station-meta { pointer-events:auto; }
+.v-station-node { cursor:pointer; }
+.v-station-node .v-station-name { pointer-events:none; }
+.v-station-node .v-transfer-count { pointer-events:none; }
+.app-toast { position:fixed;left:50%;bottom:86px;z-index:250;max-width:calc(100vw - 32px);padding:11px 15px;border-radius:14px;background:rgba(28,29,33,.92);color:#fff;font-size:12px;font-weight:650;text-align:center;box-shadow:0 10px 35px #0002;backdrop-filter:blur(18px);opacity:0;transform:translate(-50%,12px) scale(.97);transition:opacity .25s ease,transform .25s cubic-bezier(.2,.8,.2,1);pointer-events:none;}
+.app-toast.visible { opacity:1;transform:translate(-50%,0) scale(1); }
+</style>
+
 </head>
 
 <body>
@@ -1698,6 +1759,30 @@ body.popup-open .menu-stack{
       </div>
     </section>
 
+
+      <section class="info-section landmark-section" id="landmarkSection">
+        <div class="landmark-heading-row">
+          <div><h3>📍 역 주변 주요 명소</h3><p class="landmark-subtitle">역을 중심으로 사진을 배치해 보세요. 이 브라우저에 자동 저장돼요.</p></div>
+          <button type="button" class="landmark-edit-toggle" id="landmarkEditToggle" aria-expanded="false">＋ 명소 편집</button>
+        </div>
+        <div class="landmark-orbit" id="landmarkOrbit">
+          <div class="landmark-side landmark-left" id="landmarkLeft"></div>
+          <div class="landmark-station-core"><span class="landmark-core-dot"></span><strong id="landmarkCoreName">역</strong><small>현재 선택 역</small></div>
+          <div class="landmark-side landmark-right" id="landmarkRight"></div>
+        </div>
+        <div class="landmark-empty-note" id="landmarkEmptyNote">아직 등록된 명소가 없어요. ‘명소 편집’에서 사진과 이름을 추가해 주세요.</div>
+        <form class="landmark-editor hidden" id="landmarkEditor">
+          <div class="landmark-form-title">명소 추가 / 수정</div>
+          <div class="landmark-form-grid">
+            <label>명소 이름<input id="landmarkNameInput" maxlength="50" placeholder="예: 경복궁" required></label>
+            <label>이미지 주소<input id="landmarkImageInput" type="url" placeholder="https://...jpg" required></label>
+            <label>배치 위치<select id="landmarkPositionInput"><option value="left-top">왼쪽 위</option><option value="left-center">왼쪽 중앙</option><option value="left-bottom">왼쪽 아래</option><option value="right-top">오른쪽 위</option><option value="right-center">오른쪽 중앙</option><option value="right-bottom">오른쪽 아래</option></select></label>
+          </div>
+          <div class="landmark-form-actions"><button type="submit" class="landmark-save-btn">명소 추가</button><button type="button" id="landmarkCancelEdit">취소</button></div>
+          <p class="landmark-editor-hint">사진 URL을 입력하면 작은 사진 카드로 표시돼요. 같은 위치에 추가하면 기존 명소를 교체합니다.</p>
+        </form>
+      </section>
+
     <div class="popup-body">
 
       <section class="info-section">
@@ -1771,8 +1856,8 @@ body.popup-open .menu-stack{
    실제 서비스에서는 API 키를 서버에서 관리하세요.
 ======================================== */
 
-const REALTIME_API_KEY = '76716f6677696c7336344b67715451';
-const OPEN_API_KEY = '76716f6677696c7336344b67715451';
+const REALTIME_API_KEY = '486c77684e696c7331303157766b6779';
+const OPEN_API_KEY = '486c77684e696c7331303157766b6779';
 
 const IS_LOCAL =
   location.hostname === 'localhost' ||
@@ -2205,6 +2290,72 @@ function updateActiveLineButton() {
    세로 지도 초기화
 ======================================== */
 
+let toastTimer = null;
+function showToastMessage(message) {
+  let toast = document.getElementById('appToast');
+  if (!toast) { toast = document.createElement('div'); toast.id = 'appToast'; toast.className = 'app-toast'; document.body.appendChild(toast); }
+  toast.textContent = message;
+  toast.classList.add('visible');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('visible'), 2400);
+}
+
+// 환승 연결은 현재 등록된 노선 데이터에 같은 역명이 존재하는 경우에만 표시합니다.
+const RAIL_STATION_TYPES = {
+  '서울역': ['KTX', '일반열차'],
+  '용산': ['KTX', '일반열차'],
+  '청량리': ['KTX', '일반열차'],
+  '수원': ['KTX', '일반열차'],
+  '천안': ['KTX', '일반열차'],
+  '영등포': ['일반열차'],
+  '평택': ['일반열차'],
+  '제천': ['KTX', '일반열차'],
+  '대전': ['KTX', '일반열차'],
+  '동대구': ['KTX', '일반열차'],
+  '부산': ['KTX', '일반열차'],
+  '광주송정': ['KTX', '일반열차'],
+  '익산': ['KTX', '일반열차'],
+  '전주': ['일반열차'],
+  '춘천': ['일반열차']
+};
+
+function getStationLineConnections(station) {
+  const normalized = normalizeStationName(station);
+  return Object.entries(lineData)
+    .filter(([name, data]) => name !== currentLine && data.stations.some(s => normalizeStationName(s) === normalized))
+    .map(([name, data]) => ({ name, color: data.color }));
+}
+
+function navigateToLineStation(lineName, station) {
+  const targetLine = lineData[lineName];
+  if (!targetLine) return;
+  const normalized = normalizeStationName(station);
+  const targetIndex = targetLine.stations.findIndex(s => normalizeStationName(s) === normalized);
+  if (targetIndex < 0) {
+    showToastMessage?.(`${lineName}에서 같은 이름의 역을 찾을 수 없어요.`);
+    return;
+  }
+  fullPopup.classList.add('hidden');
+  document.body.classList.remove('popup-open');
+  $('trainDetailCard')?.classList.add('hidden');
+  if (popupRefreshTimer) { clearInterval(popupRefreshTimer); popupRefreshTimer = null; }
+  lineMenuOpen = false;
+  if (typeof setCompactMode === 'function' && compactMode) setCompactMode(true);
+  initMaps(lineName);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const main = $('mainContent');
+    const baseCount = targetLine.circular ? targetLine.stations.length - 1 : targetLine.stations.length;
+    // 순환 노선은 가운데 복제본으로 이동해 양방향으로 계속 스크롤할 수 있게 합니다.
+    const index = targetLine.circular ? baseCount + (targetIndex % baseCount) : targetIndex;
+    main.scrollTo({ top: Math.max(0, index * V_SPACING - main.clientHeight * .38), behavior: 'smooth' });
+    const targetNode = [...vStationNodes.querySelectorAll('.v-station-node')].find(node => normalizeStationName(node.dataset.station || '') === normalized && Math.abs(parseFloat(node.style.top || '0') - index * V_SPACING) < 2);
+    if (targetNode) {
+      targetNode.classList.add('station-arrive-pulse');
+      setTimeout(() => targetNode.classList.remove('station-arrive-pulse'), 1000);
+    }
+  }));
+}
+
 function initMaps(lineName) {
   if (refreshInterval) clearInterval(refreshInterval);
   mapRequestId++;
@@ -2221,10 +2372,32 @@ function initMaps(lineName) {
   vMapContainer.style.height = `${Math.max(1, stations.length - 1) * V_SPACING + 60}px`;
   stations.forEach((station, index) => {
     const node = document.createElement('div');
-    node.className = 'v-station-node';
+    const connections = getStationLineConnections(station);
+    const railTypes = RAIL_STATION_TYPES[normalizeStationName(station)] || [];
+    node.className = `v-station-node${connections.length ? ' is-transfer' : ''}`;
     node.style.top = `${index * V_SPACING}px`;
-    node.innerHTML = `<div class="v-station-name">${escapeHtml(station)}</div>`;
-    node.addEventListener('click', () => openFullPopup(station));
+    node.dataset.station = station;
+    const transferTags = connections.map(connection =>
+      `<button type="button" class="v-transfer-tag" data-transfer-line="${escapeHtml(connection.name)}" title="${escapeHtml(connection.name)}으로 이동">${escapeHtml(connection.name)}</button>`
+    ).join('');
+    const railTags = railTypes.map(type =>
+      `<button type="button" class="v-rail-tag ${type === 'KTX' ? 'ktx' : 'rail'}" data-rail-type="${escapeHtml(type)}" title="${escapeHtml(type)} 정차역">${escapeHtml(type)}</button>`
+    ).join('');
+    node.innerHTML = `<div class="v-station-name">${escapeHtml(station)}</div>${(connections.length || railTypes.length) ? `<div class="v-station-meta"><div class="v-station-tags">${connections.length ? `<span class="v-transfer-count">환승 ${connections.length + 1}개 노선</span>` : ''}${railTags}</div>${connections.length ? `<div class="v-station-tags">${transferTags}</div>` : ''}</div>` : ''}`;
+    node.addEventListener('click', event => {
+      if (event.target.closest('[data-transfer-line]')) {
+        event.stopPropagation();
+        navigateToLineStation(event.target.closest('[data-transfer-line]').dataset.transferLine, station);
+        return;
+      }
+      if (event.target.closest('[data-rail-type]')) {
+        event.stopPropagation();
+        const type = event.target.closest('[data-rail-type]').dataset.railType;
+        showToastMessage(`${station}역 · ${type} 정차역 표시입니다. 실시간 열차 정보는 연결되어 있지 않아요.`);
+        return;
+      }
+      openFullPopup(station);
+    });
     vStationNodes.appendChild(node);
   });
   const main = $('mainContent');
@@ -2295,6 +2468,8 @@ function openFullPopup(station) {
 
   fullPopup.classList.remove('hidden');
   document.body.classList.add('popup-open');
+  renderLandmarks();
+  closeLandmarkEditor();
 
   pName.textContent = `${station}역`;
   pBadge.textContent = currentLine;
@@ -2355,7 +2530,7 @@ function openFullPopup(station) {
       // Track wrapper begins after the scroll container's 40px horizontal padding.
       // Center the selected station itself in the visible viewport.
       const stationX = 40 + centerPosition * H_SPACING;
-      scroll.scrollLeft = Math.max(0, stationX - scroll.clientWidth / 2);
+      scroll.scrollTo({ left: Math.max(0, stationX - scroll.clientWidth / 2), behavior: 'smooth' });
 
     });
   }
@@ -3164,6 +3339,122 @@ lineSelector.addEventListener('click', (event) => {
   }
 });
 
+
+/* ========================================
+   역 주변 명소: 역별 브라우저 저장 + 6방향 배치
+======================================== */
+const landmarkPositions = [
+  {id:'left-top', label:'왼쪽 위', side:'left'},
+  {id:'left-center', label:'왼쪽 중앙', side:'left'},
+  {id:'left-bottom', label:'왼쪽 아래', side:'left'},
+  {id:'right-top', label:'오른쪽 위', side:'right'},
+  {id:'right-center', label:'오른쪽 중앙', side:'right'},
+  {id:'right-bottom', label:'오른쪽 아래', side:'right'}
+];
+const landmarkStoreKey = 'seoulSubwayLandmarksV16';
+let landmarkEditingPosition = null;
+function getLandmarkStore() {
+  try { return JSON.parse(localStorage.getItem(landmarkStoreKey) || '{}'); }
+  catch (_) { return {}; }
+}
+function landmarkStationKey() {
+  return `${currentLine || ''}::${normalizeStationName(currentStation || '')}`;
+}
+function getCurrentLandmarks() {
+  const store = getLandmarkStore();
+  return store[landmarkStationKey()] || {};
+}
+function saveCurrentLandmarks(items) {
+  const store = getLandmarkStore();
+  store[landmarkStationKey()] = items;
+  try { localStorage.setItem(landmarkStoreKey, JSON.stringify(store)); }
+  catch (_) { alert('저장 공간이 부족해요. 이미지 주소를 사용하거나 일부 명소를 삭제해 주세요.'); }
+}
+function renderLandmarks() {
+  const stationName = currentStation || '역';
+  const core = document.getElementById('landmarkCoreName');
+  const left = document.getElementById('landmarkLeft');
+  const right = document.getElementById('landmarkRight');
+  if (!core || !left || !right) return;
+  core.textContent = `${stationName}역`;
+  const items = getCurrentLandmarks();
+  left.innerHTML = ''; right.innerHTML = '';
+  let count = 0;
+  landmarkPositions.forEach(pos => {
+    const item = items[pos.id];
+    const side = pos.side === 'left' ? left : right;
+    if (!item) {
+      const empty = document.createElement('div');
+      empty.className = 'landmark-slot-empty';
+      empty.innerHTML = '<span>＋</span><span>명소 추가</span>';
+      empty.title = `${pos.label}에 명소 추가`;
+      empty.addEventListener('click', () => openLandmarkEditor(pos.id));
+      empty.style.cursor = 'pointer';
+      side.appendChild(empty);
+      return;
+    }
+    count++;
+    const card = document.createElement('div'); card.className = 'landmark-card';
+    const img = document.createElement('img'); img.src = item.image; img.alt = item.name;
+    img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
+    img.onerror = () => { img.removeAttribute('src'); img.alt = '이미지를 불러올 수 없음'; img.style.background = 'linear-gradient(135deg,#e9e9ef,#f7f7fa)'; };
+    const copy = document.createElement('div'); copy.className = 'landmark-card-copy';
+    const title = document.createElement('strong'); title.textContent = item.name;
+    const subtitle = document.createElement('small'); subtitle.textContent = pos.label;
+    copy.append(title, subtitle);
+    const actions = document.createElement('div'); actions.className = 'landmark-card-actions';
+    const edit = document.createElement('button'); edit.type='button'; edit.textContent='수정'; edit.addEventListener('click',()=>openLandmarkEditor(pos.id));
+    const remove = document.createElement('button'); remove.type='button'; remove.textContent='삭제'; remove.addEventListener('click',()=>removeLandmark(pos.id));
+    actions.append(edit,remove); card.append(img,copy,actions); side.appendChild(card);
+  });
+  document.getElementById('landmarkEmptyNote').classList.toggle('hidden', count > 0);
+  const form = document.getElementById('landmarkEditor');
+  if (!form.classList.contains('hidden')) document.getElementById('landmarkSaveButton')?.focus();
+}
+function openLandmarkEditor(positionId) {
+  landmarkEditingPosition = positionId || null;
+  const form = document.getElementById('landmarkEditor');
+  const item = positionId ? getCurrentLandmarks()[positionId] : null;
+  document.getElementById('landmarkNameInput').value = item?.name || '';
+  document.getElementById('landmarkImageInput').value = item?.image || '';
+  document.getElementById('landmarkPositionInput').value = positionId || 'left-top';
+  document.getElementById('landmarkPositionInput').disabled = false;
+  document.getElementById('landmarkEditToggle').setAttribute('aria-expanded','true');
+  document.getElementById('landmarkEditToggle').textContent = '편집 중';
+  form.classList.remove('hidden');
+  document.getElementById('landmarkNameInput').focus();
+}
+function closeLandmarkEditor() {
+  document.getElementById('landmarkEditor').classList.add('hidden');
+  document.getElementById('landmarkPositionInput').disabled = false;
+  document.getElementById('landmarkEditToggle').setAttribute('aria-expanded','false');
+  document.getElementById('landmarkEditToggle').textContent = '＋ 명소 편집';
+  landmarkEditingPosition = null;
+}
+function removeLandmark(positionId) {
+  const items = getCurrentLandmarks(); delete items[positionId]; saveCurrentLandmarks(items); renderLandmarks();
+}
+document.getElementById('landmarkEditToggle').addEventListener('click', () => {
+  const form = document.getElementById('landmarkEditor');
+  if (!form.classList.contains('hidden')) { closeLandmarkEditor(); return; }
+  const items = getCurrentLandmarks();
+  const empty = landmarkPositions.find(p => !items[p.id]);
+  openLandmarkEditor(empty?.id || 'left-top');
+  if (empty && items[empty.id]) document.getElementById('landmarkPositionInput').disabled = false;
+});
+document.getElementById('landmarkCancelEdit').addEventListener('click', closeLandmarkEditor);
+document.getElementById('landmarkEditor').addEventListener('submit', event => {
+  event.preventDefault();
+  const name = document.getElementById('landmarkNameInput').value.trim();
+  const image = document.getElementById('landmarkImageInput').value.trim();
+  const position = document.getElementById('landmarkPositionInput').value;
+  if (!name || !/^https?:\/\//i.test(image)) { alert('명소 이름과 http(s) 이미지 주소를 입력해 주세요.'); return; }
+  const items = getCurrentLandmarks();
+  if (landmarkEditingPosition && landmarkEditingPosition !== position) delete items[landmarkEditingPosition];
+  items[position] = {name, image};
+  saveCurrentLandmarks(items); renderLandmarks(); closeLandmarkEditor();
+});
+
 /* ========================================
    앱 시작
 ======================================== */
@@ -3209,5 +3500,55 @@ elapsedTimer = setInterval(updateRefreshLabel, 1000);
   background: #f5f5f7 !important;
   border-color: #a1a1aa !important;
   color: #202124 !important;
+}
+</style>
+
+
+<style id="v16-landmark-styles">
+.landmark-section { overflow:hidden; }
+.landmark-heading-row { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+.landmark-heading-row h3 { margin:0 0 5px; }
+.landmark-subtitle { color:#86868b; font-size:12px; margin:0; }
+.landmark-edit-toggle,.landmark-form-actions button { border:1px solid #d2d2d7; border-radius:999px; padding:9px 14px; background:rgba(255,255,255,.8); color:#1d1d1f; font-weight:700; cursor:pointer; transition:transform .2s,background .2s,box-shadow .2s; }
+.landmark-edit-toggle:hover,.landmark-form-actions button:hover { transform:translateY(-1px); box-shadow:0 5px 15px #00000012; }
+.landmark-orbit { display:grid; grid-template-columns:minmax(0,1fr) minmax(92px,132px) minmax(0,1fr); gap:clamp(8px,2vw,24px); align-items:stretch; margin:18px 0 8px; min-height:240px; }
+.landmark-side { display:grid; grid-template-rows:repeat(3,minmax(70px,1fr)); gap:9px; min-width:0; }
+.landmark-station-core { align-self:center; justify-self:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; width:100%; min-height:100px; border-radius:24px; background:linear-gradient(145deg,#fff,#f5f5f7); border:1px solid #e5e5ea; box-shadow:0 8px 24px #0000000b; text-align:center; padding:10px 4px; }
+.landmark-core-dot { width:18px;height:18px;border:5px solid var(--line-color,#0b57a5);background:white;border-radius:50%;box-shadow:0 0 0 5px color-mix(in srgb,var(--line-color,#0b57a5) 12%,transparent); }
+.landmark-station-core strong { font-size:15px; line-height:1.2; overflow-wrap:anywhere; }
+.landmark-station-core small { color:#86868b;font-size:10px; }
+.landmark-card { display:flex; align-items:center; gap:9px; min-width:0; width:100%; padding:7px; border:1px solid #e5e5ea; border-radius:15px; background:#fff; box-shadow:0 3px 10px #00000008; text-align:left; position:relative; animation:landmark-in .28s cubic-bezier(.2,.8,.2,1) both; }
+.landmark-card img { width:62px;height:54px;flex:0 0 62px;object-fit:cover;border-radius:10px;background:#f2f2f7; }
+.landmark-card-copy { min-width:0; flex:1; }
+.landmark-card-copy strong { display:block;font-size:12px;line-height:1.3;overflow-wrap:anywhere; }
+.landmark-card-copy small { display:block;color:#86868b;font-size:10px;margin-top:4px; }
+.landmark-card-actions { display:flex;gap:3px;flex-direction:column; }
+.landmark-card-actions button { border:0;background:#f5f5f7;color:#515154;border-radius:7px;padding:4px 6px;font-size:10px;cursor:pointer; }
+.landmark-slot-empty { display:flex;align-items:center;justify-content:center;gap:6px;border:1px dashed #d2d2d7;border-radius:15px;color:#a1a1a6;font-size:11px;min-height:66px;background:#ffffff70; }
+.landmark-empty-note { color:#86868b;font-size:12px;text-align:center;padding:4px 0 8px; }
+.landmark-editor { margin-top:12px;padding:15px;border-radius:18px;background:#fff;border:1px solid #e5e5ea;box-shadow:0 8px 25px #00000008; }
+.landmark-editor.hidden { display:none; }
+.landmark-form-title { font-size:14px;font-weight:800;margin-bottom:12px; }
+.landmark-form-grid { display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:10px; }
+.landmark-form-grid label { display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;color:#6e6e73;min-width:0; }
+.landmark-form-grid input,.landmark-form-grid select { width:100%;min-width:0;box-sizing:border-box;border:1px solid #d2d2d7;border-radius:10px;padding:10px;font:inherit;font-size:12px;color:#1d1d1f;background:#fff; }
+.landmark-form-actions { display:flex;gap:8px;margin-top:12px; }
+.landmark-form-actions .landmark-save-btn { background:#0b57a5;color:#fff;border-color:#0b57a5; }
+.landmark-editor-hint { font-size:11px;color:#86868b;margin:10px 0 0; }
+@keyframes landmark-in { from { opacity:0; transform:translateY(7px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
+@media(max-width:640px) {
+ .landmark-orbit { grid-template-columns:minmax(0,1fr) 72px minmax(0,1fr); gap:6px; min-height:210px; }
+ .landmark-side { gap:6px;grid-template-rows:repeat(3,minmax(62px,1fr)); }
+ .landmark-card { padding:5px;gap:5px;border-radius:12px; }
+ .landmark-card img { width:43px;height:43px;flex-basis:43px;border-radius:8px; }
+ .landmark-card-copy strong { font-size:10px; }
+ .landmark-card-copy small { font-size:9px; }
+ .landmark-card-actions { display:flex;gap:2px; }
+ .landmark-card-actions button {font-size:8px;padding:3px 4px;}
+ .landmark-slot-empty {font-size:9px;text-align:center;padding:3px;}
+ .landmark-station-core {border-radius:17px;min-height:84px;}
+ .landmark-station-core strong {font-size:12px;}
+ .landmark-station-core small {font-size:9px;}
+ .landmark-form-grid { grid-template-columns:1fr; }
 }
 </style>
