@@ -1312,10 +1312,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica
   max-width: 1120px;
   margin: 0 auto;
   overflow: hidden;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
 }
 #hTrackScroll {
   width: 100%;
   max-width: 100%;
+  margin-inline: auto;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
@@ -1767,8 +1771,8 @@ body.popup-open .menu-stack{
    실제 서비스에서는 API 키를 서버에서 관리하세요.
 ======================================== */
 
-const REALTIME_API_KEY = '486c77684e696c7331303157766b6779';
-const OPEN_API_KEY = '486c77684e696c7331303157766b6779';
+const REALTIME_API_KEY = '76716f6677696c7336344b67715451';
+const OPEN_API_KEY = '76716f6677696c7336344b67715451';
 
 const IS_LOCAL =
   location.hostname === 'localhost' ||
@@ -2348,10 +2352,11 @@ function openFullPopup(station) {
     const centerPosition = centerIndex - start;
 
     requestAnimationFrame(() => {
-      scroll.scrollLeft = Math.max(
-        0,
-        centerPosition * H_SPACING - scroll.clientWidth / 2 + 30
-      );
+      // Track wrapper begins after the scroll container's 40px horizontal padding.
+      // Center the selected station itself in the visible viewport.
+      const stationX = 40 + centerPosition * H_SPACING;
+      scroll.scrollLeft = Math.max(0, stationX - scroll.clientWidth / 2);
+
     });
   }
 
@@ -2394,6 +2399,9 @@ closePopupBtn.addEventListener('click', () => {
    실시간 열차 위치
 ======================================== */
 
+// Latest live positions keyed by train number, used to cross-check distance labels.
+let latestPositionByTrainNo = new Map();
+
 async function fetchTrainPositions() {
   const requestLine = currentLine;
   const requestId = mapRequestId;
@@ -2433,6 +2441,21 @@ async function fetchTrainPositions() {
       ? data.realtimePositionList
       : [];
 
+    const positionCache = new Map();
+    trains.forEach(train => {
+      if (String(train.subwayId || '') !== String(line.id)) return;
+      const no = String(train.trainNo || '').trim();
+      const stationName = String(train.statnNm || '').trim();
+      if (no && stationName) {
+        positionCache.set(no, {
+          stationName,
+          stationIndex: getStationIndex(line.circular ? line.stations.slice(0, -1) : line.stations, stationName),
+          direction: String(train.updnLine || '')
+        });
+      }
+    });
+    latestPositionByTrainNo = positionCache;
+
     trains.forEach(train => {
       // Selected-line isolation: missing IDs are not safe to display as this line.
       if (String(train.subwayId || '') !== String(line.id)) return;
@@ -2468,30 +2491,48 @@ async function fetchTrainPositions() {
         ? stationIndexInLine + baseStations.length
         : stationIndexInLine;
 
-      if (stationIndex !== -1) {
-        activeVertical.add(domKey);
+      if (stationIndexInLine !== -1) {
+        // 2호선은 세 번 반복된 지도에 열차도 세 벌 배치한다.
+        // 가운데 복제본에만 배치하면 스크롤 루프 경계/일부 구간에서 열차가 사라진 것처럼 보인다.
+        const cycleIndexes = line.circular ? [0, 1, 2] : [0];
+        cycleIndexes.forEach(cycleIndex => {
+          const verticalKey = line.circular
+            ? `${domKey}-cycle${cycleIndex}`
+            : domKey;
+          activeVertical.add(verticalKey);
 
-        let element = document.getElementById(`v-train-${domKey}`);
+          let element = document.getElementById(`v-train-${verticalKey}`);
 
-        if (!element) {
-          element = document.createElement('div');
-          element.id = `v-train-${domKey}`;
-          vTrainsContainer.appendChild(element);
-          element.addEventListener('click', event => { event.stopPropagation(); showTrainDetail(element._trainData); });
-        }
+          if (!element) {
+            element = document.createElement('div');
+            element.id = `v-train-${verticalKey}`;
+            vTrainsContainer.appendChild(element);
+            element.addEventListener('click', event => {
+              event.stopPropagation();
+              showTrainDetail(element._trainData);
+            });
+          }
 
-        const trainType = String(train.btrainSttus || train.trainType || '');
-        const isExpress = String(train.directAt ?? '') === '1' || trainType.includes('급행');
-        const isSpecial = String(train.directAt ?? '') === '7' || trainType.includes('특급');
-        element.className = `v-train ${isUp ? 'up' : 'down'}${isExpress ? ' express' : ''}${isSpecial ? ' special' : ''}`;
-        element._trainData = { trainNo, status, statusText, station: train.statnNm || '현재 정보 없음', destination: train.bstatnNm || train.statnTnm || '현재 정보 없음', isUp, stationIndex: stationIndexInLine, lineName: requestLine };
+          const trainType = String(train.btrainSttus || train.trainType || '');
+          const isExpress = String(train.directAt ?? '') === '1' || trainType.includes('급행');
+          const isSpecial = String(train.directAt ?? '') === '7' || trainType.includes('특급');
+          element.className = `v-train ${isUp ? 'up' : 'down'}${isExpress ? ' express' : ''}${isSpecial ? ' special' : ''}`;
+          element._trainData = {
+            trainNo, status, statusText,
+            station: train.statnNm || '현재 정보 없음',
+            destination: train.bstatnNm || train.statnTnm || '현재 정보 없음',
+            isUp, stationIndex: stationIndexInLine, lineName: requestLine
+          };
 
-        element.innerHTML =
-          `<span>${escapeHtml(trainNo)}</span>` +
-          `<div class="v-train-status">${statusText}</div>`;
+          element.innerHTML =
+            `<span>${escapeHtml(trainNo)}</span>` +
+            `<div class="v-train-status">${statusText}</div>`;
 
-        element.style.top =
-          `${stationIndex * V_SPACING + offset}px`;
+          const repeatedIndex = line.circular
+            ? cycleIndex * baseStations.length + stationIndexInLine
+            : stationIndexInLine;
+          element.style.top = `${repeatedIndex * V_SPACING + offset}px`;
+        });
       }
 
       /* 팝업 가로 지도 */
@@ -2561,7 +2602,7 @@ function tickArrivalCountdowns() {
     const label = item.querySelector('[data-eta-label]');
     if (!label) return;
     if (remaining <= 0) {
-      label.textContent = '도착 예정';
+      label.textContent = '도착';
     } else {
       label.textContent = `약 ${Math.floor(remaining / 60)}분 ${remaining % 60}초 후`;
     }
@@ -2598,19 +2639,34 @@ async function fetchArrivalInfo(station, requestId) {
 
     const targetId = String(lineData[currentLine].id);
 
-    // At transfer stations, never mix arrivals from other lines into this line's panel.
-    const trains = all.filter(train =>
+    // 환승역에서 다른 노선은 제외하고, 같은 열차가 중복 반환된 경우 한 번만 표시.
+    const lineTrains = all.filter(train =>
       String(train.subwayId || '') === targetId
     );
+    const seenTrainKeys = new Set();
+    const trains = lineTrains.filter(train => {
+      const direction = String(train.updnLine || '');
+      const trainNo = String(train.btrainNo || '').trim();
+      // 열차번호가 있으면 방향+열차번호로 중복 제거. 번호가 없을 때만 API 순번과 메시지 조합 사용.
+      const key = trainNo
+        ? `${direction}|train:${trainNo}`
+        : `${direction}|ord:${String(train.ordkey || '')}|dest:${String(train.bstatnNm || '')}|msg:${String(train.arvlMsg2 || '')}|${String(train.arvlMsg3 || '')}`;
+      if (seenTrainKeys.has(key)) return false;
+      seenTrainKeys.add(key);
+      return true;
+    });
 
     const getEtaSeconds = train => {
-      const raw = Number.parseInt(train.barvlDt, 10);
-      if (Number.isFinite(raw) && raw >= 0) return raw;
-
       const message = String(train.arvlMsg2 || '');
-      if (/도착/.test(message)) return 0;
-      if (/진입/.test(message)) return 5;
-      if (/출발/.test(message)) return 15;
+      const code = String(train.arvlCd ?? '');
+      const raw = Number.parseInt(train.barvlDt, 10);
+
+      // barvlDt가 0인 것만으로 '도착'으로 판단하지 않는다.
+      // API가 0/빈 값으로 주는 경우 메시지와 도착코드를 우선 확인한다.
+      if (Number.isFinite(raw) && raw > 0) return raw;
+      if (code === '1' || /도착/.test(message)) return 0;
+      if (code === '0' || /진입/.test(message)) return 5;
+      if (code === '2' || /출발/.test(message)) return 15;
 
       const match = message.match(/(\d+)\s*분(?:\s*(\d+)\s*초)?/);
       if (match) return Number(match[1]) * 60 + Number(match[2] || 0);
@@ -2667,17 +2723,41 @@ async function fetchArrivalInfo(station, requestId) {
           ? 'exp-special'
           : '';
 
-      const safeMessage = /\d+\s*번째\s*전역/.test(rawMessage)
-        ? (train.arvlMsg3 || '운행 중')
-        : rawMessage;
-      const initialEtaText = !etaIsKnown
-        ? (safeMessage || '현재 정보 없음')
-        : etaSeconds <= 0
-          ? '도착'
-          : `약 ${Math.floor(etaSeconds / 60)}분 ${etaSeconds % 60}초 후`;
+      // API의 '[20]번째 전역' 문구는 오래된 수신 시각/순번으로 실제 위치와 어긋날 수 있다.
+      // 열차번호가 실시간 위치 API와 매칭될 때만 노선 역순서로 가까운 위치를 계산해 표시한다.
+      const arrivalTrainNo = String(train.btrainNo || '').trim();
+      const livePosition = arrivalTrainNo ? latestPositionByTrainNo.get(arrivalTrainNo) : null;
+      const routeStations = lineData[currentLine].circular
+        ? lineData[currentLine].stations.slice(0, -1)
+        : lineData[currentLine].stations;
+      const targetStationIndex = getStationIndex(routeStations, station);
+      let distanceMessage = '';
+      if (livePosition && livePosition.stationIndex >= 0 && targetStationIndex >= 0) {
+        const distance = Math.abs(targetStationIndex - livePosition.stationIndex);
+        // 가까운 경우만 계산된 위치를 보여준다. 방향/분기 노선이 애매하거나 멀면 API의 오래된 숫자를 쓰지 않는다.
+        if (distance === 0) distanceMessage = `현재 역 (${livePosition.stationName})`;
+        else if (distance <= 5) distanceMessage = `${distance}개 역 전 (${livePosition.stationName})`;
+      }
+      let initialEtaText;
+      if (status === '도착' || /도착/.test(rawMessage)) {
+        initialEtaText = '도착';
+      } else if (status === '진입' || /진입/.test(rawMessage)) {
+        initialEtaText = '진입';
+      } else if (status === '출발' || /출발/.test(rawMessage)) {
+        initialEtaText = '출발';
+      } else if (etaIsKnown && etaSeconds > 0) {
+        initialEtaText = `약 ${Math.floor(etaSeconds / 60)}분 ${etaSeconds % 60}초 후`;
+      } else {
+        // Never show an unverified API distance like '[20]번째 전역' as if it were current.
+        const apiDistanceOnly = /\d+\s*번째\s*전역/.test(rawMessage);
+        initialEtaText = distanceMessage || (apiDistanceOnly ? '현재 정보 없음' : rawMessage || '현재 정보 없음');
+      }
+      const extraLocation = distanceMessage && distanceMessage !== initialEtaText
+        ? `<br>위치 정보: ${escapeHtml(distanceMessage)}`
+        : '';
 
       const html = `
-        <div class="arr-item ${isUp ? 'up' : 'down'}" data-eta-seconds="${etaIsKnown ? etaSeconds : ''}" data-eta-updated="${Date.now()}">
+        <div class="arr-item ${isUp ? 'up' : 'down'}" data-eta-seconds="${etaIsKnown && !/도착|진입|출발/.test(rawMessage) ? etaSeconds : ''}" data-eta-updated="${Date.now()}">
           <div class="arr-top-row">
             <span class="arr-time" data-eta-label>${escapeHtml(initialEtaText)}</span>
             <span class="exp-badge ${badgeClass}">${escapeHtml(badgeText)}</span>
@@ -2686,7 +2766,7 @@ async function fetchArrivalInfo(station, requestId) {
             ${escapeHtml(train.bstatnNm || train.statnTnm || '방면')}행
             <br>
             현재: ${escapeHtml(train.arvlMsg3 || train.statnNm || '운행 중')}
-            (${escapeHtml(status)})
+            (${escapeHtml(status)})${extraLocation}
           </div>
         </div>
       `;
@@ -2694,14 +2774,6 @@ async function fetchArrivalInfo(station, requestId) {
       if (isUp) upHTML += html;
       else downHTML += html;
     });
-
-    arrUpList.innerHTML =
-      upHTML ||
-      '<div class="arr-item">현재 정보 없음</div>';
-
-    arrDownList.innerHTML =
-      downHTML ||
-      '<div class="arr-item">현재 정보 없음</div>';
 
     arrUpList.innerHTML =
       upHTML ||
