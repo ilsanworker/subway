@@ -1596,6 +1596,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica
   border-radius:50%!important;
 }
 
+
+/* V9: keep the two vertical tracks mirrored at every viewport width. */
+.vertical-map-container{position:relative!important;width:100%!important;max-width:100%!important;}
+.v-up-line,.v-train.up{left:24%!important;right:auto!important;transform:translateX(-50%)!important;}
+.v-down-line,.v-train.down{left:76%!important;right:auto!important;transform:translateX(-50%)!important;}
+@media(min-width:900px){
+  .v-up-line,.v-train.up{left:32%!important;right:auto!important;transform:translateX(-50%)!important;}
+  .v-down-line,.v-train.down{left:68%!important;right:auto!important;transform:translateX(-50%)!important;}
+}
+@media(max-width:600px){
+  .v-up-line,.v-train.up{left:24%!important;right:auto!important;transform:translateX(-50%)!important;}
+  .v-down-line,.v-train.down{left:76%!important;right:auto!important;transform:translateX(-50%)!important;}
+}
+/* While station details are open, hide route controls and the fixed menu trigger. */
+body.popup-open .top-controls,
+body.popup-open #lineSelector,
+body.popup-open #linePickerTrigger,
+body.popup-open #menuTrigger,
+body.popup-open .menu-stack{
+  opacity:0!important;visibility:hidden!important;pointer-events:none!important;
+  transition:opacity .18s ease,visibility .18s ease!important;
+}
+
 </style>
 </head>
 
@@ -1643,9 +1666,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica
       <div class="train-card-heading"><div class="train-card-title">열차 <strong id="trainCardNo">현재 정보 없음</strong> <span id="trainCardStatus" class="train-status-pill">현재 정보 없음</span></div>
       <div class="train-card-sub" id="trainCardLocation">현재 위치: 현재 정보 없음</div></div>
       <button class="train-card-refresh" id="trainCardRefresh" aria-label="열차 정보 새로고침">↻</button></div>
-    <div class="train-card-progress-label"><span>열차 운행 진행도</span><strong id="trainCardProgressText">현재 정보 없음</strong></div>
+    <div class="train-card-progress-label"><span>현재 열차 정보</span><strong id="trainCardProgressText">현재 정보 없음</strong></div>
     <div class="train-progress"><span id="trainCardProgress"></span></div>
-    <div class="train-progress-scale"><span id="trainCardStart">첫 역</span><span id="trainCardMid">중간 역</span><span id="trainCardEnd">종착역</span></div>
+    <div class="train-progress-scale"><span id="trainCardStart">현재 역</span><span id="trainCardMid">운행 상태</span><span id="trainCardEnd">종착역</span></div>
     <div class="train-card-actions"><button id="trainCardAlert">♧ 도착 알림 받기</button><button id="trainCardMap">▣ 전체 노선 지도보기</button></div>
   </section>
 
@@ -2266,6 +2289,7 @@ function openFullPopup(station) {
   const requestId = popupRequestId;
 
   fullPopup.classList.remove('hidden');
+  document.body.classList.add('popup-open');
 
   pName.textContent = `${station}역`;
   pBadge.textContent = currentLine;
@@ -2354,6 +2378,7 @@ function openFullPopup(station) {
 
 closePopupBtn.addEventListener('click', () => {
   fullPopup.classList.add('hidden');
+  document.body.classList.remove('popup-open');
 
   popupRequestId++;
 
@@ -2433,12 +2458,16 @@ async function fetchTrainPositions() {
         `${line.id}-${train.updnLine}-${trainNo}`
           .replace(/[^a-zA-Z0-9_-]/g, '_');
 
-      const statusText = escapeHtml(getTrainStatusText(status));
+      const statusText = getTrainStatusText(status);
 
       /* 세로 지도 */
-      const stationIndexInLine = getStationIndex(line.circular ? line.stations.slice(0, -1) : line.stations, train.statnNm);
-      let stationIndex = stationIndexInLine;
-      if (line.circular && stationIndex >= 0) stationIndex += line.stations.length - 1;
+      // Circular route nodes are repeated three times and the initial viewport
+      // starts on the middle cycle. Place live trains on that same cycle.
+      const baseStations = line.circular ? line.stations.slice(0, -1) : line.stations;
+      const stationIndexInLine = getStationIndex(baseStations, train.statnNm);
+      const stationIndex = line.circular && stationIndexInLine >= 0
+        ? stationIndexInLine + baseStations.length
+        : stationIndexInLine;
 
       if (stationIndex !== -1) {
         activeVertical.add(domKey);
@@ -2452,8 +2481,10 @@ async function fetchTrainPositions() {
           element.addEventListener('click', event => { event.stopPropagation(); showTrainDetail(element._trainData); });
         }
 
-        const isExpress = String(train.btrainSttus || train.trainType || '').includes('급행');
-        element.className = `v-train ${isUp ? 'up' : 'down'}${isExpress ? ' express' : ''}`;
+        const trainType = String(train.btrainSttus || train.trainType || '');
+        const isExpress = String(train.directAt ?? '') === '1' || trainType.includes('급행');
+        const isSpecial = String(train.directAt ?? '') === '7' || trainType.includes('특급');
+        element.className = `v-train ${isUp ? 'up' : 'down'}${isExpress ? ' express' : ''}${isSpecial ? ' special' : ''}`;
         element._trainData = { trainNo, status, statusText, station: train.statnNm || '현재 정보 없음', destination: train.bstatnNm || train.statnTnm || '현재 정보 없음', isUp, stationIndex: stationIndexInLine, lineName: requestLine };
 
         element.innerHTML =
@@ -2485,8 +2516,10 @@ async function fetchTrainPositions() {
             hTrainsContainer.appendChild(element);
           }
 
-          const isExpress = String(train.btrainSttus || train.trainType || '').includes('급행');
-          element.className = `h-train ${isUp ? 'up' : 'down'}${isExpress ? ' express' : ''}`;
+          const trainType = String(train.btrainSttus || train.trainType || '');
+          const isExpress = String(train.directAt ?? '') === '1' || trainType.includes('급행');
+          const isSpecial = String(train.directAt ?? '') === '7' || trainType.includes('특급');
+          element.className = `h-train ${isUp ? 'up' : 'down'}${isExpress ? ' express' : ''}${isSpecial ? ' special' : ''}`;
 
           element.innerHTML =
             `<span>${escapeHtml(trainNo)}</span>` +
@@ -2515,6 +2548,27 @@ async function fetchTrainPositions() {
   }
 }
 
+
+
+/* ETA 표시를 초 단위로 감소시켜 API 갱신 사이에도 숫자가 멈춰 보이지 않게 함. */
+function tickArrivalCountdowns() {
+  document.querySelectorAll('.arr-item[data-eta-seconds]').forEach(item => {
+    const raw = item.dataset.etaSeconds;
+    if (raw === '') return;
+    const base = Number(raw);
+    const updatedAt = Number(item.dataset.etaUpdated || Date.now());
+    const elapsed = Math.floor((Date.now() - updatedAt) / 1000);
+    const remaining = Math.max(0, base - elapsed);
+    const label = item.querySelector('[data-eta-label]');
+    if (!label) return;
+    if (remaining <= 0) {
+      label.textContent = '도착 예정';
+    } else {
+      label.textContent = `약 ${Math.floor(remaining / 60)}분 ${remaining % 60}초 후`;
+    }
+  });
+}
+setInterval(tickArrivalCountdowns, 1000);
 
 /* ========================================
    실시간 도착 정보
@@ -2545,32 +2599,32 @@ async function fetchArrivalInfo(station, requestId) {
 
     const targetId = String(lineData[currentLine].id);
 
-    let trains = all.filter(train =>
-      String(train.subwayId || '') === targetId
+    // At transfer stations, never mix arrivals from other lines into this line's panel.
+    const trains = all.filter(train =>
+      String(train.subwayId || '') === targetId ||
+      String(train.subwayList || '').split(',').map(v => v.trim()).includes(targetId)
     );
 
-    if (trains.length === 0) {
-      trains = all;
-    }
+    const getEtaSeconds = train => {
+      const raw = Number.parseInt(train.barvlDt, 10);
+      if (Number.isFinite(raw) && raw >= 0) return raw;
 
-    trains.sort((a, b) => {
-      const getWeight = train => {
-        const message = String(train.arvlMsg2 || '');
+      const message = String(train.arvlMsg2 || '');
+      if (/도착/.test(message)) return 0;
+      if (/진입/.test(message)) return 5;
+      if (/출발/.test(message)) return 15;
 
-        if (message.includes('도착')) return 0;
-        if (message.includes('진입')) return 1;
+      const match = message.match(/(\d+)\s*분(?:\s*(\d+)\s*초)?/);
+      if (match) return Number(match[1]) * 60 + Number(match[2] || 0);
 
-        const seconds = parseInt(train.barvlDt, 10);
+      const secondsMatch = message.match(/(\d+)\s*초/);
+      if (secondsMatch) return Number(secondsMatch[1]);
 
-        if (Number.isFinite(seconds) && seconds > 0) {
-          return 10 + seconds;
-        }
+      return Number.POSITIVE_INFINITY;
+    };
 
-        return 5000;
-      };
-
-      return getWeight(a) - getWeight(b);
-    });
+    // Sort by the numeric ETA whenever the API provides it, not by message wording.
+    trains.sort((a, b) => getEtaSeconds(a) - getEtaSeconds(b));
 
     let upHTML = '';
     let downHTML = '';
@@ -2583,46 +2637,42 @@ async function fetchArrivalInfo(station, requestId) {
         directionText === '내선' ||
         directionText === '0';
 
-      const rawMessage = String(train.arvlMsg2 || '운행 중');
-
-      let timeText = rawMessage;
-
-      const seconds = parseInt(train.barvlDt, 10);
-
-      if (Number.isFinite(seconds) && seconds > 0) {
-        const minutes = Math.floor(seconds / 60);
-        const remainder = seconds % 60;
-
-        timeText = minutes > 0
-          ? `약 ${minutes}분 ${remainder}초 후`
-          : `약 ${seconds}초 후`;
-      }
-
+      const rawMessage = String(train.arvlMsg2 || '');
+      const etaSeconds = getEtaSeconds(train);
+      const etaIsKnown = Number.isFinite(etaSeconds);
       let status = '운행 중';
 
-      if (rawMessage.includes('진입')) status = '진입';
-      else if (rawMessage.includes('도착')) status = '도착';
-      else if (rawMessage.includes('출발')) status = '출발';
+      if (/진입/.test(rawMessage)) status = '진입';
+      else if (/도착/.test(rawMessage)) status = '도착';
+      else if (/출발/.test(rawMessage)) status = '출발';
 
-      const badgeText =
-        String(train.btrainSttus || '').includes('급행')
-          ? '급행'
-          : String(train.btrainSttus || '').includes('특급')
-            ? '특급'
-            : '일반';
+      const trainType = String(train.btrainSttus || '');
+      const badgeText = trainType.includes('급행')
+        ? '급행'
+        : trainType.includes('특급') || trainType.includes('ITX')
+          ? '특급'
+          : '일반';
 
-      const badgeClass =
-        badgeText === '급행'
-          ? 'exp-express'
-          : badgeText === '특급'
-            ? 'exp-special'
-            : '';
+      const badgeClass = badgeText === '급행'
+        ? 'exp-express'
+        : badgeText === '특급'
+          ? 'exp-special'
+          : '';
+
+      const safeMessage = /\d+\s*번째\s*전역/.test(rawMessage)
+        ? (train.arvlMsg3 || '운행 중')
+        : rawMessage;
+      const initialEtaText = !etaIsKnown
+        ? (safeMessage || '현재 정보 없음')
+        : etaSeconds <= 0
+          ? '도착'
+          : `약 ${Math.floor(etaSeconds / 60)}분 ${etaSeconds % 60}초 후`;
 
       const html = `
-        <div class="arr-item ${isUp ? 'up' : 'down'}">
+        <div class="arr-item ${isUp ? 'up' : 'down'}" data-eta-seconds="${etaIsKnown ? etaSeconds : ''}" data-eta-updated="${Date.now()}">
           <div class="arr-top-row">
-            <span class="arr-time">${escapeHtml(timeText)}</span>
-            <span class="exp-badge ${badgeClass}">${badgeText}</span>
+            <span class="arr-time" data-eta-label>${escapeHtml(initialEtaText)}</span>
+            <span class="exp-badge ${badgeClass}">${escapeHtml(badgeText)}</span>
           </div>
           <div class="arr-desc">
             ${escapeHtml(train.bstatnNm || train.statnTnm || '방면')}행
@@ -2636,6 +2686,14 @@ async function fetchArrivalInfo(station, requestId) {
       if (isUp) upHTML += html;
       else downHTML += html;
     });
+
+    arrUpList.innerHTML =
+      upHTML ||
+      '<div class="arr-item">현재 정보 없음</div>';
+
+    arrDownList.innerHTML =
+      downHTML ||
+      '<div class="arr-item">현재 정보 없음</div>';
 
     arrUpList.innerHTML =
       upHTML ||
@@ -3037,3 +3095,20 @@ elapsedTimer = setInterval(updateRefreshLabel, 1000);
 </script>
 </body>
 </html>
+<style id="v10-train-corrections">
+/* 급행은 빨강, 일반 열차는 흰색. 특급은 중립색으로 구분 */
+.v-train.express, .h-train.express {
+  background: #e53935 !important;
+  border-color: #c62828 !important;
+  color: #fff !important;
+}
+.v-train.special, .h-train.special {
+  background: #f5f5f7 !important;
+  border-color: #a1a1aa !important;
+  color: #252525 !important;
+}
+.v-train-status, .h-train-status { color: inherit !important; }
+
+/* 상세 팝업의 방향별 카드 색은 노선도 열차 색상과 일치시킴 */
+.exp-badge.exp-express { background: #e53935 !important; color: #fff !important; }
+</style>
