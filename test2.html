@@ -1392,6 +1392,149 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica
 .popup-header .badge{display:inline-flex;align-items:center;justify-content:center;flex:none;min-height:32px;line-height:1;padding:7px 11px;}
 @media(max-width:600px){.top-controls{top:7px;padding:0 12px;margin:7px auto 8px}.line-picker-trigger,.menu-trigger{min-height:49px;height:49px}.menu-trigger{width:49px}.line-picker-trigger{padding:8px 13px;gap:9px}.line-picker-trigger strong{font-size:16px}.line-button{min-width:58px!important;min-height:40px!important;padding:9px 12px!important}.menu-stack{top:66px;right:12px}.popup-header>div{gap:8px}.popup-stn-name{font-size:21px!important}.popup-header .badge{min-height:30px;padding:6px 9px}}
 
+
+/* ===== 레이아웃 보정: 기본은 노선 칩, 스크롤 시 퀵 컨트롤 ===== */
+.app-container{height:100dvh;overflow:hidden;background:#f5f5f7;}
+.top-controls{position:absolute;top:10px;left:0;right:0;width:100%;max-width:none;margin:0;padding:0 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:90;pointer-events:none;}
+.top-controls button{pointer-events:auto;}
+.line-picker-trigger{display:flex;opacity:0;visibility:hidden;pointer-events:none;transform:translateX(-12px);transition:opacity .25s ease,transform .32s ease,visibility .25s;}
+.line-picker-trigger.trigger-visible{opacity:1;visibility:visible;pointer-events:auto;transform:translateX(0);}
+.menu-trigger{margin-left:auto;flex:none;}
+.top-controls:not(.compact-mode) .menu-trigger{opacity:0;visibility:hidden;pointer-events:none;}
+.top-controls.compact-mode .menu-trigger{opacity:1;visibility:visible;pointer-events:auto;}
+.line-selector{position:relative;flex:0 0 auto;width:100%;max-width:none;min-height:64px;margin:0;padding:10px 14px 12px;display:flex;flex-wrap:nowrap;justify-content:flex-start;align-items:center;gap:9px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;background:rgba(245,245,247,.84);border:0;border-bottom:1px solid rgba(60,60,67,.08);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);opacity:1;transform:translateX(0);max-height:80px;transition:opacity .25s ease,transform .34s cubic-bezier(.2,.8,.2,1),max-height .28s ease,padding .28s ease;z-index:70;}
+.line-selector.compact-hidden{opacity:0;transform:translateX(-100%);max-height:0;min-height:0;padding-top:0;padding-bottom:0;border-bottom:0;pointer-events:none;}
+.line-selector.picker-open{position:absolute;top:64px;left:0;right:0;width:100%;height:auto;max-height:45dvh;min-height:0;flex-wrap:wrap;overflow-y:auto;justify-content:flex-start;padding:14px;background:rgba(245,245,247,.91);border:0;border-radius:0 0 20px 20px;box-shadow:0 12px 28px rgba(0,0,0,.10);}
+.line-button{flex:0 0 auto;}
+.main-content{flex:1 1 auto;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;padding:10px 0 110px;margin:0;background:#f5f5f7;overscroll-behavior-y:contain;}
+.map-instruction{margin:4px 0 20px;}
+.vertical-map-container{position:relative;width:100%;max-width:1000px;margin:0 auto;}
+.v-station-nodes,.v-trains-container{width:100%;}
+/* 선로와 열차는 화면 전체 폭을 활용하되 중앙 역명과 겹치지 않게 배치 */
+.v-up-line{left:35%!important;right:auto!important;}
+.v-down-line{left:65%!important;right:auto!important;}
+.v-train.up{left:35%!important;right:auto!important;}
+.v-train.down{left:65%!important;right:auto!important;}
+.menu-stack{top:74px;}
+@media(max-width:600px){
+ .top-controls{top:8px;padding:0 12px;}
+ .line-selector{min-height:60px;padding:9px 10px;gap:7px;}
+ .line-selector.picker-open{top:60px;padding:12px;}
+ .line-button{min-height:40px!important;min-width:58px!important;padding:9px 12px!important;}
+ .line-picker-trigger{min-height:49px;height:49px;padding:8px 13px;gap:8px;}
+ .menu-trigger{min-height:49px;height:49px;width:49px;}
+ .main-content{padding-top:8px;}
+ .vertical-map-container{width:100%;}
+ .v-up-line,.v-train.up{left:25%!important;}
+ .v-down-line,.v-train.down{left:75%!important;}
+ .v-station-name{font-size:13px;}
+ .menu-stack{top:66px;right:12px;}
+}
+@media(prefers-reduced-motion:reduce){.line-selector,.line-picker-trigger,.menu-trigger{transition:none!important;}}
+
+
+/* ===== Apple-like control polish v6 ===== */
+.top-controls{position:fixed!important;top:10px!important;left:0!important;right:0!important;width:100%!important;max-width:none!important;padding:0 18px!important;margin:0!important;z-index:120!important;display:flex!important;align-items:center!important;justify-content:space-between!important;pointer-events:none!important;}
+.top-controls button{pointer-events:auto!important;background:rgba(255,255,255,.70)!important;border:1px solid rgba(255,255,255,.58)!important;box-shadow:0 8px 28px rgba(25,25,35,.10),inset 0 1px 0 rgba(255,255,255,.72)!important;backdrop-filter:blur(24px) saturate(1.35)!important;-webkit-backdrop-filter:blur(24px) saturate(1.35)!important;}
+.line-picker-trigger{min-width:132px!important;min-height:52px!important;height:52px!important;padding:0 18px!important;justify-content:center!important;border-radius:18px!important;color:#1d1d1f!important;opacity:0;visibility:hidden;pointer-events:none!important;transform:translateX(-16px) scale(.97);transition:opacity .42s cubic-bezier(.22,1,.36,1),transform .52s cubic-bezier(.22,1,.36,1),visibility .42s!important;}
+.line-picker-trigger.trigger-visible{opacity:1;visibility:visible;pointer-events:auto!important;transform:translateX(0) scale(1);}
+.picker-label{font-size:15px;font-weight:650;letter-spacing:-.25px;white-space:nowrap;}
+.menu-trigger{position:relative!important;margin-left:auto!important;flex:none!important;width:52px!important;height:52px!important;min-height:52px!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;border-radius:50%!important;transition:width .28s cubic-bezier(.22,1,.36,1),background .3s ease,transform .3s ease!important;}
+.menu-trigger.menu-open{width:94px!important;border-radius:28px!important;}
+.line-selector{position:relative!important;width:100%!important;max-width:none!important;min-height:66px!important;height:auto!important;padding:10px 16px 12px!important;gap:9px!important;display:flex!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:flex-start!important;overflow-x:auto!important;overflow-y:hidden!important;white-space:nowrap!important;background:rgba(245,245,247,.68)!important;border:0!important;box-shadow:none!important;backdrop-filter:blur(24px) saturate(1.2)!important;-webkit-backdrop-filter:blur(24px) saturate(1.2)!important;opacity:1;transform:translateX(0);max-height:84px!important;transition:opacity .42s cubic-bezier(.22,1,.36,1),transform .58s cubic-bezier(.22,1,.36,1),max-height .42s ease,padding .42s ease!important;}
+.line-selector.compact-hidden{opacity:0!important;visibility:hidden!important;transform:translateX(-105%)!important;max-height:0!important;min-height:0!important;height:0!important;padding-top:0!important;padding-bottom:0!important;overflow:hidden!important;pointer-events:none!important;}
+/* In compact mode the route chips replace the route-picker button in the same top row. */
+.line-selector.picker-open{position:fixed!important;top:10px!important;left:12px!important;right:82px!important;width:auto!important;height:52px!important;min-height:52px!important;max-height:52px!important;margin:0!important;padding:5px 9px!important;display:flex!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:flex-start!important;overflow-x:auto!important;overflow-y:hidden!important;border-radius:18px!important;background:rgba(255,255,255,.70)!important;border:1px solid rgba(255,255,255,.58)!important;box-shadow:0 8px 28px rgba(25,25,35,.10),inset 0 1px 0 rgba(255,255,255,.72)!important;backdrop-filter:blur(24px) saturate(1.35)!important;-webkit-backdrop-filter:blur(24px) saturate(1.35)!important;opacity:1!important;visibility:visible!important;transform:translateX(0)!important;z-index:121!important;pointer-events:auto!important;}
+.line-button{flex:0 0 auto!important;background:rgba(255,255,255,.72)!important;border:1px solid rgba(60,60,67,.09)!important;backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important;transition:transform .38s cubic-bezier(.22,1,.36,1),background .25s ease,box-shadow .25s ease!important;}
+.line-button:active{transform:scale(.96)!important;}
+.menu-stack{position:fixed!important;top:74px!important;z-index:119!important;}
+.main-content{padding-top:10px!important;}
+@media(max-width:600px){.top-controls{top:8px!important;padding:0 12px!important}.line-picker-trigger,.menu-trigger{height:49px!important;min-height:49px!important}.line-picker-trigger{min-width:120px!important;padding:0 15px!important}.menu-trigger{width:49px!important}.line-selector{min-height:60px!important;padding:9px 10px!important;max-height:76px!important}.line-selector.picker-open{top:8px!important;left:8px!important;right:66px!important;height:49px!important;min-height:49px!important;max-height:49px!important;padding:4px 7px!important}.line-button{min-height:39px!important;min-width:56px!important;padding:8px 11px!important}.menu-stack{top:65px!important;right:12px!important}}
+@media(prefers-reduced-motion:reduce){.line-selector,.line-picker-trigger,.menu-trigger,.line-button{transition:none!important;}}
+
+
+/* V7 corrections: visible first station, transparent route row, fixed hamburger */
+.top-controls{
+  position:fixed!important;top:10px!important;left:0!important;right:0!important;
+  width:100%!important;max-width:none!important;padding:0 14px!important;margin:0!important;
+  z-index:300!important;pointer-events:none!important;display:flex!important;
+  align-items:center!important;justify-content:space-between!important;
+}
+.top-controls button{pointer-events:auto!important;}
+/* Hamburger remains a round icon button in every state */
+.menu-trigger{
+  position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;
+  visibility:visible!important;opacity:1!important;pointer-events:auto!important;
+  flex:0 0 50px!important;width:50px!important;height:50px!important;min-height:50px!important;
+  padding:0!important;border-radius:50%!important;font-size:23px!important;line-height:1!important;
+  color:#1d1d1f!important;background:rgba(255,255,255,.68)!important;
+  backdrop-filter:blur(22px) saturate(1.45)!important;-webkit-backdrop-filter:blur(22px) saturate(1.45)!important;
+  border:1px solid rgba(255,255,255,.78)!important;box-shadow:0 6px 22px rgba(20,20,30,.09)!important;
+}
+.menu-trigger .more-label{display:none!important;}
+/* No wrapper/card behind route chips, with a reserved lane for the fixed menu button */
+.line-selector{
+  position:relative!important;top:auto!important;left:auto!important;right:auto!important;
+  width:100%!important;max-width:none!important;box-sizing:border-box!important;
+  display:flex!important;align-items:center!important;flex-wrap:nowrap!important;
+  gap:8px!important;padding:10px 76px 10px 14px!important;margin:0!important;
+  min-height:62px!important;max-height:72px!important;overflow-x:auto!important;overflow-y:hidden!important;
+  background:transparent!important;border:0!important;border-bottom:0!important;box-shadow:none!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+  transition:opacity .48s cubic-bezier(.22,1,.36,1),transform .58s cubic-bezier(.22,1,.36,1),visibility .48s!important;
+}
+.line-selector::-webkit-scrollbar{display:none!important;}
+.line-button{
+  flex:0 0 auto!important;position:relative!important;z-index:1!important;
+  background:rgba(255,255,255,.67)!important;border:1px solid rgba(60,60,67,.10)!important;
+  backdrop-filter:blur(16px) saturate(1.25)!important;-webkit-backdrop-filter:blur(16px) saturate(1.25)!important;
+  box-shadow:0 2px 9px rgba(0,0,0,.035)!important;
+  transition:transform .42s cubic-bezier(.22,1,.36,1),opacity .42s cubic-bezier(.22,1,.36,1),background .25s ease!important;
+}
+.line-button:active{transform:scale(.96)!important;}
+/* Scrolled mode: swap the selector and the plain-text trigger in exactly the same lane */
+.line-picker-trigger{
+  position:absolute!important;left:14px!important;top:0!important;
+  min-width:0!important;width:auto!important;height:50px!important;min-height:50px!important;
+  padding:0 18px!important;border-radius:999px!important;gap:0!important;
+  color:#1d1d1f!important;background:rgba(255,255,255,.70)!important;
+  border:1px solid rgba(255,255,255,.78)!important;box-shadow:0 6px 22px rgba(20,20,30,.08)!important;
+  backdrop-filter:blur(22px) saturate(1.4)!important;-webkit-backdrop-filter:blur(22px) saturate(1.4)!important;
+}
+.line-picker-trigger .picker-label{font-size:15px!important;font-weight:650!important;white-space:nowrap!important;}
+.line-picker-trigger .current-line-label,#currentLineLabel{display:none!important;}
+.top-controls:not(.compact-mode) .line-picker-trigger{opacity:0!important;visibility:hidden!important;pointer-events:none!important;}
+.top-controls.compact-mode .line-picker-trigger.trigger-visible{opacity:1!important;visibility:visible!important;pointer-events:auto!important;transform:translateX(0)!important;}
+.top-controls.compact-mode .menu-trigger{opacity:1!important;visibility:visible!important;pointer-events:auto!important;}
+.line-selector.compact-hidden{
+  opacity:0!important;visibility:hidden!important;pointer-events:none!important;
+  transform:translateX(-34px)!important;max-height:0!important;min-height:0!important;
+  height:0!important;padding-top:0!important;padding-bottom:0!important;margin:0!important;overflow:hidden!important;
+}
+.line-selector.picker-open{
+  position:absolute!important;top:0!important;left:0!important;right:0!important;
+  width:calc(100% - 64px)!important;height:50px!important;min-height:50px!important;max-height:50px!important;
+  padding:4px 8px 4px 14px!important;margin:0!important;opacity:1!important;visibility:visible!important;
+  transform:translateX(0)!important;overflow-x:auto!important;overflow-y:hidden!important;
+  background:transparent!important;border:0!important;box-shadow:none!important;
+}
+.top-controls.compact-mode .line-selector.picker-open{margin-left:0!important;}
+/* Keep the menu stack aligned under its permanently fixed circular button */
+.menu-stack{position:fixed!important;top:70px!important;right:14px!important;z-index:299!important;}
+/* Add breathing room above the first station label, which is positioned above its node */
+.main-content{padding-top:38px!important;}
+.vertical-map-container{margin-top:12px!important;}
+@media(max-width:600px){
+ .top-controls{top:8px!important;padding:0 12px!important;}
+ .menu-trigger{width:47px!important;height:47px!important;min-height:47px!important;flex-basis:47px!important;}
+ .line-selector{min-height:59px!important;max-height:68px!important;padding:8px 67px 8px 12px!important;gap:7px!important;}
+ .line-picker-trigger{left:12px!important;height:47px!important;min-height:47px!important;padding:0 16px!important;}
+ .line-selector.picker-open{width:calc(100% - 59px)!important;height:47px!important;min-height:47px!important;max-height:47px!important;padding:3px 5px 3px 12px!important;}
+ .menu-stack{top:63px!important;right:12px!important;}
+ .main-content{padding-top:34px!important;}
+}
+@media(prefers-reduced-motion:reduce){.line-selector,.line-picker-trigger,.menu-trigger,.line-button{transition:none!important;}}
+
 </style>
 </head>
 
@@ -1401,7 +1544,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica
   <!-- 상단 퀵 컨트롤 -->
   <div class="top-controls" id="topControls">
     <button type="button" class="line-picker-trigger" id="linePickerTrigger" aria-expanded="false">
-      <span class="line-picker-kicker">노선 선택</span><strong id="currentLineLabel">2호선</strong><span class="picker-chevron">⌄</span>
+      <span class="picker-label">노선 선택</span>
     </button>
     <button type="button" class="menu-trigger" id="menuTrigger" aria-label="메뉴 열기" aria-expanded="false">☰</button>
   </div>
@@ -2766,19 +2909,15 @@ const linePickerTrigger = $('linePickerTrigger');
 const currentLineLabel = $('currentLineLabel');
 const menuTrigger = $('menuTrigger');
 const menuStack = $('menuStack');
+menuTrigger.innerHTML = '☰';
 let lineMenuOpen = false;
 let moreMenuOpen = false;
 function syncCurrentLineLabel() { currentLineLabel.textContent = currentLine || '노선 선택'; }
-linePickerTrigger.addEventListener('click', () => {
-  lineMenuOpen = !lineMenuOpen;
-  linePickerTrigger.setAttribute('aria-expanded', String(lineMenuOpen));
-  lineSelector.classList.toggle('picker-open', lineMenuOpen);
-});
 menuTrigger.addEventListener('click', () => {
   moreMenuOpen = !moreMenuOpen;
   menuTrigger.classList.toggle('menu-open', moreMenuOpen);
   menuTrigger.setAttribute('aria-expanded', String(moreMenuOpen));
-  menuTrigger.innerHTML = moreMenuOpen ? '<span class="more-label">더보기</span>' : '☰';
+  menuTrigger.innerHTML = '☰';
   menuStack.classList.toggle('menu-visible', moreMenuOpen);
   menuStack.setAttribute('aria-hidden', String(!moreMenuOpen));
 });
@@ -2788,19 +2927,43 @@ menuStack.querySelectorAll('.menu-card').forEach(card => card.addEventListener('
   else if (card.dataset.menu === 'developer') alert('서울 지하철 대시보드 개발자 정보');
   else alert('연결된 실시간 열차 위치 API 및 데이터 제공 정보를 표시합니다.');
 }));
-let lastScrollY = window.scrollY;
-window.addEventListener('scroll', () => {
-  const y = window.scrollY;
-  const compact = y > 120 && y >= lastScrollY;
+// 노선 목록과 퀵 버튼은 같은 자리를 교체하며, 더보기 버튼은 항상 표시합니다.
+const mainContent = $('mainContent');
+let lastScrollY = mainContent.scrollTop;
+let compactMode = false;
+function setCompactMode(compact) {
+  compactMode = compact;
   topControls.classList.toggle('compact-mode', compact);
   lineSelector.classList.toggle('compact-hidden', compact && !lineMenuOpen);
-  if (!compact) {
+  lineSelector.classList.toggle('picker-open', compact && lineMenuOpen);
+  linePickerTrigger.classList.toggle('trigger-visible', compact && !lineMenuOpen);
+  linePickerTrigger.setAttribute('aria-expanded', String(compact && !lineMenuOpen));
+}
+mainContent.addEventListener('scroll', () => {
+  const y = mainContent.scrollTop;
+  if (y > lastScrollY + 2 && y > 45) {
+    setCompactMode(true);
+  } else if (y < lastScrollY - 2 || y <= 45) {
     lineMenuOpen = false;
-    linePickerTrigger.setAttribute('aria-expanded', 'false');
-    lineSelector.classList.remove('picker-open');
+    setCompactMode(false);
   }
   lastScrollY = y;
 }, {passive:true});
+linePickerTrigger.addEventListener('click', () => {
+  // 누르면 버튼 자리에 노선 칩이 들어옵니다. 버튼 아래로 펼치지 않습니다.
+  lineMenuOpen = !lineMenuOpen;
+  linePickerTrigger.classList.toggle('trigger-visible', compactMode && !lineMenuOpen);
+  linePickerTrigger.setAttribute('aria-expanded', String(compactMode && !lineMenuOpen));
+  lineSelector.classList.toggle('compact-hidden', compactMode && !lineMenuOpen);
+  lineSelector.classList.toggle('picker-open', compactMode && lineMenuOpen);
+});
+// 노선을 고르면 컴팩트 모드에서는 노선 칩을 접고 '노선 선택' 버튼으로 돌아갑니다.
+lineSelector.addEventListener('click', (event) => {
+  if (event.target.closest('.line-button') && compactMode) {
+    lineMenuOpen = false;
+    setCompactMode(true);
+  }
+});
 
 /* ========================================
    앱 시작
