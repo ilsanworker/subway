@@ -5,7 +5,7 @@
 <meta name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>Subway | 실시간 열차</title>
+<title>SUBWAY</title>
 
 <style>
 :root {
@@ -1854,8 +1854,11 @@ body.popup-open .menu-stack{
 
   <!-- 지도 확대/축소: 새로고침 버튼 바로 위에 + / - 배치 -->
   <div class="zoom-widget" aria-label="노선도 확대 축소">
-    <button type="button" class="zoom-button" id="zoomIn" aria-label="노선도 확대" title="확대">+</button>
-    <button type="button" class="zoom-button" id="zoomOut" aria-label="노선도 축소" title="축소">−</button>
+    <div class="zoom-control-pill">
+      <button type="button" class="zoom-button" id="zoomIn" aria-label="노선도 확대" title="확대">+</button>
+      <span class="zoom-divider" aria-hidden="true"></span>
+      <button type="button" class="zoom-button" id="zoomOut" aria-label="노선도 축소" title="축소">−</button>
+    </div>
   </div>
 
   <!-- 오른쪽 하단 새로고침 -->
@@ -1866,15 +1869,16 @@ body.popup-open .menu-stack{
     <span class="last-refresh" id="lastRefresh">새로고침 대기 중</span>
   </div>
 
-  <section class="train-detail-card hidden" id="trainDetailCard" aria-live="polite">
+  <section class="train-detail-card hidden" id="trainDetailCard" aria-live="polite" data-sheet-state="compact">
+    <button type="button" class="train-sheet-handle" id="trainSheetHandle" aria-label="열차 상세 정보 펼치기 또는 접기" title="위로 당겨 펼치기, 아래로 당겨 접기"><span></span></button>
     <div class="train-card-top"><div class="train-line-circle" id="trainCardLineNum">2</div>
       <div class="train-card-heading"><div class="train-card-title">열차 <strong id="trainCardNo">현재 정보 없음</strong> <span id="trainCardStatus" class="train-status-pill">현재 정보 없음</span></div>
       <div class="train-card-sub" id="trainCardLocation">현재 위치: 현재 정보 없음</div></div>
       <button class="train-card-refresh" id="trainCardRefresh" aria-label="열차 정보 새로고침">↻</button></div>
-    <div class="train-card-progress-label"><span>현재 열차 정보</span><strong id="trainCardProgressText">현재 정보 없음</strong></div>
-    <div class="train-progress"><span id="trainCardProgress"></span></div>
-    <div class="train-progress-scale"><span id="trainCardStart">현재 역</span><span id="trainCardMid">운행 상태</span><span id="trainCardEnd">종착역</span></div>
-    <div class="train-card-actions"><button id="trainCardAlert">♧ 도착 알림 받기</button><button id="trainCardMap">▣ 전체 노선 지도보기</button></div>
+    <div class="train-card-progress-label"><span>열차 예상 혼잡도</span><strong id="trainCardProgressText">정보 없음</strong></div>
+    <div class="train-progress crowd-progress"><span id="trainCardProgress"></span></div>
+    <div class="train-progress-scale"><span>여유</span><span id="trainCardMid">시간대 기반 추정</span><span>혼잡</span></div>
+    <div class="train-card-actions"><button id="trainCardAlert">♧ 도착 알림 받기</button><button id="trainCardClose" aria-label="열차 상세 정보 닫기">닫기</button></div>
   </section>
 
   <!-- 역 상세 팝업 -->
@@ -1969,6 +1973,7 @@ body.popup-open .menu-stack{
 </div>
 
 <script src="line.js"></script>
+<script src="crowding.js"></script>
 <script>
 /* ========================================
    API 설정
@@ -1976,8 +1981,68 @@ body.popup-open .menu-stack{
    실제 서비스에서는 API 키를 서버에서 관리하세요.
 ======================================== */
 
-const REALTIME_API_KEY = '486c77684e696c7331303157766b6779';
-const OPEN_API_KEY = '486c77684e696c7331303157766b6779';
+// API 키는 이 JS 설정 배열에 직접 추가하세요. 화면 입력창은 사용하지 않습니다.
+// 키 여러 개는 배열에 각각 문자열로 입력합니다. 예: realtime: ['키1', '키2']
+// 같은 계정/서비스 한도를 공유하는 키는 한도 자체를 늘려주지 않습니다.
+const API_KEYS = {
+  realtime: [
+    '486c77684e696c7331303157766b6779',
+    '76716f6677696c7336344b67715451', // 실시간 열차 위치 API 키
+    '44564e495a696c733932584c704677'
+    // '여기에_세번째_실시간_API_키',
+  ],
+  open: [
+    '486c77684e696c7331303157766b6779',
+    '76716f6677696c7336344b67715451', // 도착/통계/시간표 API 키
+    '44564e495a696c733932584c704677'
+  ]
+};
+let activeKeyIndex = { realtime: 0, open: 0 };
+const apiResponseCache = new Map();
+const API_CACHE_LIMIT = 300;
+let positionFetchPromise = null;
+let lastPositionSnapshot = [];
+let lastPositionSnapshotAt = 0;
+const POSITION_SOFT_TTL = 6500;
+
+function isQuotaOrKeyError(data, status) {
+  const code = String(data?.RESULT?.CODE || data?.errorMessage?.code || data?.code || '');
+  const message = String(data?.RESULT?.MESSAGE || data?.errorMessage?.message || data?.message || '').toLowerCase();
+  return status === 401 || status === 403 || /quota|limit|key|인증|한도|초과|사용량|service error|인증키/.test(message) || /INFO-000/.test(code) === false && /ERROR|INFO-200|INFO-300|INFO-400|INFO-500/.test(code);
+}
+
+async function apiJson(poolName, makeUrl, cacheMs = 0) {
+  const keys = (API_KEYS[poolName] || []).filter(Boolean);
+  if (!keys.length) throw new Error('API 키가 설정되지 않았습니다.');
+  const cacheKey = `${poolName}:${makeUrl('__KEY__')}`;
+  const cached = apiResponseCache.get(cacheKey);
+  if (cacheMs > 0 && cached && Date.now() - cached.time < cacheMs) return cached.data;
+  let lastError;
+  const start = activeKeyIndex[poolName] % keys.length;
+  for (let offset = 0; offset < keys.length; offset++) {
+    const index = (start + offset) % keys.length;
+    try {
+      const response = await fetch(makeUrl(keys[index]), { cache: 'no-store' });
+      let data;
+      try { data = await response.json(); } catch (_) { data = {}; }
+      if (!response.ok || isQuotaOrKeyError(data, response.status)) {
+        lastError = new Error(data?.errorMessage?.message || data?.RESULT?.MESSAGE || `API 오류 ${response.status}`);
+        if (keys.length > 1) continue;
+        throw lastError;
+      }
+      activeKeyIndex[poolName] = index;
+      if (cacheMs > 0) {
+        apiResponseCache.set(cacheKey, { data, time: Date.now() });
+        if (apiResponseCache.size > API_CACHE_LIMIT) apiResponseCache.delete(apiResponseCache.keys().next().value);
+      }
+      return data;
+    } catch (error) {
+      lastError = error;
+      if (offset === keys.length - 1) break;
+    }
+  }
+  throw lastError || new Error('사용 가능한 API 키가 없습니다.');
+}
 
 const IS_LOCAL =
   location.hostname === 'localhost' ||
@@ -2451,6 +2516,7 @@ function initMaps(lineName) {
     requestAnimationFrame(() => { main.scrollTop = 0; });
   }
   refreshAll();
+  if (refreshInterval) clearInterval(refreshInterval);
   refreshInterval = setInterval(refreshAll, 10000);
 }
 
@@ -2465,16 +2531,13 @@ async function refreshAll() {
   refreshButton.classList.add('loading');
 
   try {
-    await fetchTrainPositions();
+    const popupOpen = !fullPopup.classList.contains('hidden') && !!currentStation;
+    // 팝업이 열려 있을 때는 8초 팝업 타이머가 열차 위치를 갱신하므로 중복 호출을 줄입니다.
+    if (!popupOpen) await fetchTrainPositions();
 
-    if (!fullPopup.classList.contains('hidden') && currentStation) {
+    if (popupOpen) {
       const requestId = popupRequestId;
-
-      await fetchStationDetails(
-        currentStation,
-        true,
-        requestId
-      );
+      await fetchStationDetails(currentStation, true, requestId);
     }
 
     markRefreshed();
@@ -2585,7 +2648,7 @@ function openFullPopup(station) {
 
     fetchStationDetails(station, true, requestId);
     fetchTrainPositions();
-  }, 10000);
+  }, 8000);
 }
 
 closePopupBtn.addEventListener('click', () => {
@@ -2607,7 +2670,15 @@ closePopupBtn.addEventListener('click', () => {
 // Latest live positions keyed by train number, used to cross-check distance labels.
 let latestPositionByTrainNo = new Map();
 
+function renderTrainPositionsSnapshot(_trains) { /* DOM already reflects this snapshot; avoid another API request. */ }
+
 async function fetchTrainPositions() {
+  if (positionFetchPromise) return positionFetchPromise;
+  positionFetchPromise = fetchTrainPositionsInternal();
+  try { return await positionFetchPromise; } finally { positionFetchPromise = null; }
+}
+
+async function fetchTrainPositionsInternal() {
   const requestLine = currentLine;
   const requestId = mapRequestId;
   const line = lineData[requestLine];
@@ -2617,18 +2688,8 @@ async function fetchTrainPositions() {
   try {
     const apiLine = line.apiName || requestLine;
 
-    const url =
-      `${BASE_SW}/${REALTIME_API_KEY}` +
-      `/json/realtimePosition/0/100/` +
-      `${encodeURIComponent(apiLine)}`;
-
-    const response = await fetch(url, {
-      cache:'no-store'
-    });
-
-    if (!response.ok) throw new Error('열차 위치 조회 실패');
-
-    const data = await response.json();
+    const data = await apiJson('realtime', key =>
+      `${BASE_SW}/${key}/json/realtimePosition/0/100/${encodeURIComponent(apiLine)}`, 0);
 
     if (
       requestLine !== currentLine ||
@@ -2642,9 +2703,21 @@ async function fetchTrainPositions() {
     const activeVertical = new Set();
     const activeHorizontal = new Set();
 
-    const trains = Array.isArray(data.realtimePositionList)
-      ? data.realtimePositionList
-      : [];
+    const rawTrains = Array.isArray(data.realtimePositionList) ? data.realtimePositionList : [];
+    const uniqueTrains = new Map();
+    rawTrains.forEach(train => {
+      if (String(train.subwayId || '') !== String(line.id)) return;
+      const no = String(train.trainNo || '').trim();
+      if (!no) return;
+      const key = `${line.id}|${String(train.updnLine || '')}|${no}`;
+      const previous = uniqueTrains.get(key);
+      // 같은 열차가 여러 번 반환되면 더 구체적인 위치/상태 정보를 가진 레코드를 우선한다.
+      const score = t => [t.statnNm, t.trainSttus, t.bstatnNm, t.statnTnm].filter(Boolean).length;
+      if (!previous || score(train) > score(previous)) uniqueTrains.set(key, train);
+    });
+    const trains = [...uniqueTrains.values()];
+    lastPositionSnapshot = trains;
+    lastPositionSnapshotAt = Date.now();
 
     const positionCache = new Map();
     trains.forEach(train => {
@@ -2823,18 +2896,8 @@ async function fetchArrivalInfo(station, requestId) {
   try {
     const stationName = normalizeStationName(station);
 
-    const url =
-      `${BASE_SW}/${REALTIME_API_KEY}` +
-      `/json/realtimeStationArrival/0/30/` +
-      `${encodeURIComponent(stationName)}`;
-
-    const response = await fetch(url, {
-      cache:'no-store'
-    });
-
-    if (!response.ok) throw new Error('도착 정보 조회 실패');
-
-    const data = await response.json();
+    const data = await apiJson('realtime', key =>
+      `${BASE_SW}/${key}/json/realtimeStationArrival/0/30/${encodeURIComponent(stationName)}`, 4500);
 
     if (requestId !== popupRequestId) return;
 
@@ -3019,17 +3082,8 @@ async function fetchStatistics(station, requestId) {
       `${String(date.getMonth() + 1).padStart(2, '0')}` +
       `${String(date.getDate()).padStart(2, '0')}`;
 
-    const url =
-      `${BASE_OPEN}/${OPEN_API_KEY}` +
-      `/json/CardSubwayStatsNew/1/1000/${dateString}`;
-
-    const response = await fetch(url, {
-      cache:'no-store'
-    });
-
-    if (!response.ok) throw new Error('통계 조회 실패');
-
-    const data = await response.json();
+    const data = await apiJson('open', key =>
+      `${BASE_OPEN}/${key}/json/CardSubwayStatsNew/1/1000/${dateString}`, 6 * 60 * 60 * 1000);
 
     if (requestId !== popupRequestId) return;
 
@@ -3074,18 +3128,8 @@ async function fetchTimetable(station, requestId) {
   try {
     const stationName = normalizeStationName(station);
 
-    const searchURL =
-      `${BASE_OPEN}/${OPEN_API_KEY}` +
-      `/json/SearchInfoBySubwayNameService/1/50/` +
-      `${encodeURIComponent(stationName)}`;
-
-    const searchResponse = await fetch(searchURL, {
-      cache:'no-store'
-    });
-
-    if (!searchResponse.ok) throw new Error('역 조회 실패');
-
-    const searchData = await searchResponse.json();
+    const searchData = await apiJson('open', key =>
+      `${BASE_OPEN}/${key}/json/SearchInfoBySubwayNameService/1/50/${encodeURIComponent(stationName)}`, 24 * 60 * 60 * 1000);
 
     const rows =
       searchData.SearchInfoBySubwayNameService?.row || [];
@@ -3114,28 +3158,9 @@ async function fetchTimetable(station, requestId) {
 
     const stationCode = match.STATION_CD;
 
-    const upURL =
-      `${BASE_OPEN}/${OPEN_API_KEY}` +
-      `/json/SearchSTTimeTableByIDService/1/500/` +
-      `${stationCode}/${week.tag}/1/`;
-
-    const downURL =
-      `${BASE_OPEN}/${OPEN_API_KEY}` +
-      `/json/SearchSTTimeTableByIDService/1/500/` +
-      `${stationCode}/${week.tag}/2/`;
-
-    const [upResponse, downResponse] = await Promise.all([
-      fetch(upURL, {cache:'no-store'}),
-      fetch(downURL, {cache:'no-store'})
-    ]);
-
-    if (!upResponse.ok || !downResponse.ok) {
-      throw new Error('시간표 조회 실패');
-    }
-
     const [upData, downData] = await Promise.all([
-      upResponse.json(),
-      downResponse.json()
+      apiJson('open', key => `${BASE_OPEN}/${key}/json/SearchSTTimeTableByIDService/1/500/${stationCode}/${week.tag}/1/`, 12 * 60 * 60 * 1000),
+      apiJson('open', key => `${BASE_OPEN}/${key}/json/SearchSTTimeTableByIDService/1/500/${stationCode}/${week.tag}/2/`, 12 * 60 * 60 * 1000)
     ]);
 
     if (requestId !== popupRequestId) return;
@@ -3273,32 +3298,90 @@ function fetchStationDetails(
 }
 
 
+
+// 혼잡도 데이터와 추정 함수는 별도 파일 crowding-data.js에서 불러옵니다.
+function setTrainSheetState(state) {
+  const card = $('trainDetailCard');
+  if (!card) return;
+  const expanded = state === 'expanded';
+  card.dataset.sheetState = expanded ? 'expanded' : 'compact';
+  card.classList.toggle('sheet-expanded', expanded);
+  const handle = $('trainSheetHandle');
+  if (handle) {
+    handle.setAttribute('aria-label', expanded ? '열차 상세 정보 접기' : '열차 상세 정보 펼치기');
+    handle.title = expanded ? '아래로 당겨 접기' : '위로 당겨 펼치기';
+  }
+}
+
 function showTrainDetail(train) {
   if (!train) return;
   selectedTrainData = train;
   const line = lineData[train.lineName] || lineData[currentLine];
-  $('trainCardLineNum').textContent = (train.lineName.match(/\\d+/) || ['↻'])[0];
-  $('trainCardLineNum').style.background = line.color;
+  $('trainCardLineNum').textContent = (String(train.lineName || '').match(/\d+/) || ['↻'])[0];
+  $('trainCardLineNum').style.background = line?.color || '#171717';
   $('trainCardNo').textContent = train.trainNo || '현재 정보 없음';
   $('trainCardStatus').textContent = train.statusText || '현재 정보 없음';
   $('trainCardLocation').textContent = `현재 위치: ${train.station || '현재 정보 없음'} · ${train.destination || '현재 정보 없음'}행`;
-  const stations = line.circular ? line.stations.slice(0,-1) : line.stations;
-  const idx = train.stationIndex;
-  const progress = idx >= 0 && stations.length > 1 ? Math.round(idx / (stations.length - 1) * 100) : null;
-  $('trainCardProgressText').textContent = progress === null ? '현재 정보 없음' : `${progress}%`;
-  $('trainCardProgress').style.width = progress === null ? '0%' : `${progress}%`;
-  $('trainCardStart').textContent = stations[0] || '현재 정보 없음';
-  $('trainCardMid').textContent = stations[Math.floor(stations.length/2)] || '현재 정보 없음';
-  $('trainCardEnd').textContent = stations[stations.length-1] || '현재 정보 없음';
+  const crowd = estimateTrainCrowding(train);
+  const crowdText = crowd.score == null ? crowd.label : `${crowd.label} · ${crowd.score}%`;
+  $('trainCardProgressText').textContent = crowdText;
+  $('trainCardProgress').style.width = `${crowd.score == null ? 0 : Math.max(0, Math.min(100, crowd.score))}%`;
+  $('trainCardMid').textContent = crowd.score == null ? '통계 미제공' : '역별 통계';
+  let crowdSource = $('trainCrowdingSource');
+  if (!crowdSource) {
+    crowdSource = document.createElement('div');
+    crowdSource.id = 'trainCrowdingSource';
+    crowdSource.className = 'train-crowding-source';
+    $('trainCardProgress').parentElement.insertAdjacentElement('afterend', crowdSource);
+  }
+  crowdSource.textContent = crowd.score == null ? '서울교통공사 역별 혼잡도 CSV에 해당 조건의 값이 없습니다. 열차 실시간 혼잡도 API 값은 아닙니다.' : '서울교통공사 역·방향·요일·시간대별 혼잡도 통계(2026.06.30 제공 자료). 특정 열차의 실시간 측정값은 아닙니다.';
   $('trainDetailCard').classList.remove('hidden');
+  setTrainSheetState('compact');
 }
 $('trainCardRefresh').addEventListener('click', () => refreshAll());
-$('trainCardMap').addEventListener('click', () => {
-  if (selectedTrainData?.station) {
-    $('trainDetailCard').classList.add('hidden');
-    openFullPopup(selectedTrainData.station);
-  }
+$('trainCardClose').addEventListener('click', () => {
+  $('trainDetailCard').classList.add('hidden');
+  selectedTrainData = null;
 });
+
+// iOS 스타일 하단 시트: 핸들이나 카드 상단을 위/아래로 드래그해 펼치고 접습니다.
+(function initTrainDetailSheetGesture() {
+  const card = $('trainDetailCard');
+  const handle = $('trainSheetHandle');
+  if (!card || !handle) return;
+  let startY = 0;
+  let lastY = 0;
+  let dragging = false;
+  const begin = e => {
+    startY = e.clientY;
+    lastY = e.clientY;
+    dragging = true;
+    card.classList.add('sheet-dragging');
+    handle.setPointerCapture?.(e.pointerId);
+  };
+  const move = e => {
+    if (!dragging) return;
+    lastY = e.clientY;
+    const delta = lastY - startY;
+    if (Math.abs(delta) > 10) e.preventDefault();
+  };
+  const finish = () => {
+    if (!dragging) return;
+    dragging = false;
+    card.classList.remove('sheet-dragging');
+    const delta = lastY - startY;
+    if (delta < -35) setTrainSheetState('expanded');
+    else if (delta > 35) setTrainSheetState('compact');
+  };
+  handle.addEventListener('pointerdown', begin);
+  handle.addEventListener('pointermove', move);
+  handle.addEventListener('pointerup', finish);
+  handle.addEventListener('pointercancel', finish);
+  handle.addEventListener('click', () => setTrainSheetState(card.dataset.sheetState === 'expanded' ? 'compact' : 'expanded'));
+  card.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { card.classList.add('hidden'); selectedTrainData = null; }
+  });
+})();
 $('trainCardAlert').addEventListener('click', async () => {
   const btn = $('trainCardAlert');
   if ('Notification' in window && Notification.permission === 'default') await Notification.requestPermission();
@@ -3383,6 +3466,29 @@ initMaps('2호선');
 
 elapsedTimer = setInterval(updateRefreshLabel, 1000);
 </script>
+
+<style id="subway-optimized-sheet-and-controls">
+/* Apple-inspired combined zoom pill */
+.zoom-widget{right:16px!important;bottom:88px!important;display:flex!important;}
+.zoom-control-pill{display:flex;flex-direction:column;align-items:center;overflow:hidden;border:1px solid rgba(60,60,67,.13);border-radius:999px;background:rgba(255,255,255,.92);box-shadow:0 5px 18px rgba(0,0,0,.13);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);}
+.zoom-control-pill .zoom-button{width:46px;height:44px;border-radius:0;background:transparent;box-shadow:none;font-size:25px;line-height:1;}
+.zoom-control-pill .zoom-button:active{background:#e8e8ed;transform:none;}
+.zoom-divider{height:1px;width:26px;background:rgba(60,60,67,.14);}
+/* Draggable train bottom sheet */
+.train-detail-card{max-height:min(78dvh,720px);overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;transition:max-height .28s cubic-bezier(.2,.8,.2,1),transform .28s cubic-bezier(.2,.8,.2,1);}
+.train-detail-card.sheet-expanded{max-height:min(78dvh,720px);}
+.train-detail-card[data-sheet-state="compact"]{max-height:230px;}
+.train-detail-card.sheet-dragging{transition:none;}
+.train-sheet-handle{display:flex;justify-content:center;align-items:center;width:100%;height:23px;margin:-7px 0 8px;padding:0;border:0;background:transparent;cursor:grab;touch-action:none;}
+.train-sheet-handle span{display:block;width:38px;height:5px;border-radius:99px;background:#d1d1d6;}
+.train-sheet-handle:active{cursor:grabbing;}
+.train-card-progress-label{margin-top:12px!important;}
+.crowd-progress{height:7px!important;border-radius:99px!important;background:#e5e5ea!important;overflow:hidden;}
+.crowd-progress span{border-radius:99px!important;background:linear-gradient(90deg,#34c759 0%,#ffcc00 55%,#ff3b30 100%)!important;transition:width .25s ease;}
+#trainCardClose{background:#f2f2f7!important;color:#1d1d1f!important;border:1px solid #e5e5ea!important;}
+@media(max-width:520px){.zoom-control-pill .zoom-button{width:42px;height:42px}.train-detail-card[data-sheet-state="compact"]{max-height:225px}}
+</style>
+
 </body>
 </html>
 <style id="v10-train-corrections">
@@ -3420,4 +3526,6 @@ elapsedTimer = setInterval(updateRefreshLabel, 1000);
   border-color: #a1a1aa !important;
   color: #202124 !important;
 }
+
+.train-crowding-source{font-size:11px;line-height:1.45;color:var(--muted,#777);margin-top:8px;padding:0 2px;}
 </style>
