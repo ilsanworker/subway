@@ -3334,7 +3334,7 @@ function showTrainDetail(train) {
     crowdSource.className = 'train-crowding-source';
     $('trainCardProgress').parentElement.insertAdjacentElement('afterend', crowdSource);
   }
-  crowdSource.textContent = crowd.score == null ? '서울교통공사 역별 혼잡도 CSV에 해당 조건의 값이 없습니다. 열차 실시간 혼잡도 API 값은 아닙니다.' : '서울교통공사 역·방향·요일·시간대별 혼잡도 통계(2026.06.30 제공 자료). 특정 열차의 실시간 측정값은 아닙니다.';
+  crowdSource.textContent = crowd.score == null ? '서울교통공사 역별 혼잡도 데이터에 해당 조건의 값이 없습니다. 열차 실시간 혼잡도 API 값은 아닙니다.' : '서울교통공사 역·방향·요일·시간대별 혼잡도 통계. 특정 열차의 "실시간" 측정값이 아닙니다.';
   $('trainDetailCard').classList.remove('hidden');
   setTrainSheetState('compact');
 }
