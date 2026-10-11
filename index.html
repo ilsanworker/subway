@@ -1,114 +1,3424 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Seoul Subway Radar</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>Subway | 실시간 열차</title>
+
+<style>
+:root {
+  --bg: #0f172a;
+  --panel: #111827;
+  --text: #111827;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --line-color: #009D3E;
+  --train-up: #ef4444;
+  --train-down: #3b82f6;
+  --accent: #0071e3;
+  --v-spacing: 110px;
+  --h-spacing: 120px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+               Roboto, sans-serif;
+}
+
+body {
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-container {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ========================================
+   상단 노선 선택 바
+======================================== */
+
+.line-selector {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--bg);
+  border-bottom: 1px solid #263449;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  z-index: 20;
+}
+
+.line-selector::-webkit-scrollbar {
+  display: none;
+}
+
+.line-button {
+  flex: 0 0 auto;
+  height: 30px;
+  min-width: 20px;
+  padding: 0 12px;
+  border: 1px solid #334155;
+  border-radius: 20px;
+  background: #1e293b;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .2s, color .2s, border-color .2s;
+}
+
+.line-button.active {
+  background: var(--line-color);
+  color: white;
+  border-color: var(--line-color);
+}
+
+/* ========================================
+   메인 세로 지도
+======================================== */
+
+.main-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  padding: 10px 0 100px;
+  background: var(--bg);
+  scrollbar-width: thin;
+}
+
+.map-instruction {
+  margin-bottom: 25px;
+  padding: 0 12px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.vertical-map-container {
+  position: relative;
+  width: min(320px, 96vw);
+  margin: 0 auto;
+}
+
+.v-track-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #334155;
+  border-radius: 2px;
+}
+
+.v-up-line {
+  left: 28px;
+}
+
+.v-down-line {
+  right: 28px;
+}
+
+.v-station-nodes {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.v-station-node {
+  position: absolute;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  background: #1e293b;
+  border: 3px solid var(--line-color);
+  border-radius: 50%;
+  cursor: pointer;
+  transform: translateX(-50%);
+  z-index: 5;
+}
+
+.v-station-node:hover {
+  background: white;
+  transform: translateX(-50%) scale(1.3);
+}
+
+.v-station-name {
+  position: absolute;
+  left: 50%;
+  top: -20px;
+  transform: translateX(-50%);
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px #000;
+}
+
+.v-trains-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.v-train {
+  position: absolute;
+  width: 44px;
+  padding: 4px 0;
+  border-radius: 6px;
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transform: translateX(-50%);
+  box-shadow: 0 0 8px #0008;
+  transition: top 1s cubic-bezier(.25, 1, .5, 1);
+}
+
+.v-train.up {
+  left: 28px;
+  background: var(--train-up);
+}
+
+.v-train.down {
+  left: calc(100% - 28px);
+  background: var(--train-down);
+}
+
+.v-train-status {
+  margin-top: 2px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* ========================================
+   오른쪽 하단 새로고침 버튼
+======================================== */
+
+.refresh-widget {
+  position: fixed;
+  right: 18px;
+  bottom: 20px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.refresh-button {
+  width: 54px;
+  height: 54px;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #111827;
+  font-size: 24px;
+  box-shadow: 0 4px 18px #0004;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .2s, opacity .2s;
+}
+
+.refresh-button:active {
+  transform: rotate(45deg) scale(.94);
+}
+
+.refresh-button.loading {
+  opacity: .7;
+  animation: spin 1s linear infinite;
+}
+
+.last-refresh {
+  padding: 4px 7px;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px #0002;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================
+   상세 팝업
+======================================== */
+
+.full-popup {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.full-popup.hidden {
+  display: none;
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: white;
+  border-bottom: 1px solid var(--border);
+}
+
+.popup-stn-name {
+  margin-left: 6px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--line-color);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.close-btn {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #e2e8f0;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* ========================================
+   팝업 가로 지도
+======================================== */
+
+.h-map-area {
+  height: 140px;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+  border-bottom: 2px solid var(--line-color);
+}
+
+.h-track-scroll-container {
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 40px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.h-track-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+.h-track-wrapper {
+  height: 100%;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.h-track-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #334155;
+  border-radius: 2px;
+}
+
+.h-track-line.h-up-line {
+  top: 40px;
+}
+
+.h-track-line.h-down-line {
+  top: 100px;
+}
+
+.h-station-nodes {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  z-index: 2;
+}
+
+.h-station-node {
+  position: absolute;
+  top: 63px;
+  width: 14px;
+  height: 14px;
+  background: #1e293b;
+  border: 2px solid var(--line-color);
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+
+.h-station-name {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.h-trains-container {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.h-train {
+  position: absolute;
+  width: 44px;
+  padding: 4px 0;
+  border-radius: 6px;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+  box-shadow: 0 0 8px #0008;
+  transition: left 1s cubic-bezier(.25, 1, .5, 1);
+}
+
+.h-train.up {
+  top: 20px;
+  background: var(--train-up);
+}
+
+.h-train.down {
+  top: 80px;
+  background: var(--train-down);
+}
+
+.h-train-status {
+  margin-top: 2px;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+/* ========================================
+   팝업 데이터 영역
+======================================== */
+
+.popup-body {
+  flex: 1;
+  min-height: 0;
+  padding: 14px;
+  overflow-y: auto;
+  background: #f8f9fa;
+  overscroll-behavior: contain;
+}
+
+.info-section {
+  margin-bottom: 16px;
+  padding: 14px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px #00000008;
+}
+
+.info-section h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.arrival-split {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.arr-col {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.arr-col h4 {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.arr-item,
+.tt-item {
+  margin-bottom: 6px;
+  padding: 8px;
+  background: white;
+  border: 1px solid var(--border);
+  border-left: 4px solid #ccc;
+  border-radius: 6px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.arr-item.up,
+.tt-item.up {
+  border-left-color: var(--train-up);
+}
+
+.arr-item.down,
+.tt-item.down {
+  border-left-color: var(--train-down);
+}
+
+.arr-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.arr-time {
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.arr-desc {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.exp-badge {
+  flex-shrink: 0;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: #64748b;
+  color: white;
+  font-size: 9px;
+  font-weight: bold;
+}
+
+.exp-express {
+  background: #eab308;
+  color: #111;
+}
+
+.exp-special {
+  background: #ef4444;
+  color: white;
+}
+
+.loading-text {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.loading-text.hidden {
+  display: none;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stat-box {
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.stat-title {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.tt-list {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+
+.line-button { border-color:#334155; background:#1e293b; color:#cbd5e1; }
+.main-content { background:var(--bg); }
+.train-detail-card { position:fixed;left:10px;right:10px;bottom:10px;z-index:80;padding:12px;border:1px solid #334155;border-radius:18px;background:rgba(15,23,42,.97);color:#f8fafc;box-shadow:0 16px 45px #0008;backdrop-filter:blur(16px); }
+.train-detail-card.hidden { display:none; }
+.train-card-top { display:flex;align-items:center;gap:10px; }
+.train-line-circle { width:30px;height:30px;flex:0 0 30px;display:grid;place-items:center;border-radius:50%;background:var(--line-color);color:white;font-weight:800; }
+.train-card-heading { flex:1;min-width:0; }
+.train-card-title { font-size:13px;font-weight:700; }
+.train-card-title strong { font-size:15px; }
+.train-status-pill { display:inline-block;margin-left:4px;padding:3px 7px;border-radius:8px;background:#7f1d1d;color:#fecaca;font-size:9px; }
+.train-card-sub { margin-top:4px;color:#cbd5e1;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.train-card-refresh { width:34px;height:34px;border:1px solid #334155;border-radius:50%;background:#1e293b;color:#e2e8f0;font-size:18px; }
+.train-card-progress-label { display:flex;justify-content:space-between;margin-top:12px;margin-bottom:6px;font-size:10px;color:#cbd5e1; }
+.train-card-progress-label strong { color:#fbbf24; }
+.train-progress { height:7px;overflow:hidden;border-radius:4px;background:repeating-linear-gradient(90deg,#fbbf24 0 18px,#334155 18px 21px); }
+.train-progress span { display:block;height:100%;width:0;border-radius:4px;background:linear-gradient(90deg,#f59e0b,#34d399);transition:width .25s; }
+.train-progress-scale { display:flex;justify-content:space-between;margin-top:5px;color:#94a3b8;font-size:9px; }
+.train-card-actions { display:flex;gap:8px;margin-top:12px; }
+.train-card-actions button { flex:1;min-width:0;border:0;border-radius:10px;padding:10px 6px;background:#1e293b;color:#e2e8f0;font-size:11px;font-weight:700; }
+.train-card-actions button:last-child { background:#10b981;color:#052e25; }
+.v-train { pointer-events:auto;cursor:pointer;z-index:8; }
+@media (min-width:700px) { .train-detail-card { left:auto;right:22px;bottom:22px;width:360px; } }
+
+@media (max-width: 360px) {
+  .line-selector {
+    padding: 10px;
+    gap: 6px;
+  }
+
+  .line-button {
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  .popup-body {
+    padding: 8px;
+  }
+
+  .info-section {
+    padding: 10px;
+  }
+
+  .arrival-split {
+    gap: 6px;
+  }
+
+  .arr-col {
+    padding: 5px;
+  }
+}
+
+
+/* ========================================
+   성빈 스타일 리메이크: 미니멀 라이트 UI
+   흰색·차콜·노선 고유색만 사용하고 장식은 최소화
+======================================== */
+:root {
+  --bg: #f5f5f7;
+  --panel: #ffffff;
+  --text: #171717;
+  --muted: #737780;
+  --border: #e5e5e8;
+  --line-color: #009D3E;
+  --train-up: #e34f4f;
+  --train-down: #3478f6;
+  --accent: #171717;
+  --v-spacing: 96px;
+  --h-spacing: 116px;
+}
+
+html, body { background: var(--bg); color: var(--text); }
+body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
+.app-container { background: var(--bg); }
+
+.line-selector {
+  gap: 7px;
+  padding: 12px 14px 10px;
+  background: var(--bg);
+  border-bottom: 1px solid #e8e8eb;
+  box-shadow: none;
+}
+.line-button {
+  height: 32px;
+  min-width: 42px;
+  padding: 0 13px;
+  border: 1px solid #e3e3e7;
+  border-radius: 999px;
+  background: transparent;
+  color: #62656d;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: -.2px;
+  transition: background .16s ease, color .16s ease, border-color .16s ease, transform .16s ease;
+}
+.line-button:active { transform: scale(.96); }
+.line-button.active {
+  color: #fff !important;
+  border-color: var(--line-color) !important;
+  background: var(--line-color) !important;
+  box-shadow: none;
+}
+
+.main-content {
+  padding: 14px 0 110px;
+  background: var(--bg);
+  scrollbar-width: none;
+  overscroll-behavior-y: contain;
+}
+.main-content::-webkit-scrollbar { display: none; }
+.map-instruction {
+  margin: 0 0 24px;
+  padding: 0 18px;
+  color: #8a8d94;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -.1px;
+}
+.vertical-map-container { width: 250px; }
+.v-track-line {
+  width: 3px;
+  background: #d6d8dd;
+  border-radius: 10px;
+}
+.v-up-line { left: 26px; }
+.v-down-line { right: 26px; }
+.v-station-node {
+  width: 13px;
+  height: 13px;
+  background: #fff;
+  border: 3px solid var(--line-color);
+  box-shadow: 0 0 0 3px var(--bg);
+}
+.v-station-node:hover { background: var(--line-color); }
+.v-station-name {
+  top: -19px;
+  color: #292b30;
+  font-size: 12px;
+  font-weight: 650;
+  text-shadow: none;
+  letter-spacing: -.25px;
+}
+.v-train {
+  width: 48px;
+  padding: 6px 3px 5px;
+  border: 2px solid #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px #11111118;
+  font-size: 10px;
+  line-height: 1.1;
+  transition: top .8s cubic-bezier(.2,.7,.2,1), transform .16s ease;
+}
+.v-train:active { transform: translateX(-50%) scale(.94); }
+.v-train.up { left: 28px; background: var(--train-up); }
+.v-train.down { left: 222px; background: var(--train-down); }
+.v-train-status { font-size: 9px; font-weight: 600; opacity: .95; }
+
+.refresh-widget { right: 16px; bottom: 18px; gap: 5px; }
+.refresh-button {
+  width: 46px;
+  height: 46px;
+  background: #171717;
+  color: #fff;
+  border: 1px solid #171717;
+  box-shadow: 0 5px 16px #11111120;
+  font-size: 22px;
+}
+.last-refresh {
+  background: #fff;
+  color: #777a82;
+  border: 1px solid #ececf0;
+  box-shadow: 0 2px 7px #11111108;
+}
+
+/* 열차 선택 카드: 앱 위에 얹힌 작은 상태 패널 */
+.train-detail-card {
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  padding: 15px 15px 13px;
+  border: 1px solid #e6e6e9;
+  border-radius: 20px;
+  background: rgba(255,255,255,.97);
+  color: #171717;
+  box-shadow: 0 12px 40px #17171718;
+  backdrop-filter: blur(20px);
+}
+.train-card-top { gap: 11px; }
+.train-line-circle {
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+  border-radius: 12px;
+  font-size: 14px;
+  box-shadow: none;
+}
+.train-card-title { color: #737780; font-size: 11px; font-weight: 600; }
+.train-card-title strong { color: #171717; font-size: 16px; letter-spacing: -.35px; }
+.train-status-pill {
+  margin-left: 5px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #fbe9e9;
+  color: #c63838;
+  font-size: 9px;
+  font-weight: 700;
+}
+.train-card-sub { margin-top: 4px; color: #777a82; font-size: 11px; }
+.train-card-refresh {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e8e8eb;
+  border-radius: 50%;
+  background: #f7f7f8;
+  color: #25262a;
+  font-size: 17px;
+}
+.train-card-progress-label { margin-top: 15px; margin-bottom: 7px; color: #777a82; font-size: 10px; }
+.train-card-progress-label strong { color: #171717; font-size: 11px; }
+.train-progress { height: 6px; border-radius: 99px; background: #e9eaed; }
+.train-progress span { border-radius: 99px; background: var(--line-color); }
+.train-progress-scale { margin-top: 6px; color: #858891; font-size: 9px; }
+.train-card-actions { gap: 8px; margin-top: 13px; }
+.train-card-actions button {
+  min-height: 38px;
+  padding: 10px 8px;
+  border: 1px solid #e7e7ea;
+  border-radius: 11px;
+  background: #f5f5f7;
+  color: #24252a;
+  font-size: 11px;
+  font-weight: 650;
+  transition: transform .15s ease, background .15s ease;
+}
+.train-card-actions button:active { transform: scale(.98); }
+.train-card-actions button:last-child { background: #171717; border-color: #171717; color: #fff; }
+
+/* 역 상세 화면 */
+.full-popup { background: #f5f5f7; }
+.popup-header {
+  padding: 16px 17px;
+  background: rgba(255,255,255,.96);
+  border-bottom: 1px solid #e8e8eb;
+}
+.popup-stn-name { margin-left: 8px; color: #171717; font-size: 18px; letter-spacing: -.5px; }
+.badge { padding: 5px 9px; border-radius: 8px; font-size: 11px; }
+.close-btn {
+  padding: 8px 11px;
+  border: 1px solid #e7e7ea;
+  border-radius: 10px;
+  background: #f5f5f7;
+  color: #27282c;
+  font-size: 12px;
+}
+.h-map-area { height: 132px; background: #f0f1f3; border-bottom: 1px solid #e3e4e8; }
+.h-track-line { height: 3px; background: #d0d3d8; }
+.h-station-node { background: #fff; box-shadow: 0 0 0 3px #f0f1f3; }
+.h-station-name { color: #666a73; font-size: 10px; }
+.h-train { border: 1px solid #fff; border-radius: 8px; box-shadow: 0 2px 8px #11111118; }
+.popup-body { padding: 14px; background: #f5f5f7; }
+.info-section {
+  margin-bottom: 12px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e9e9ed;
+  border-radius: 16px;
+  box-shadow: none;
+}
+.info-section h3 { margin-bottom: 13px; color: #202126; font-size: 13px; font-weight: 750; letter-spacing: -.25px; }
+.arr-col { padding: 9px; background: #f7f7f9; border: 1px solid #ededf0; border-radius: 11px; }
+.arr-col h4 { color: #777a82; font-size: 11px; font-weight: 650; }
+.arr-item, .tt-item {
+  padding: 9px;
+  background: #fff;
+  border: 1px solid #ededf0;
+  border-left: 3px solid #d0d2d7;
+  border-radius: 9px;
+  font-size: 11px;
+}
+.arr-item.up, .tt-item.up { border-left-color: var(--train-up); }
+.arr-item.down, .tt-item.down { border-left-color: var(--train-down); }
+.arr-time { color: #202126; font-weight: 750; }
+.arr-desc { color: #777a82; }
+.exp-badge { border-radius: 5px; }
+.stat-box { padding: 13px; background: #f7f7f9; border: 1px solid #ededf0; border-radius: 11px; }
+.stat-title { color: #777a82; }
+.stat-value { color: #171717; font-size: 17px; letter-spacing: -.4px; }
+.loading-text { color: #858891; }
+#ttDateType { color: #555963 !important; }
+
+@media (min-width: 700px) {
+  .train-detail-card { right: 22px; bottom: 22px; width: 370px; }
+  .vertical-map-container { width: 280px; }
+  .v-down-line { right: 26px; }
+  .v-train.down { left: 252px; }
+}
+@media (max-width: 360px) {
+  .line-selector { padding: 10px 10px 9px; }
+  .line-button { padding: 0 11px; }
+  .popup-body { padding: 9px; }
+  .info-section { padding: 11px; }
+  .arrival-split { gap: 6px; }
+  .arr-col { padding: 6px; }
+  .train-detail-card { left: 8px; right: 8px; bottom: 8px; padding: 12px; }
+}
+
+
+
+/* Apple-inspired refinement: typography, spacing, and surfaces only */
+:root {
+  --bg: #f5f5f7;
+  --panel: #ffffff;
+  --text: #1d1d1f;
+  --muted: #86868b;
+  --border: #e5e5ea;
+  --accent: #0071e3;
+}
+html, body { background: #f5f5f7; color: #1d1d1f; }
+body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif; letter-spacing: -.15px; }
+.app-container { background: #f5f5f7; }
+.line-selector {
+  padding: 13px 16px 12px;
+  gap: 8px;
+  background: rgba(245,245,247,.94);
+  border-bottom: 1px solid rgba(60,60,67,.12);
+  backdrop-filter: saturate(180%) blur(18px);
+}
+.line-button {
+  height: 31px;
+  min-width: 40px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #e8e8ed;
+  color: #3a3a3c;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -.1px;
+  transition: background .16s ease, color .16s ease, transform .16s ease;
+}
+.line-button.active { box-shadow: none; color: #fff !important; }
+.main-content {
+  padding: 16px 0 120px;
+  background: #f5f5f7;
+  overscroll-behavior-y: contain;
+}
+.map-instruction {
+  margin: 0 0 25px;
+  color: #86868b;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -.05px;
+}
+.v-track-line { background: #d1d1d6; width: 3px; }
+.v-station-node {
+  background: #fff;
+  box-shadow: 0 0 0 4px #f5f5f7;
+  border-width: 3px;
+}
+.v-station-name {
+  color: #1d1d1f;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -.25px;
+  text-shadow: none;
+}
+.v-train {
+  border: 2px solid #f5f5f7;
+  border-radius: 9px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.12);
+  font-size: 10px;
+  font-weight: 700;
+}
+.refresh-widget { right: 16px; bottom: 18px; }
+.refresh-button {
+  width: 44px; height: 44px;
+  background: #1d1d1f;
+  border: 0;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0,0,0,.16);
+}
+.last-refresh {
+  background: rgba(255,255,255,.94);
+  border: 1px solid rgba(60,60,67,.12);
+  color: #6e6e73;
+  box-shadow: 0 2px 7px rgba(0,0,0,.04);
+}
+.train-detail-card {
+  left: 12px; right: 12px; bottom: 12px;
+  padding: 15px 15px 13px;
+  border: 1px solid rgba(60,60,67,.13);
+  border-radius: 20px;
+  background: rgba(255,255,255,.94);
+  color: #1d1d1f;
+  box-shadow: 0 8px 32px rgba(0,0,0,.13);
+  backdrop-filter: saturate(180%) blur(24px);
+}
+.train-line-circle { border-radius: 11px; box-shadow: none; }
+.train-card-title { color: #6e6e73; font-size: 11px; font-weight: 500; }
+.train-card-title strong { color: #1d1d1f; font-size: 16px; font-weight: 700; letter-spacing: -.45px; }
+.train-status-pill { border-radius: 999px; background: #fce8e6; color: #b42318; padding: 4px 7px; }
+.train-card-sub { color: #6e6e73; font-size: 11px; }
+.train-card-refresh { background: #f5f5f7; border-color: #e5e5ea; color: #1d1d1f; }
+.train-card-progress-label { color: #6e6e73; }
+.train-card-progress-label strong { color: #1d1d1f; }
+.train-progress { background: #e5e5ea; }
+.train-progress span { background: var(--line-color); }
+.train-progress-scale { color: #86868b; }
+.train-card-actions button {
+  min-height: 38px;
+  border: 1px solid #e5e5ea;
+  border-radius: 11px;
+  background: #f5f5f7;
+  color: #1d1d1f;
+  font-size: 11px;
+  font-weight: 600;
+}
+.train-card-actions button:last-child { background: #1d1d1f; border-color: #1d1d1f; color: #fff; }
+.full-popup { background: #f5f5f7; }
+.popup-header {
+  padding: 15px 16px;
+  background: rgba(255,255,255,.94);
+  border-bottom: 1px solid rgba(60,60,67,.12);
+  backdrop-filter: saturate(180%) blur(18px);
+}
+.popup-stn-name { color: #1d1d1f; font-size: 18px; font-weight: 700; letter-spacing: -.45px; }
+.badge { border-radius: 8px; font-size: 11px; font-weight: 700; }
+.close-btn { background: #f5f5f7; border: 1px solid #e5e5ea; border-radius: 10px; color: #1d1d1f; font-size: 12px; }
+.h-map-area { background: #f5f5f7; border-bottom: 1px solid #e5e5ea; }
+.h-track-line { background: #d1d1d6; }
+.h-station-node { background: #fff; box-shadow: 0 0 0 3px #f5f5f7; }
+.h-station-name { color: #6e6e73; }
+.h-train { border: 1px solid #fff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+.popup-body { background: #f5f5f7; padding: 14px; }
+.info-section {
+  margin-bottom: 12px;
+  padding: 15px;
+  background: #fff;
+  border: 1px solid rgba(60,60,67,.10);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.02);
+}
+.info-section h3 { color: #1d1d1f; font-size: 13px; font-weight: 700; letter-spacing: -.2px; }
+.arr-col { background: #f5f5f7; border: 1px solid #e5e5ea; border-radius: 11px; }
+.arr-col h4 { color: #6e6e73; font-weight: 600; }
+.arr-item, .tt-item { background: #fff; border: 1px solid #e5e5ea; border-left-width: 3px; border-radius: 9px; }
+.arr-time { color: #1d1d1f; }
+.arr-desc, .stat-title { color: #6e6e73; }
+.stat-box { background: #f5f5f7; border: 1px solid #e5e5ea; border-radius: 11px; }
+.stat-value { color: #1d1d1f; }
+.loading-text { color: #86868b; }
+@media (min-width: 700px) {
+  .train-detail-card { right: 22px; bottom: 22px; width: 370px; }
+}
+@media (max-width: 360px) {
+  .line-selector { padding: 10px 10px 9px; }
+  .popup-body { padding: 9px; }
+  .info-section { padding: 11px; }
+  .train-detail-card { left: 8px; right: 8px; bottom: 8px; padding: 12px; }
+}
+
+/* Final visual pass: restrained Apple-like system UI. Functionality intentionally unchanged. */
+:root {
+  --bg: #f5f5f7;
+  --panel: #ffffff;
+  --text: #1d1d1f;
+  --muted: #6e6e73;
+  --border: #e5e5ea;
+  --accent: #0071e3;
+}
+html, body { background: var(--bg); color: var(--text); }
+body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+.app-container { background: var(--bg); }
+.line-selector {
+  gap: 7px; padding: 11px 14px 10px;
+  background: rgba(245,245,247,.96);
+  border-bottom: 1px solid rgba(60,60,67,.12);
+  box-shadow: none; backdrop-filter: saturate(180%) blur(18px);
+}
+.line-button {
+  height: 32px; padding: 0 13px; min-width: 40px;
+  border: 1px solid #e5e5ea; border-radius: 999px;
+  background: #fff; color: #48484a; font-size: 12px; font-weight: 600;
+  letter-spacing: -.15px; transition: background .16s ease, color .16s ease, transform .16s ease;
+}
+.line-button:active { transform: scale(.97); }
+.line-button.active { color: #fff !important; border-color: var(--line-color) !important; background: var(--line-color) !important; box-shadow: none; }
+.main-content { padding: 13px 0 110px; background: var(--bg); scrollbar-width: none; overscroll-behavior-y: contain; }
+.main-content::-webkit-scrollbar { display:none; }
+.map-instruction { margin: 0 0 24px; padding: 0 18px; color: #86868b; font-size: 11px; font-weight: 500; letter-spacing: -.05px; }
+.vertical-map-container { width: 250px; }
+.v-track-line { width: 3px; background: #d1d1d6; border-radius: 10px; }
+.v-up-line { left: 26px; }
+.v-down-line { right: 26px; }
+.v-station-node { width: 13px; height: 13px; background: #fff; border: 3px solid var(--line-color); box-shadow: 0 0 0 4px var(--bg); }
+.v-station-node:hover { background: var(--line-color); }
+.v-station-name { top: -19px; color: #1d1d1f; font-size: 12px; font-weight: 600; letter-spacing: -.2px; text-shadow: none; }
+.v-train { width: 48px; padding: 6px 3px 5px; border: 2px solid var(--bg); border-radius: 9px; box-shadow: 0 2px 6px rgba(0,0,0,.12); font-size: 10px; font-weight: 700; }
+.v-train.up { left: 28px; }
+.v-train.down { left: 222px; }
+.v-train-status { font-size: 9px; }
+.refresh-widget { right: 16px; bottom: 18px; }
+.refresh-button { width: 44px; height: 44px; background: #1d1d1f; color: #fff; border: 0; box-shadow: 0 4px 14px rgba(0,0,0,.14); }
+.last-refresh { background: rgba(255,255,255,.96); color: #6e6e73; border: 1px solid rgba(60,60,67,.12); box-shadow: 0 2px 7px rgba(0,0,0,.04); }
+.train-detail-card { left: 12px; right: 12px; bottom: 12px; padding: 15px 15px 13px; border: 1px solid rgba(60,60,67,.13); border-radius: 20px; background: rgba(255,255,255,.97); color: #1d1d1f; box-shadow: 0 8px 28px rgba(0,0,0,.12); backdrop-filter: saturate(180%) blur(22px); }
+.train-line-circle { border-radius: 11px; box-shadow: none; }
+.train-card-title { color: #6e6e73; font-size: 11px; font-weight: 500; }
+.train-card-title strong { color: #1d1d1f; font-size: 16px; font-weight: 700; letter-spacing: -.4px; }
+.train-status-pill { border-radius: 999px; background: #fce8e6; color: #b42318; padding: 4px 7px; }
+.train-card-sub, .train-card-progress-label, .train-progress-scale { color: #6e6e73; }
+.train-card-progress-label strong { color: #1d1d1f; }
+.train-card-refresh { background: #f5f5f7; border-color: #e5e5ea; color: #1d1d1f; }
+.train-progress { background: #e5e5ea; }
+.train-progress span { background: var(--line-color); }
+.train-card-actions button { min-height: 39px; border: 1px solid #e5e5ea; border-radius: 11px; background: #f5f5f7; color: #1d1d1f; font-size: 11px; font-weight: 600; }
+.train-card-actions button:last-child { background: #1d1d1f; border-color: #1d1d1f; color: #fff; }
+.full-popup { background: #f5f5f7; }
+.popup-header { padding: 15px 16px; background: rgba(255,255,255,.97); border-bottom: 1px solid rgba(60,60,67,.12); }
+.popup-stn-name { color: #1d1d1f; font-size: 18px; font-weight: 700; letter-spacing: -.4px; }
+.badge { border-radius: 8px; font-size: 11px; font-weight: 700; }
+.close-btn { padding: 8px 11px; background: #f5f5f7; border: 1px solid #e5e5ea; border-radius: 10px; color: #1d1d1f; font-size: 12px; }
+.h-map-area { height: 132px; background: #f5f5f7; border-bottom: 1px solid #e5e5ea; }
+.h-track-line { background: #d1d1d6; }
+.h-station-node { background: #fff; box-shadow: 0 0 0 3px #f5f5f7; }
+.h-station-name { color: #6e6e73; }
+.h-train { border: 1px solid #fff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+.popup-body { padding: 14px; background: #f5f5f7; }
+.info-section { margin-bottom: 12px; padding: 15px; background: #fff; border: 1px solid rgba(60,60,67,.10); border-radius: 15px; box-shadow: none; }
+.info-section h3 { margin-bottom: 12px; color: #1d1d1f; font-size: 13px; font-weight: 700; letter-spacing: -.15px; }
+.arr-col { padding: 9px; background: #f5f5f7; border: 1px solid #e5e5ea; border-radius: 10px; }
+.arr-col h4 { color: #6e6e73; font-size: 11px; font-weight: 600; }
+.arr-item, .tt-item { padding: 9px; background: #fff; border: 1px solid #e5e5ea; border-left-width: 3px; border-radius: 8px; }
+.arr-time { color: #1d1d1f; }
+.arr-desc, .stat-title { color: #6e6e73; }
+.stat-box { padding: 13px; background: #f5f5f7; border: 1px solid #e5e5ea; border-radius: 10px; }
+.stat-value { color: #1d1d1f; }
+.loading-text { color: #86868b; }
+/* Final layout refinement: station labels larger, selector floats over the map */
+.line-selector {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  width: 100%;
+  box-sizing: border-box;
+  background: linear-gradient(to bottom, rgba(245,245,247,.98), rgba(245,245,247,.82));
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+}
+.main-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  padding-top: 58px;
+  box-sizing: border-box;
+  background: var(--bg);
+}
+.v-station-name {
+  top: -21px;
+  color: #1d1d1f;
+  font-size: 14px !important;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -.25px;
+  text-shadow: none;
+  white-space: nowrap;
+}
+@media (min-width:700px) {
+  .train-detail-card { right: 22px; bottom: 22px; width: 370px; }
+  .line-selector { padding-left: 20px; padding-right: 20px; }
+  .vertical-map-container { width: 280px; }
+  .v-train.down { left: 252px; }
+}
+@media (max-width:360px) {
+  .line-selector { padding: 10px; }
+  .main-content { padding-top: 54px; }
+  .v-station-name { font-size: 13px !important; }
+  .popup-body { padding: 9px; }
+  .info-section { padding: 11px; }
+  .arrival-split { gap: 6px; }
+  .arr-col { padding: 6px; }
+  .train-detail-card { left: 8px; right: 8px; bottom: 8px; padding: 12px; }
+}
+
+
+
+/* Final polish: edge-to-edge map, larger station names, seamless selector */
+.line-selector {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding-top: 12px;
+  padding-bottom: 10px;
+}
+.line-button {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.line-button.active {
+  border-color: transparent !important;
+}
+.main-content {
+  width: 100%;
+  padding-top: 0 !important;
+  padding-bottom: 100px;
+  overflow-x: hidden;
+}
+.map-instruction { display: none !important; }
+.vertical-map-container {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+}
+.v-up-line { left: 14%; }
+.v-down-line { right: 14%; }
+.v-train.up {
+  left: 14%;
+  transform: translateX(-50%);
+}
+.v-train.down {
+  left: auto !important;
+  right: 14%;
+  transform: translateX(50%);
+}
+.v-station-name {
+  top: -22px;
+  font-size: 16px !important;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -.3px;
+  color: #202124;
+  text-shadow: none;
+}
+.v-station-node { z-index: 7; }
+.v-trains-container { overflow: visible; }
+@media (max-width: 420px) {
+  .v-up-line, .v-train.up { left: 12%; }
+  .v-down-line { right: 12%; }
+  .v-train.down { right: 12%; }
+  .v-station-name { font-size: 15px !important; }
+}
+
+
+
+/* v3: direction-neutral train styling and responsive station detail */
+.v-train,
+.h-train {
+  background: #ffffff !important;
+  color: #1d1d1f !important;
+  border: 1px solid #d9d9de !important;
+  box-shadow: 0 2px 7px rgba(0,0,0,.13) !important;
+}
+.v-train.up, .v-train.down,
+.h-train.up, .h-train.down {
+  background: #ffffff !important;
+  color: #1d1d1f !important;
+}
+.v-train.express, .h-train.express {
+  background: #e53935 !important;
+  color: #ffffff !important;
+  border-color: #e53935 !important;
+  box-shadow: 0 2px 9px rgba(229,57,53,.28) !important;
+}
+.v-train-status, .h-train-status { color: inherit !important; }
+
+/* Keep the station popup readable instead of stretching its content on wide screens. */
+.full-popup {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+}
+.popup-header {
+  flex: 0 0 auto;
+  min-height: 64px;
+  padding: 14px clamp(14px, 3vw, 28px) !important;
+}
+.popup-stn-name {
+  display: inline-block;
+  max-width: min(65vw, 520px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #1d1d1f !important;
+  font-size: clamp(20px, 2.2vw, 27px) !important;
+  line-height: 1.25;
+  letter-spacing: -.45px;
+}
+.h-map-area {
+  flex: 0 0 145px;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+#hTrackScroll {
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.h-station-name {
+  color: #4b4b50 !important;
+  font-size: 12px !important;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.h-station-node { z-index: 4; }
+.popup-body {
+  width: 100%;
+  padding: 16px clamp(12px, 3vw, 28px) 24px !important;
+  overflow-y: auto;
+}
+.popup-body > * {
+  width: 100%;
+  max-width: 1120px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.info-section { min-width: 0; }
+.arrival-split { align-items: stretch; }
+.arr-col { min-width: 0; }
+.arr-item, .tt-item { overflow-wrap: anywhere; }
+@media (min-width: 760px) {
+  .popup-header { padding-left: max(28px, calc((100vw - 1120px) / 2)) !important; padding-right: max(28px, calc((100vw - 1120px) / 2)) !important; }
+  .popup-body { display: block; }
+  .h-map-area { flex-basis: 155px; }
+}
+@media (max-width: 480px) {
+  .h-map-area { flex-basis: 132px; }
+  .h-station-name { font-size: 11px !important; }
+  .popup-stn-name { max-width: 58vw; }
+  .popup-body { padding: 10px 9px 18px !important; }
+  .info-section { padding: 12px !important; border-radius: 13px; }
+  .arr-col { padding: 6px !important; }
+  .arr-item, .tt-item { padding: 7px !important; font-size: 11px; }
+}
+
+
+/* === Refined controls and responsive station map === */
+.top-controls{position:sticky;top:10px;z-index:80;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px;margin:10px auto 12px;width:min(100%,900px);pointer-events:none;}
+.top-controls button{pointer-events:auto;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(60,60,67,.12);box-shadow:0 5px 18px rgba(0,0,0,.08);}
+.line-picker-trigger{display:flex;align-items:center;gap:12px;min-height:54px;padding:9px 17px;border-radius:17px;background:rgba(255,255,255,.78);color:#1d1d1f;text-align:left;transition:all .25s ease;}
+.line-picker-trigger .line-picker-kicker{font-size:11px;color:#86868b;font-weight:600;}
+.line-picker-trigger strong{font-size:18px;letter-spacing:-.4px;}
+.picker-chevron{font-size:19px;color:#86868b;transition:transform .2s ease;}
+.line-picker-trigger[aria-expanded="true"] .picker-chevron{transform:rotate(180deg);}
+.menu-trigger{width:54px;height:54px;display:grid;place-items:center;border-radius:50%;background:rgba(255,255,255,.78);color:#1d1d1f;font-size:22px;transition:width .25s ease,background .2s ease;}
+.menu-trigger.menu-open{width:98px;border-radius:28px;font-size:14px;font-weight:700;background:rgba(255,255,255,.94);}
+.more-label{white-space:nowrap;}
+.line-selector{position:relative;z-index:70;display:flex;flex-wrap:wrap;justify-content:center;gap:9px;padding:4px 16px 14px;margin:0 auto;max-width:1000px;opacity:1;transform:translateX(0);transition:opacity .28s ease,transform .38s cubic-bezier(.2,.8,.2,1),max-height .3s ease;max-height:300px;overflow:hidden;}
+.line-selector.compact-hidden{opacity:0;transform:translateX(65px);max-height:0;padding-top:0;padding-bottom:0;pointer-events:none;}
+.line-selector.picker-open{opacity:1;transform:translateX(0);max-height:300px;padding:12px 16px 16px;pointer-events:auto;background:rgba(245,245,247,.86);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:0 0 20px 20px;}
+.line-button{min-height:43px!important;min-width:66px!important;padding:10px 17px!important;font-size:14px!important;border-radius:15px!important;}
+.menu-stack{position:fixed;top:77px;right:max(16px,calc((100vw - 868px)/2));z-index:79;width:min(280px,calc(100vw - 32px));display:flex;flex-direction:column;gap:9px;pointer-events:none;}
+.menu-card{display:flex;align-items:center;gap:12px;width:100%;min-height:66px;padding:12px 14px;border:1px solid rgba(60,60,67,.10);border-radius:18px;background:rgba(255,255,255,.91);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 8px 24px rgba(0,0,0,.08);text-align:left;color:#1d1d1f;opacity:0;transform:translateY(-9px) scale(.97);transition:opacity .24s ease,transform .3s cubic-bezier(.2,.8,.2,1);}
+.menu-stack.menu-visible{pointer-events:auto;}
+.menu-stack.menu-visible .menu-card{opacity:1;transform:translateY(0) scale(1);}
+.menu-stack.menu-visible .menu-card:nth-child(1){transition-delay:.03s}.menu-stack.menu-visible .menu-card:nth-child(2){transition-delay:.10s}.menu-stack.menu-visible .menu-card:nth-child(3){transition-delay:.17s}
+.menu-card-icon{width:36px;height:36px;display:grid;place-items:center;flex:none;border-radius:12px;background:#f2f2f7;font-size:18px;color:#3a3a3c;}
+.menu-card>span:nth-child(2){display:flex;flex-direction:column;gap:4px;flex:1}.menu-card strong{font-size:14px;font-weight:700}.menu-card small{font-size:11px;color:#86868b}.menu-card-arrow{font-size:24px;color:#aeaeb2;}
+/* 방향 표시를 뒤집음: 왼쪽은 하행, 오른쪽은 상행 */
+.v-train.up{left:auto!important;right:12%!important;}
+.v-train.down{left:12%!important;right:auto!important;}
+.v-up-line{left:auto!important;right:14%!important;}
+.v-down-line{right:auto!important;left:14%!important;}
+.popup-header>div{display:flex;align-items:center;gap:12px;min-width:0;}
+.popup-stn-name{display:inline-flex;align-items:center;min-height:38px;line-height:1.15;white-space:normal;overflow-wrap:anywhere;font-size:clamp(20px,2.4vw,29px)!important;}
+.popup-header .badge{display:inline-flex;align-items:center;justify-content:center;flex:none;min-height:32px;line-height:1;padding:7px 11px;}
+@media(max-width:600px){.top-controls{top:7px;padding:0 12px;margin:7px auto 8px}.line-picker-trigger,.menu-trigger{min-height:49px;height:49px}.menu-trigger{width:49px}.line-picker-trigger{padding:8px 13px;gap:9px}.line-picker-trigger strong{font-size:16px}.line-button{min-width:58px!important;min-height:40px!important;padding:9px 12px!important}.menu-stack{top:66px;right:12px}.popup-header>div{gap:8px}.popup-stn-name{font-size:21px!important}.popup-header .badge{min-height:30px;padding:6px 9px}}
+
+
+/* ===== 레이아웃 보정: 기본은 노선 칩, 스크롤 시 퀵 컨트롤 ===== */
+.app-container{height:100dvh;overflow:hidden;background:#f5f5f7;}
+.top-controls{position:absolute;top:10px;left:0;right:0;width:100%;max-width:none;margin:0;padding:0 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:90;pointer-events:none;}
+.top-controls button{pointer-events:auto;}
+.line-picker-trigger{display:flex;opacity:0;visibility:hidden;pointer-events:none;transform:translateX(-12px);transition:opacity .25s ease,transform .32s ease,visibility .25s;}
+.line-picker-trigger.trigger-visible{opacity:1;visibility:visible;pointer-events:auto;transform:translateX(0);}
+.menu-trigger{margin-left:auto;flex:none;}
+.top-controls:not(.compact-mode) .menu-trigger{opacity:0;visibility:hidden;pointer-events:none;}
+.top-controls.compact-mode .menu-trigger{opacity:1;visibility:visible;pointer-events:auto;}
+.line-selector{position:relative;flex:0 0 auto;width:100%;max-width:none;min-height:64px;margin:0;padding:10px 14px 12px;display:flex;flex-wrap:nowrap;justify-content:flex-start;align-items:center;gap:9px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;background:rgba(245,245,247,.84);border:0;border-bottom:1px solid rgba(60,60,67,.08);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);opacity:1;transform:translateX(0);max-height:80px;transition:opacity .25s ease,transform .34s cubic-bezier(.2,.8,.2,1),max-height .28s ease,padding .28s ease;z-index:70;}
+.line-selector.compact-hidden{opacity:0;transform:translateX(-100%);max-height:0;min-height:0;padding-top:0;padding-bottom:0;border-bottom:0;pointer-events:none;}
+.line-selector.picker-open{position:absolute;top:64px;left:0;right:0;width:100%;height:auto;max-height:45dvh;min-height:0;flex-wrap:wrap;overflow-y:auto;justify-content:flex-start;padding:14px;background:rgba(245,245,247,.91);border:0;border-radius:0 0 20px 20px;box-shadow:0 12px 28px rgba(0,0,0,.10);}
+.line-button{flex:0 0 auto;}
+.main-content{flex:1 1 auto;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;padding:10px 0 110px;margin:0;background:#f5f5f7;overscroll-behavior-y:contain;}
+.map-instruction{margin:4px 0 20px;}
+.vertical-map-container{position:relative;width:100%;max-width:1000px;margin:0 auto;}
+.v-station-nodes,.v-trains-container{width:100%;}
+/* 선로와 열차는 화면 전체 폭을 활용하되 중앙 역명과 겹치지 않게 배치 */
+.v-up-line{left:35%!important;right:auto!important;}
+.v-down-line{left:65%!important;right:auto!important;}
+.v-train.up{left:35%!important;right:auto!important;}
+.v-train.down{left:65%!important;right:auto!important;}
+.menu-stack{top:74px;}
+@media(max-width:600px){
+ .top-controls{top:8px;padding:0 12px;}
+ .line-selector{min-height:60px;padding:9px 10px;gap:7px;}
+ .line-selector.picker-open{top:60px;padding:12px;}
+ .line-button{min-height:40px!important;min-width:58px!important;padding:9px 12px!important;}
+ .line-picker-trigger{min-height:49px;height:49px;padding:8px 13px;gap:8px;}
+ .menu-trigger{min-height:49px;height:49px;width:49px;}
+ .main-content{padding-top:8px;}
+ .vertical-map-container{width:100%;}
+ .v-up-line,.v-train.up{left:25%!important;}
+ .v-down-line,.v-train.down{left:75%!important;}
+ .v-station-name{font-size:13px;}
+ .menu-stack{top:66px;right:12px;}
+}
+@media(prefers-reduced-motion:reduce){.line-selector,.line-picker-trigger,.menu-trigger{transition:none!important;}}
+
+
+/* ===== Apple-like control polish v6 ===== */
+.top-controls{position:fixed!important;top:10px!important;left:0!important;right:0!important;width:100%!important;max-width:none!important;padding:0 18px!important;margin:0!important;z-index:120!important;display:flex!important;align-items:center!important;justify-content:space-between!important;pointer-events:none!important;}
+.top-controls button{pointer-events:auto!important;background:rgba(255,255,255,.70)!important;border:1px solid rgba(255,255,255,.58)!important;box-shadow:0 8px 28px rgba(25,25,35,.10),inset 0 1px 0 rgba(255,255,255,.72)!important;backdrop-filter:blur(24px) saturate(1.35)!important;-webkit-backdrop-filter:blur(24px) saturate(1.35)!important;}
+.line-picker-trigger{min-width:132px!important;min-height:52px!important;height:52px!important;padding:0 18px!important;justify-content:center!important;border-radius:18px!important;color:#1d1d1f!important;opacity:0;visibility:hidden;pointer-events:none!important;transform:translateX(-16px) scale(.97);transition:opacity .42s cubic-bezier(.22,1,.36,1),transform .52s cubic-bezier(.22,1,.36,1),visibility .42s!important;}
+.line-picker-trigger.trigger-visible{opacity:1;visibility:visible;pointer-events:auto!important;transform:translateX(0) scale(1);}
+.picker-label{font-size:15px;font-weight:650;letter-spacing:-.25px;white-space:nowrap;}
+.menu-trigger{position:relative!important;margin-left:auto!important;flex:none!important;width:52px!important;height:52px!important;min-height:52px!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;border-radius:50%!important;transition:width .28s cubic-bezier(.22,1,.36,1),background .3s ease,transform .3s ease!important;}
+.menu-trigger.menu-open{width:94px!important;border-radius:28px!important;}
+.line-selector{position:relative!important;width:100%!important;max-width:none!important;min-height:66px!important;height:auto!important;padding:10px 16px 12px!important;gap:9px!important;display:flex!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:flex-start!important;overflow-x:auto!important;overflow-y:hidden!important;white-space:nowrap!important;background:rgba(245,245,247,.68)!important;border:0!important;box-shadow:none!important;backdrop-filter:blur(24px) saturate(1.2)!important;-webkit-backdrop-filter:blur(24px) saturate(1.2)!important;opacity:1;transform:translateX(0);max-height:84px!important;transition:opacity .42s cubic-bezier(.22,1,.36,1),transform .58s cubic-bezier(.22,1,.36,1),max-height .42s ease,padding .42s ease!important;}
+.line-selector.compact-hidden{opacity:0!important;visibility:hidden!important;transform:translateX(-105%)!important;max-height:0!important;min-height:0!important;height:0!important;padding-top:0!important;padding-bottom:0!important;overflow:hidden!important;pointer-events:none!important;}
+/* In compact mode the route chips replace the route-picker button in the same top row. */
+.line-selector.picker-open{position:fixed!important;top:10px!important;left:12px!important;right:82px!important;width:auto!important;height:52px!important;min-height:52px!important;max-height:52px!important;margin:0!important;padding:5px 9px!important;display:flex!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:flex-start!important;overflow-x:auto!important;overflow-y:hidden!important;border-radius:18px!important;background:rgba(255,255,255,.70)!important;border:1px solid rgba(255,255,255,.58)!important;box-shadow:0 8px 28px rgba(25,25,35,.10),inset 0 1px 0 rgba(255,255,255,.72)!important;backdrop-filter:blur(24px) saturate(1.35)!important;-webkit-backdrop-filter:blur(24px) saturate(1.35)!important;opacity:1!important;visibility:visible!important;transform:translateX(0)!important;z-index:121!important;pointer-events:auto!important;}
+.line-button{flex:0 0 auto!important;background:rgba(255,255,255,.72)!important;border:1px solid rgba(60,60,67,.09)!important;backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important;transition:transform .38s cubic-bezier(.22,1,.36,1),background .25s ease,box-shadow .25s ease!important;}
+.line-button:active{transform:scale(.96)!important;}
+.menu-stack{position:fixed!important;top:74px!important;z-index:119!important;}
+.main-content{padding-top:10px!important;}
+@media(max-width:600px){.top-controls{top:8px!important;padding:0 12px!important}.line-picker-trigger,.menu-trigger{height:49px!important;min-height:49px!important}.line-picker-trigger{min-width:120px!important;padding:0 15px!important}.menu-trigger{width:49px!important}.line-selector{min-height:60px!important;padding:9px 10px!important;max-height:76px!important}.line-selector.picker-open{top:8px!important;left:8px!important;right:66px!important;height:49px!important;min-height:49px!important;max-height:49px!important;padding:4px 7px!important}.line-button{min-height:39px!important;min-width:56px!important;padding:8px 11px!important}.menu-stack{top:65px!important;right:12px!important}}
+@media(prefers-reduced-motion:reduce){.line-selector,.line-picker-trigger,.menu-trigger,.line-button{transition:none!important;}}
+
+
+/* V7 corrections: visible first station, transparent route row, fixed hamburger */
+.top-controls{
+  position:fixed!important;top:10px!important;left:0!important;right:0!important;
+  width:100%!important;max-width:none!important;padding:0 14px!important;margin:0!important;
+  z-index:300!important;pointer-events:none!important;display:flex!important;
+  align-items:center!important;justify-content:space-between!important;
+}
+.top-controls button{pointer-events:auto!important;}
+/* Hamburger remains a round icon button in every state */
+.menu-trigger{
+  position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;
+  visibility:visible!important;opacity:1!important;pointer-events:auto!important;
+  flex:0 0 50px!important;width:50px!important;height:50px!important;min-height:50px!important;
+  padding:0!important;border-radius:50%!important;font-size:23px!important;line-height:1!important;
+  color:#1d1d1f!important;background:rgba(255,255,255,.68)!important;
+  backdrop-filter:blur(22px) saturate(1.45)!important;-webkit-backdrop-filter:blur(22px) saturate(1.45)!important;
+  border:1px solid rgba(255,255,255,.78)!important;box-shadow:0 6px 22px rgba(20,20,30,.09)!important;
+}
+.menu-trigger .more-label{display:none!important;}
+/* No wrapper/card behind route chips, with a reserved lane for the fixed menu button */
+.line-selector{
+  position:relative!important;top:auto!important;left:auto!important;right:auto!important;
+  width:100%!important;max-width:none!important;box-sizing:border-box!important;
+  display:flex!important;align-items:center!important;flex-wrap:nowrap!important;
+  gap:8px!important;padding:10px 76px 10px 14px!important;margin:0!important;
+  min-height:62px!important;max-height:72px!important;overflow-x:auto!important;overflow-y:hidden!important;
+  background:transparent!important;border:0!important;border-bottom:0!important;box-shadow:none!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+  transition:opacity .48s cubic-bezier(.22,1,.36,1),transform .58s cubic-bezier(.22,1,.36,1),visibility .48s!important;
+}
+.line-selector::-webkit-scrollbar{display:none!important;}
+.line-button{
+  flex:0 0 auto!important;position:relative!important;z-index:1!important;
+  background:rgba(255,255,255,.67)!important;border:1px solid rgba(60,60,67,.10)!important;
+  backdrop-filter:blur(16px) saturate(1.25)!important;-webkit-backdrop-filter:blur(16px) saturate(1.25)!important;
+  box-shadow:0 2px 9px rgba(0,0,0,.035)!important;
+  transition:transform .42s cubic-bezier(.22,1,.36,1),opacity .42s cubic-bezier(.22,1,.36,1),background .25s ease!important;
+}
+.line-button:active{transform:scale(.96)!important;}
+/* Scrolled mode: swap the selector and the plain-text trigger in exactly the same lane */
+.line-picker-trigger{
+  position:absolute!important;left:14px!important;top:0!important;
+  min-width:0!important;width:auto!important;height:50px!important;min-height:50px!important;
+  padding:0 18px!important;border-radius:999px!important;gap:0!important;
+  color:#1d1d1f!important;background:rgba(255,255,255,.70)!important;
+  border:1px solid rgba(255,255,255,.78)!important;box-shadow:0 6px 22px rgba(20,20,30,.08)!important;
+  backdrop-filter:blur(22px) saturate(1.4)!important;-webkit-backdrop-filter:blur(22px) saturate(1.4)!important;
+}
+.line-picker-trigger .picker-label{font-size:15px!important;font-weight:650!important;white-space:nowrap!important;}
+.line-picker-trigger .current-line-label,#currentLineLabel{display:none!important;}
+.top-controls:not(.compact-mode) .line-picker-trigger{opacity:0!important;visibility:hidden!important;pointer-events:none!important;}
+.top-controls.compact-mode .line-picker-trigger.trigger-visible{opacity:1!important;visibility:visible!important;pointer-events:auto!important;transform:translateX(0)!important;}
+.top-controls.compact-mode .menu-trigger{opacity:1!important;visibility:visible!important;pointer-events:auto!important;}
+.line-selector.compact-hidden{
+  opacity:0!important;visibility:hidden!important;pointer-events:none!important;
+  transform:translateX(-34px)!important;max-height:0!important;min-height:0!important;
+  height:0!important;padding-top:0!important;padding-bottom:0!important;margin:0!important;overflow:hidden!important;
+}
+.line-selector.picker-open{
+  position:absolute!important;top:0!important;left:0!important;right:0!important;
+  width:calc(100% - 64px)!important;height:50px!important;min-height:50px!important;max-height:50px!important;
+  padding:4px 8px 4px 14px!important;margin:0!important;opacity:1!important;visibility:visible!important;
+  transform:translateX(0)!important;overflow-x:auto!important;overflow-y:hidden!important;
+  background:transparent!important;border:0!important;box-shadow:none!important;
+}
+.top-controls.compact-mode .line-selector.picker-open{margin-left:0!important;}
+/* Keep the menu stack aligned under its permanently fixed circular button */
+.menu-stack{position:fixed!important;top:70px!important;right:14px!important;z-index:299!important;}
+/* Add breathing room above the first station label, which is positioned above its node */
+.main-content{padding-top:38px!important;}
+.vertical-map-container{margin-top:12px!important;}
+@media(max-width:600px){
+ .top-controls{top:8px!important;padding:0 12px!important;}
+ .menu-trigger{width:47px!important;height:47px!important;min-height:47px!important;flex-basis:47px!important;}
+ .line-selector{min-height:59px!important;max-height:68px!important;padding:8px 67px 8px 12px!important;gap:7px!important;}
+ .line-picker-trigger{left:12px!important;height:47px!important;min-height:47px!important;padding:0 16px!important;}
+ .line-selector.picker-open{width:calc(100% - 59px)!important;height:47px!important;min-height:47px!important;max-height:47px!important;padding:3px 5px 3px 12px!important;}
+ .menu-stack{top:63px!important;right:12px!important;}
+ .main-content{padding-top:34px!important;}
+}
+@media(prefers-reduced-motion:reduce){.line-selector,.line-picker-trigger,.menu-trigger,.line-button{transition:none!important;}}
+
+
+/* ===== V8 precise layout fixes ===== */
+/* Keep the line chips in their own lane and reserve the fixed hamburger's space. */
+.line-selector{
+  box-sizing:border-box!important;
+  width:calc(100% - 88px)!important;
+  max-width:calc(100% - 88px)!important;
+  margin:0 76px 0 0!important;
+  padding:10px 8px 12px 16px!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  overflow-x:auto!important;
+  scrollbar-width:none!important;
+}
+.line-selector::-webkit-scrollbar{display:none!important;}
+.line-selector.picker-open{
+  width:calc(100% - 88px)!important;
+  max-width:calc(100% - 88px)!important;
+  margin-right:76px!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  padding-left:16px!important;
+  padding-right:8px!important;
+  flex-wrap:nowrap!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  max-height:84px!important;
+}
+.line-button{flex:0 0 auto!important;}
+/* The down-side train card had been positioned by its left edge, not its center.
+   Center it directly on the right rail so it cannot appear to leave the track. */
+.v-down-line{left:76%!important;right:auto!important;}
+.v-train.down{
+  left:76%!important;
+  right:auto!important;
+  transform:translateX(-50%)!important;
+}
+@media(max-width:600px){
+  .line-selector,.line-selector.picker-open{
+    width:calc(100% - 76px)!important;
+    max-width:calc(100% - 76px)!important;
+    margin-right:68px!important;
+    padding-left:10px!important;
+    padding-right:4px!important;
+  }
+  .v-down-line{left:76%!important;right:auto!important;}
+  .v-train.down{left:76%!important;right:auto!important;transform:translateX(-50%)!important;}
+}
+/* Hamburger remains a circular icon even while its menu is open. */
+.menu-trigger.menu-open{
+  width:52px!important;
+  min-width:52px!important;
+  border-radius:50%!important;
+}
+
+
+/* V9: keep the two vertical tracks mirrored at every viewport width. */
+.vertical-map-container{position:relative!important;width:100%!important;max-width:100%!important;}
+.v-up-line,.v-train.up{left:24%!important;right:auto!important;transform:translateX(-50%)!important;}
+.v-down-line,.v-train.down{left:76%!important;right:auto!important;transform:translateX(-50%)!important;}
+@media(min-width:900px){
+  .v-up-line,.v-train.up{left:32%!important;right:auto!important;transform:translateX(-50%)!important;}
+  .v-down-line,.v-train.down{left:68%!important;right:auto!important;transform:translateX(-50%)!important;}
+}
+@media(max-width:600px){
+  .v-up-line,.v-train.up{left:24%!important;right:auto!important;transform:translateX(-50%)!important;}
+  .v-down-line,.v-train.down{left:76%!important;right:auto!important;transform:translateX(-50%)!important;}
+}
+/* While station details are open, hide route controls and the fixed menu trigger. */
+body.popup-open .top-controls,
+body.popup-open #lineSelector,
+body.popup-open #linePickerTrigger,
+body.popup-open #menuTrigger,
+body.popup-open .menu-stack{
+  opacity:0!important;visibility:hidden!important;pointer-events:none!important;
+  transition:opacity .18s ease,visibility .18s ease!important;
+}
+
+
+/* Zoom controls and Y-shaped branch visualization */
+.zoom-widget{position:fixed;right:18px;bottom:92px;z-index:51;display:flex;flex-direction:column;gap:8px}
+.zoom-button{width:48px;height:48px;border:0;border-radius:50%;background:#fff;color:#171717;font-size:27px;font-weight:500;box-shadow:0 4px 18px #0003;cursor:pointer;display:grid;place-items:center;touch-action:manipulation}
+.zoom-button:active{transform:scale(.94)}
+#vMapContainer{transform:scale(var(--map-zoom,1));transform-origin:top center;transition:transform .16s ease;overflow:visible}
+.branch-overlay{position:absolute;left:50%;top:0;width:520px;transform:translateX(-50%);height:100%;pointer-events:none;overflow:visible;z-index:0}
+.branch-overlay path{fill:none;stroke:var(--branch-color,#009D3E);stroke-width:5;stroke-linecap:round;stroke-linejoin:round}
+.v-station-nodes,.v-trains-container{z-index:2}
+.branch-station{position:absolute;z-index:4;transform:translate(-50%,-50%);border:0;background:transparent;padding:6px 8px;color:#242424;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;touch-action:manipulation}
+.branch-station::before{content:"";position:absolute;left:50%;top:50%;width:12px;height:12px;border:3px solid var(--branch-color,#009D3E);background:#fff;border-radius:50%;transform:translate(-50%,-50%);z-index:-1}
+.branch-station span{display:block;margin-top:18px;background:#f5f5f7dd;border-radius:5px;padding:2px 4px}
+.branch-station.left span{transform:translateX(-5px)}
+.branch-station.right span{transform:translateX(5px)}
+@media(max-width:520px){.zoom-widget{right:12px;bottom:88px}.zoom-button{width:43px;height:43px}.branch-overlay{width:420px}.branch-station{font-size:11px}}
+
+</style>
+
+<style id="v15-transfer-rail-polish">
+:root { --v-spacing: 118px; --h-spacing: 128px; }
+.line-selector { padding: 10px 12px; gap: 10px; }
+.line-button { height: 36px; min-width: 42px; padding: 0 14px; font-size: 13px; }
+.main-content { padding-top: 14px; scroll-behavior:smooth; }
+.v-station-nodes { transition:opacity .18s ease; }
+.v-trains-container { transition:opacity .18s ease; }
+.map-instruction { font-size: 13px; margin-bottom: 28px; }
+.vertical-map-container { transition: width .42s cubic-bezier(.2,.8,.2,1); }
+.v-track-line { width: 5px; background: color-mix(in srgb, var(--line-color) 24%, #d1d5db); }
+.v-station-node { width: 17px; height: 17px; background: #fff; border-width: 4px; box-shadow: 0 0 0 5px rgba(255,255,255,.78), 0 3px 10px #00000012; transition: transform .28s cubic-bezier(.2,.8,.2,1), box-shadow .28s ease, background .25s ease; }
+.v-station-node:hover { transform: translateX(-50%) scale(1.18); box-shadow: 0 0 0 7px color-mix(in srgb, var(--line-color) 13%, transparent), 0 5px 16px #0002; }
+.v-station-name { top: -24px; color: #17181c; font-size: 15px; text-shadow: none; letter-spacing: -.25px; }
+.v-station-node.is-transfer { border-color: var(--line-color); box-shadow: 0 0 0 4px #fff, 0 0 0 7px color-mix(in srgb, var(--line-color) 18%, transparent), 0 4px 12px #00000012; }
+.v-station-node.is-transfer::after { content: ''; position:absolute; inset:-7px; border:1px solid color-mix(in srgb, var(--line-color) 48%, transparent); border-radius:50%; pointer-events:none; }
+.v-station-meta { position:absolute; top: 1px; left: calc(50% + 18px); display:flex; flex-direction:column; align-items:flex-start; gap:4px; max-width:140px; z-index:9; }
+.v-station-tags { display:flex; gap:3px; align-items:center; flex-wrap:wrap; }
+.v-transfer-tag, .v-rail-tag { appearance:none; border:1px solid #e5e7eb; border-radius:7px; padding:3px 5px; font-size:9px; line-height:1.1; font-weight:800; white-space:nowrap; background:rgba(255,255,255,.94); color:#34363b; box-shadow:0 2px 7px #0000000d; backdrop-filter:blur(12px); cursor:pointer; transition:transform .22s ease, background .22s ease, box-shadow .22s ease; }
+.v-transfer-tag { color:var(--line-color); border-color:color-mix(in srgb, var(--line-color) 30%, white); }
+.v-transfer-tag:active, .v-rail-tag:active { transform:scale(.94); }
+.v-rail-tag.ktx { color:#7c3aed; background:#f5f0ff; border-color:#e9d5ff; }
+.v-rail-tag.rail { color:#0369a1; background:#eff8ff; border-color:#bae6fd; }
+.v-train { width:52px; padding:6px 2px; border-radius:10px; font-size:12px; box-shadow:0 5px 15px #00000020; transition:top .85s cubic-bezier(.22,1,.36,1), transform .3s ease, box-shadow .3s ease; }
+.v-train-status { font-size:10px; }
+.h-map-area { height:160px; }
+.h-track-scroll-container { scroll-behavior:smooth; }
+.h-station-node { width:17px; height:17px; }
+.h-station-name { font-size:12px; }
+.h-train { width:52px; padding:6px 2px; border-radius:10px; font-size:11px; box-shadow:0 5px 15px #00000020; }
+.popup-header { padding:14px 18px; }
+.popup-stn-name { font-size:21px; }
+.badge { padding:6px 10px; font-size:13px; }
+.info-section { border-radius:20px; }
+.arr-col h4 { font-size:13px; }
+.arr-item, .tt-item { padding:14px; }
+.refresh-button { width:58px; height:58px; }
+@media(max-width:600px) {
+  :root { --v-spacing: 114px; }
+  .v-station-name { font-size:14px; }
+  .v-station-meta { left: calc(50% + 17px); max-width:105px; }
+  .v-transfer-tag, .v-rail-tag { font-size:8px; padding:3px 4px; }
+  .v-train { width:48px; }
+  .h-map-area { height:150px; }
+}
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition-duration:.01ms!important; animation-duration:.01ms!important; } }
+</style>
+
+
+<style id="v15-transfer-tag-polish">
+.v-transfer-count { display:inline-block; padding:3px 5px; border-radius:7px; background:color-mix(in srgb,var(--line-color) 10%,white); color:var(--line-color); border:1px solid color-mix(in srgb,var(--line-color) 22%,white); font-size:8px; font-weight:900; white-space:nowrap; }
+.station-arrive-pulse { animation:stationArrivePulse .9s cubic-bezier(.2,.8,.2,1); }
+@keyframes stationArrivePulse { 0%{box-shadow:0 0 0 4px #fff,0 0 0 7px color-mix(in srgb,var(--line-color) 18%,transparent)} 45%{box-shadow:0 0 0 8px #fff,0 0 0 16px color-mix(in srgb,var(--line-color) 24%,transparent);transform:translateX(-50%) scale(1.25)} 100%{box-shadow:0 0 0 4px #fff,0 0 0 7px color-mix(in srgb,var(--line-color) 18%,transparent)} }
+.v-station-meta { pointer-events:auto; }
+.v-station-node { cursor:pointer; }
+.v-station-node .v-station-name { pointer-events:none; }
+.v-station-node .v-transfer-count { pointer-events:none; }
+.app-toast { position:fixed;left:50%;bottom:86px;z-index:250;max-width:calc(100vw - 32px);padding:11px 15px;border-radius:14px;background:rgba(28,29,33,.92);color:#fff;font-size:12px;font-weight:650;text-align:center;box-shadow:0 10px 35px #0002;backdrop-filter:blur(18px);opacity:0;transform:translate(-50%,12px) scale(.97);transition:opacity .25s ease,transform .25s cubic-bezier(.2,.8,.2,1);pointer-events:none;}
+.app-toast.visible { opacity:1;transform:translate(-50%,0) scale(1); }
+</style>
+
+
+<style id="transfer-hub-cleanup-v19">
+/* 환승역: 이미지처럼 굵은 중심 원과 노선별 컬러 핸들 */
+.main-content { scroll-behavior:auto !important; }
+.v-station-nodes,.v-trains-container { transition:none !important; }
+.v-station-node.is-transfer { z-index:12; border-color:transparent!important; background:transparent!important; box-shadow:none!important; }
+.v-station-node.is-transfer::after { display:none!important; }
+.transfer-hub { position:absolute; left:50%; top:50%; width:0;height:0; z-index:16; pointer-events:none; }
+.transfer-hub-core { position:absolute; left:-16px;top:-16px;width:32px;height:32px;border:7px solid #111; border-radius:50%; background:#fff; box-sizing:border-box; z-index:3; pointer-events:none; }
+.transfer-arm { position:absolute; left:-10px;top:-2px;width:20px;height:56px;padding:0;border:0;border-radius:0 0 13px 13px;background:var(--arm-color); transform-origin:10px 2px; pointer-events:auto; cursor:grab; touch-action:pan-y; display:flex;justify-content:center;align-items:flex-end; }
+.transfer-arm span { position:absolute; top:58px; left:50%; transform:translateX(-50%); font-size:10px; line-height:1; font-weight:800; color:#1d1d1f; white-space:nowrap; }
+.transfer-arm.arm-0 { transform:rotate(-150deg); }
+.transfer-arm.arm-1 { transform:rotate(180deg); }
+.transfer-arm.arm-2 { transform:rotate(150deg); }
+.transfer-arm:active { cursor:grabbing; filter:brightness(.94); }
+.v-station-node.is-transfer .v-station-name { z-index:4; }
+@media(max-width:600px){.transfer-hub-core{width:28px;height:28px;left:-14px;top:-14px;border-width:6px}.transfer-arm{width:18px;height:48px;left:-9px}.transfer-arm span{top:50px;font-size:9px}}
+@media(prefers-reduced-motion:reduce){.v-station-node,.transfer-arm{transition:none!important}}
+</style>
+
+
+<style id="transfer-hub-interaction-fix-v21">
+/* 환승 노선 막대는 역명 아래쪽으로 뻗고, 드래그할 때만 노선 이동 */
+.transfer-hub { z-index: 16; pointer-events:none; }
+.transfer-hub-core { width:34px; height:34px; left:-17px; top:-17px; border:7px solid #111; background:#fff; z-index:4; pointer-events:auto; }
+.transfer-arm {
+  width:20px; height:62px; left:-10px; top:-2px;
+  transform-origin:10px 2px; border-radius:0 0 14px 14px;
+  touch-action:none; user-select:none; -webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent; pointer-events:auto;
+}
+/* CSS rotation is measured from the downward-pointing base arm. */
+.transfer-arm.arm-0 { transform:rotate(-30deg); }
+.transfer-arm.arm-1 { transform:rotate(0deg); }
+.transfer-arm.arm-2 { transform:rotate(30deg); }
+.transfer-arm span { top:64px; font-size:12px; font-weight:800; pointer-events:none; }
+.v-station-node.is-transfer .v-station-name { z-index:5; }
+/* 역명과 노선도 라벨을 전반적으로 확대 */
+.v-station-name { font-size:17px !important; font-weight:750 !important; }
+.h-station-name { font-size:13px !important; font-weight:700 !important; }
+.popup-stn-name { font-size:22px !important; }
+@media(max-width:600px) {
+  .transfer-hub-core { width:30px; height:30px; left:-15px; top:-15px; border-width:6px; }
+  .transfer-arm { width:18px; height:56px; left:-9px; }
+  .transfer-arm.arm-0 { transform:rotate(-30deg); }
+  .transfer-arm.arm-1 { transform:rotate(0deg); }
+  .transfer-arm.arm-2 { transform:rotate(30deg); }
+  .transfer-arm span { top:58px; font-size:11px; }
+  .v-station-name { font-size:16px !important; }
+  .h-station-name { font-size:12px !important; }
+}
+</style>
+
+
+<style id="station-size-spacing-mobile-rails-v22">
+/* v22: 역명/역 노드를 키우고 환승 허브와 역명 사이 간격 확보 */
+.v-station-node:not(.is-transfer) { width:20px !important; height:20px !important; }
+.v-station-node.is-transfer { width:22px !important; height:22px !important; }
+.v-station-name { top:-31px !important; font-size:18px !important; line-height:1.25 !important; font-weight:750 !important; }
+.v-station-node.is-transfer .v-station-name { top:-35px !important; }
+.transfer-hub-core { width:38px !important; height:38px !important; left:-19px !important; top:-19px !important; border-width:7px !important; }
+.h-station-node { width:19px !important; height:19px !important; }
+.h-station-name { font-size:14px !important; font-weight:750 !important; }
+@media (max-width:600px) {
+  .v-station-node:not(.is-transfer) { width:21px !important; height:21px !important; }
+  .v-station-node.is-transfer { width:23px !important; height:23px !important; }
+  .v-station-name { top:-33px !important; font-size:18px !important; }
+  .v-station-node.is-transfer .v-station-name { top:-38px !important; }
+  .transfer-hub-core { width:40px !important; height:40px !important; left:-20px !important; top:-20px !important; border-width:7px !important; }
+  .h-station-node { width:20px !important; height:20px !important; }
+  .h-station-name { font-size:13px !important; }
+  /* 양쪽 세로 선로를 기존 위치에서 각각 5px 바깥으로 확장 */
+  .v-up-line, .v-train.up { left:calc(24% - 5px) !important; right:auto !important; transform:translateX(-50%) !important; }
+  .v-down-line, .v-train.down { left:calc(76% + 5px) !important; right:auto !important; transform:translateX(-50%) !important; }
+}
+</style>
+
+
+<style id="v23-spacing-performance-fix">
+/* v23: 역 간격 확대, 환승 막대 최대 길이 제한, 모바일 렌더링 부담 완화 */
+:root { --v-spacing: 132px; --h-spacing: 128px; }
+.v-station-node { contain: layout style; }
+.v-station-name { line-height: 1.3 !important; }
+.transfer-arm { max-height: 104px; will-change: height; }
+.transfer-arm span { white-space: nowrap; }
+@media (max-width:600px) {
+  .v-station-name { font-size: 18px !important; }
+  .transfer-arm { max-height: 96px; }
+}
+@media (prefers-reduced-motion: reduce) { .transfer-arm { will-change: auto; } }
+</style>
+
+
+<style id="feature-photo-and-drag-fix-v24">
+/* 역 노드 중심 X좌표에 고정된 특징 건물 사진: 노선 라인을 가로질러 배치되고 지도 스크롤과 함께 움직임 */
+.feature-photo-layer{display:none!important;}
+/* 각 설정 키는 사진 한 장만 표시: ml=화면 왼쪽 끝, mr=화면 오른쪽 끝 */
+.station-feature-photo-positioner{position:absolute;left:50%;top:50%;width:calc(100vw - 24px);height:0;transform:translate(-50%,-50%);pointer-events:none;z-index:3;}
+.station-feature-photo{position:absolute;top:0;display:block;width:clamp(76px,12vw,118px);height:clamp(62px,9vw,88px);object-fit:cover;object-position:center;border:0;border-radius:10px;background:transparent;box-shadow:none;opacity:.94;pointer-events:none;}
+.station-feature-photo.pos-ml,.station-feature-photo.pos-tl,.station-feature-photo.pos-bl{left:0;-webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);}
+.station-feature-photo.pos-mr,.station-feature-photo.pos-tr,.station-feature-photo.pos-br{right:0;-webkit-mask-image:linear-gradient(to left,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);mask-image:linear-gradient(to left,transparent 0%,rgba(0,0,0,.5) 8%,#000 23%);}
+.station-feature-photo.pos-tl,.station-feature-photo.pos-tc,.station-feature-photo.pos-tr{transform:translateY(calc(-100% - 18px));}
+/* Middle positions are vertically centered on the station node, not placed below it. */
+.station-feature-photo.pos-ml,.station-feature-photo.pos-mr{top:0;transform:translateY(-50%);}
+.station-feature-photo.pos-bl,.station-feature-photo.pos-bc,.station-feature-photo.pos-br{transform:translateY(18px);}
+.station-feature-photo.pos-tc,.station-feature-photo.pos-bc{left:50%;transform:translate(-50%,0);}
+.station-feature-photo.pos-tc{transform:translate(-50%,calc(-100% - 18px));}
+@media(max-width:600px){.station-feature-photo-positioner{width:calc(100vw - 16px);}.station-feature-photo{width:68px;height:56px;border-radius:8px;}}
+/* drag affordance: pointer capture is handled in JS; fixed-size cap prevents runaway handles */
+.transfer-arm{height:62px;max-height:92px;overflow:visible;touch-action:none!important;user-select:none;-webkit-user-select:none;}
+.transfer-arm span{pointer-events:none;}
+</style>
+
+
+
+
 </head>
+
 <body>
-  <div class="app-container">
-    <header class="topbar">
-      <div class="logo">🚇 서울 지하철 관제</div>
-      <div class="controls">
-        <input type="text" id="apiKeyInput" placeholder="API 키 입력" value="sample" aria-label="API 키 입력">
-        <select id="lineSelect" aria-label="노선 선택">
-          <option value="1호선">1호선</option>
-          <option value="2호선" selected>2호선</option>
-          <option value="3호선">3호선</option>
-          <option value="4호선">4호선</option>
-          <option value="5호선">5호선</option>
-          <option value="6호선">6호선</option>
-          <option value="7호선">7호선</option>
-          <option value="8호선">8호선</option>
-          <option value="9호선">9호선</option>
-          <option value="GTX-A">GTX-A</option>
-          <option value="경의중앙선">경의중앙선</option>
-        </select>
-      </div>
-    </header>
+<div class="app-container">
 
-    <main class="main-content" id="mainContent">
-      <div class="map-instruction">역을 터치하면 상세 정보 및 가로 지도가 열립니다.</div>
-      <div class="vertical-map-container" id="vMapContainer">
-        <div class="v-track-line v-up-line"></div>
-        <div class="v-track-line v-down-line"></div>
-        <div id="vStationNodes" class="v-station-nodes"></div>
-        <div id="vTrainsContainer" class="v-trains-container"></div>
-      </div>
-    </main>
+  <!-- 상단 퀵 컨트롤 -->
+  <div class="top-controls" id="topControls">
+    <button type="button" class="line-picker-trigger" id="linePickerTrigger" aria-expanded="false">
+      <span class="picker-label">노선 선택</span>
+    </button>
+    <button type="button" class="menu-trigger" id="menuTrigger" aria-label="메뉴 열기" aria-expanded="false">☰</button>
+  </div>
+  <nav class="line-selector" id="lineSelector" aria-label="지하철 노선 선택"></nav>
+  <div class="menu-stack" id="menuStack" aria-hidden="true">
+    <button type="button" class="menu-card" data-menu="login"><span class="menu-card-icon">↗</span><span><strong>로그인</strong><small>계정 및 개인 설정</small></span><span class="menu-card-arrow">›</span></button>
+    <button type="button" class="menu-card" data-menu="developer"><span class="menu-card-icon">⌘</span><span><strong>개발자</strong><small>앱 정보 및 제작자</small></span><span class="menu-card-arrow">›</span></button>
+    <button type="button" class="menu-card" data-menu="api"><span class="menu-card-icon">⌁</span><span><strong>API 정보</strong><small>데이터 제공 및 상태</small></span><span class="menu-card-arrow">›</span></button>
+  </div>
 
-    <div class="full-popup hidden" id="fullPopup">
-      <div class="popup-header">
-        <div>
-          <span class="badge" id="panelLineBadge">2호선</span>
-          <span id="panelStationName" class="popup-stn-name">강남역</span>
+  <!-- 세로형 노선 지도 -->
+  <main class="main-content" id="mainContent">
+    <div class="map-instruction">
+      열차를 선택하면 운행 정보를 확인할 수 있어요.
+    </div>
+
+    <div class="vertical-map-container" id="vMapContainer">
+      <div class="v-track-line v-up-line"></div>
+      <div class="v-track-line v-down-line"></div>
+      <div id="vStationNodes" class="v-station-nodes"></div>
+      <div id="vTrainsContainer" class="v-trains-container"></div>
+    </div>
+    <div id="featurePhotoLayer" class="feature-photo-layer" aria-label="선택한 역 주변 특징 건물 사진"></div>
+  </main>
+
+  <!-- 지도 확대/축소: 새로고침 버튼 바로 위에 + / - 배치 -->
+  <div class="zoom-widget" aria-label="노선도 확대 축소">
+    <button type="button" class="zoom-button" id="zoomIn" aria-label="노선도 확대" title="확대">+</button>
+    <button type="button" class="zoom-button" id="zoomOut" aria-label="노선도 축소" title="축소">−</button>
+  </div>
+
+  <!-- 오른쪽 하단 새로고침 -->
+  <div class="refresh-widget">
+    <button class="refresh-button" id="refreshButton"
+            aria-label="실시간 열차 정보 새로고침"
+            title="새로고침">↻</button>
+    <span class="last-refresh" id="lastRefresh">새로고침 대기 중</span>
+  </div>
+
+  <section class="train-detail-card hidden" id="trainDetailCard" aria-live="polite">
+    <div class="train-card-top"><div class="train-line-circle" id="trainCardLineNum">2</div>
+      <div class="train-card-heading"><div class="train-card-title">열차 <strong id="trainCardNo">현재 정보 없음</strong> <span id="trainCardStatus" class="train-status-pill">현재 정보 없음</span></div>
+      <div class="train-card-sub" id="trainCardLocation">현재 위치: 현재 정보 없음</div></div>
+      <button class="train-card-refresh" id="trainCardRefresh" aria-label="열차 정보 새로고침">↻</button></div>
+    <div class="train-card-progress-label"><span>현재 열차 정보</span><strong id="trainCardProgressText">현재 정보 없음</strong></div>
+    <div class="train-progress"><span id="trainCardProgress"></span></div>
+    <div class="train-progress-scale"><span id="trainCardStart">현재 역</span><span id="trainCardMid">운행 상태</span><span id="trainCardEnd">종착역</span></div>
+    <div class="train-card-actions"><button id="trainCardAlert">♧ 도착 알림 받기</button><button id="trainCardMap">▣ 전체 노선 지도보기</button></div>
+  </section>
+
+  <!-- 역 상세 팝업 -->
+  <div class="full-popup hidden" id="fullPopup">
+
+    <div class="popup-header">
+      <div>
+        <span class="badge" id="panelLineBadge">2호선</span>
+        <span id="panelStationName" class="popup-stn-name">강남역</span>
+      </div>
+      <button class="close-btn" id="closePopup">✕ 닫기</button>
+    </div>
+
+    <section class="h-map-area">
+      <div class="h-track-scroll-container" id="hTrackScroll">
+        <div class="h-track-wrapper" id="hTrackWrapper">
+          <div class="h-track-line h-up-line"></div>
+          <div class="h-track-line h-down-line"></div>
+          <div id="hStationNodes" class="h-station-nodes"></div>
+          <div id="hTrainsContainer" class="h-trains-container"></div>
         </div>
-        <button class="close-btn" id="closePopup">✕ 닫기</button>
       </div>
+    </section>
 
-      <section class="h-map-area">
-        <div class="h-track-scroll-container">
-          <div class="h-track-wrapper" id="hTrackWrapper">
-            <div class="h-track-line h-up-line"></div>
-            <div class="h-track-line h-down-line"></div>
-            <div id="hStationNodes" class="h-station-nodes"></div>
-            <div id="hTrainsContainer" class="h-trains-container"></div>
+
+
+
+    <div class="popup-body">
+
+      <section class="info-section">
+        <h3>⏱️ 실시간 도착 정보</h3>
+        <div id="arrLoading" class="loading-text">불러오는 중...</div>
+        <div class="arrival-split">
+          <div class="arr-col">
+            <h4>상행 / 내선</h4>
+            <div id="arrUpList">현재 정보 없음</div>
+          </div>
+          <div class="arr-col">
+            <h4>하행 / 외선</h4>
+            <div id="arrDownList">현재 정보 없음</div>
           </div>
         </div>
       </section>
 
-      <div class="popup-body">
-        <div class="info-section">
-          <h3>⏱️ 실시간 도착 정보</h3>
-          <div id="arrLoading" class="loading-text">불러오는 중...</div>
-          <div class="arrival-split">
-            <div class="arr-col">
-              <h4>상행 / 내선</h4>
-              <div id="arrUpList" class="arr-list">도착 정보 없음</div>
-            </div>
-            <div class="arr-col">
-              <h4>하행 / 외선</h4>
-              <div id="arrDownList" class="arr-list">도착 정보 없음</div>
-            </div>
+      <section class="info-section">
+        <h3>📊 승하차 통계</h3>
+        <div id="statLoading" class="loading-text">데이터 분석 중...</div>
+        <div class="stat-grid">
+          <div class="stat-box">
+            <div class="stat-title">조회 날짜 승차</div>
+            <div class="stat-value" id="timeRideNum">-</div>
           </div>
+          <div class="stat-box">
+            <div class="stat-title">조회 날짜 하차</div>
+            <div class="stat-value" id="timeAlightNum">-</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="info-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+          <h3 style="margin:0">🕒 역 시간표</h3>
+          <span id="ttDateType"
+                style="font-size:12px;font-weight:bold;color:var(--accent)">
+            평일 기준
+          </span>
         </div>
 
-        <div class="info-section">
-          <h3>📊 시간대별 승하차 통계</h3>
-          <div id="statLoading" class="loading-text">데이터 분석 중...</div>
-          <div class="stat-grid">
-            <div class="stat-box">
-              <div class="stat-title">해당 시간 승차</div>
-              <div class="stat-value" id="timeRideNum">-</div>
-            </div>
-            <div class="stat-box">
-              <div class="stat-title">해당 시간 하차</div>
-              <div class="stat-value" id="timeAlightNum">-</div>
-            </div>
+        <p style="font-size:11px;color:#64748b">
+          현재 시간 이후의 열차를 표시합니다.
+        </p>
+
+        <div id="ttLoading" class="loading-text">
+          시간표 데이터를 불러오는 중입니다...
+        </div>
+
+        <div class="arrival-split">
+          <div class="arr-col">
+            <h4>상행 / 내선</h4>
+            <div id="ttUpList" class="tt-list">현재 정보 없음</div>
+          </div>
+          <div class="arr-col">
+            <h4>하행 / 외선</h4>
+            <div id="ttDownList" class="tt-list">현재 정보 없음</div>
           </div>
         </div>
-        
-        <div class="info-section">
-          <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <h3>🕒 역 시간표 (현재시간 이후)</h3>
-            <span id="ttDateType" style="font-size:12px; font-weight:bold; color:var(--accent);">평일 기준</span>
-          </div>
-          <div id="ttLoading" class="loading-text">시간표 데이터를 불러오는 중입니다...</div>
-          <div class="arrival-split">
-            <div class="arr-col">
-              <h4>상행 / 내선</h4>
-              <div id="ttUpList" class="tt-list">시간표 없음</div>
-            </div>
-            <div class="arr-col">
-              <h4>하행 / 외선</h4>
-              <div id="ttDownList" class="tt-list">시간표 없음</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      </section>
+
     </div>
   </div>
-  <script src="app.js"></script>
+
+</div>
+
+<script src="line.js"></script>
+<script>
+/* ========================================
+   API 설정
+
+   실제 서비스에서는 API 키를 서버에서 관리하세요.
+======================================== */
+
+const REALTIME_API_KEY = '486c77684e696c7331303157766b6779';
+const OPEN_API_KEY = '486c77684e696c7331303157766b6779';
+
+const IS_LOCAL =
+  location.hostname === 'localhost' ||
+  location.hostname === '127.0.0.1' ||
+  location.hostname === '';
+
+const BASE_SW = IS_LOCAL
+  ? 'http://swopenapi.seoul.go.kr/api/subway'
+  : '/api/sw';
+
+const BASE_OPEN = IS_LOCAL
+  ? 'http://openapi.seoul.go.kr:8088'
+  : '/api/open';
+
+
+/* ========================================
+   노선 데이터
+
+   2호선은 시청에서 시작해 순환한 뒤
+   시청으로 돌아오는 순서로 정의합니다.
+
+   성수·신설동 및 신도림·까치산 지선은
+   본선과 별도로 취급해야 실제 열차 위치가
+   정확해집니다.
+======================================== */
+
+const lineData = window.SUBWAY_LINE_DATA || {};;
+
+
+/* ========================================
+   앱 상태
+======================================== */
+
+let currentLine = '2호선';
+let currentStation = '';
+let currentPopupStations = [];
+let selectedTrainData = null;
+let circularCycleHeight = 0;
+let isLoopAdjusting = false;
+
+let refreshInterval = null;
+let popupRefreshTimer = null;
+let elapsedTimer = null;
+
+let mapRequestId = 0;
+let popupRequestId = 0;
+let lastRefreshTime = null;
+let isRefreshing = false;
+
+
+/* ========================================
+   DOM
+======================================== */
+
+const $ = id => document.getElementById(id);
+
+const lineSelector = $('lineSelector');
+const fullPopup = $('fullPopup');
+const closePopupBtn = $('closePopup');
+const refreshButton = $('refreshButton');
+
+const vMapContainer = $('vMapContainer');
+const vStationNodes = $('vStationNodes');
+const vTrainsContainer = $('vTrainsContainer');
+
+const hTrackWrapper = $('hTrackWrapper');
+const hStationNodes = $('hStationNodes');
+const hTrainsContainer = $('hTrainsContainer');
+
+const pName = $('panelStationName');
+const pBadge = $('panelLineBadge');
+
+const arrUpList = $('arrUpList');
+const arrDownList = $('arrDownList');
+const ttUpList = $('ttUpList');
+const ttDownList = $('ttDownList');
+
+const timeRideNum = $('timeRideNum');
+const timeAlightNum = $('timeAlightNum');
+
+const ttDateType = $('ttDateType');
+
+const V_SPACING = 132;
+const H_SPACING = 128;
+
+
+/* ========================================
+   유틸리티
+======================================== */
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#039;'
+  })[char]);
+}
+
+function normalizeStationName(name) {
+  return String(name || '')
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/[（(][^）)]*[）)]/g, '')
+    .replace(/역$/, '')
+    .replace(/[·ㆍ]/g, '');
+}
+
+function getStationIndex(stations, name) {
+  const target = normalizeStationName(name);
+
+  if (!target) return -1;
+
+  return stations.findIndex(station =>
+    normalizeStationName(station) === target
+  );
+}
+
+function getWeekTag() {
+  const day = new Date().getDay();
+
+  if (day === 6) return { tag:'2', name:'토요일 기준' };
+  if (day === 0) return { tag:'3', name:'휴일 기준' };
+
+  return { tag:'1', name:'평일 기준' };
+}
+
+function timeToSeconds(time) {
+  if (!time) return 0;
+
+  const parts = String(time).split(':');
+  let hours = parseInt(parts[0], 10) || 0;
+
+  if (hours < 4) hours += 24;
+
+  return hours * 3600
+    + (parseInt(parts[1], 10) || 0) * 60
+    + (parseInt(parts[2], 10) || 0);
+}
+
+function getTrainStatusText(status) {
+  return ({
+    '0':'진입',
+    '1':'도착',
+    '2':'출발',
+    '3':'전역출발'
+  })[String(status)] || '운행 중';
+}
+
+function setLoading(id, visible) {
+  $(id).classList.toggle('hidden', !visible);
+}
+
+
+/* ========================================
+   마지막 새로고침 시간
+======================================== */
+
+function updateRefreshLabel() {
+  if (!lastRefreshTime) {
+    $('lastRefresh').textContent = '새로고침 대기 중';
+    return;
+  }
+
+  const seconds = Math.max(
+    0,
+    Math.floor((Date.now() - lastRefreshTime) / 1000)
+  );
+
+  if (seconds < 60) {
+    $('lastRefresh').textContent = `${seconds}초 전`;
+  } else if (seconds < 3600) {
+    $('lastRefresh').textContent =
+      `${Math.floor(seconds / 60)}분 전`;
+  } else {
+    $('lastRefresh').textContent =
+      `${Math.floor(seconds / 3600)}시간 전`;
+  }
+}
+
+function markRefreshed() {
+  lastRefreshTime = Date.now();
+  updateRefreshLabel();
+}
+
+
+/* ========================================
+   노선 선택 버튼 생성
+======================================== */
+
+function renderLineButtons() {
+  lineSelector.innerHTML = '';
+
+  Object.entries(lineData).forEach(([name, data]) => {
+    const button = document.createElement('button');
+
+    button.type = 'button';
+    button.className = 'line-button';
+    button.textContent = name;
+    button.dataset.line = name;
+    button.style.setProperty('--button-color', data.color);
+
+    button.addEventListener('click', () => {
+      if (currentLine === name) return;
+
+      fullPopup.classList.add('hidden');
+      $('trainDetailCard').classList.add('hidden');
+
+      if (popupRefreshTimer) {
+        clearInterval(popupRefreshTimer);
+        popupRefreshTimer = null;
+      }
+
+      popupRequestId++;
+      initMaps(name);
+
+      button.scrollIntoView({
+        behavior:'smooth',
+        block:'nearest',
+        inline:'center'
+      });
+    });
+
+    lineSelector.appendChild(button);
+  });
+
+  updateActiveLineButton();
+}
+
+function updateActiveLineButton() {
+  const label = document.getElementById('currentLineLabel'); if (label) label.textContent = currentLine || '노선 선택';
+  document.querySelectorAll('.line-button').forEach(button => {
+    const active = button.dataset.line === currentLine;
+
+    button.classList.toggle('active', active);
+
+    if (active) {
+      button.style.background = lineData[currentLine].color;
+      button.style.borderColor = lineData[currentLine].color;
+      button.style.color = '#fff';
+    } else {
+      button.style.background = '#f8fafc';
+      button.style.borderColor = '#e2e8f0';
+      button.style.color = '#475569';
+    }
+  });
+
+  document.documentElement.style.setProperty(
+    '--line-color',
+    lineData[currentLine].color
+  );
+}
+
+
+/* ========================================
+   세로 지도 초기화
+======================================== */
+
+let toastTimer = null;
+function showToastMessage(message) {
+  let toast = document.getElementById('appToast');
+  if (!toast) { toast = document.createElement('div'); toast.id = 'appToast'; toast.className = 'app-toast'; document.body.appendChild(toast); }
+  toast.textContent = message;
+  toast.classList.add('visible');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('visible'), 2400);
+}
+
+// 환승 연결은 현재 등록된 노선 데이터에 같은 역명이 존재하는 경우에만 표시합니다.
+
+
+function getStationLineConnections(station) {
+  const normalized = normalizeStationName(station);
+  return Object.entries(lineData)
+    .filter(([name, data]) => name !== currentLine && data.stations.some(s => normalizeStationName(s) === normalized))
+    .map(([name, data]) => ({ name, color: data.color }));
+}
+
+function navigateToLineStation(lineName, station) {
+  const targetLine = lineData[lineName];
+  if (!targetLine) return;
+  const normalized = normalizeStationName(station);
+  const targetIndex = targetLine.stations.findIndex(s => normalizeStationName(s) === normalized);
+  if (targetIndex < 0) {
+    showToastMessage?.(`${lineName}에서 같은 이름의 역을 찾을 수 없어요.`);
+    return;
+  }
+  fullPopup.classList.add('hidden');
+  document.body.classList.remove('popup-open');
+  $('trainDetailCard')?.classList.add('hidden');
+  if (popupRefreshTimer) { clearInterval(popupRefreshTimer); popupRefreshTimer = null; }
+  lineMenuOpen = false;
+  if (typeof setCompactMode === 'function' && compactMode) setCompactMode(true);
+  initMaps(lineName);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const main = $('mainContent');
+    const baseCount = targetLine.circular ? targetLine.stations.length - 1 : targetLine.stations.length;
+    // 순환 노선은 가운데 복제본으로 이동해 양방향으로 계속 스크롤할 수 있게 합니다.
+    const index = targetLine.circular ? baseCount + (targetIndex % baseCount) : targetIndex;
+    main.scrollTo({ top: Math.max(0, index * V_SPACING - main.clientHeight * .38), behavior: 'smooth' });
+    const targetNode = [...vStationNodes.querySelectorAll('.v-station-node')].find(node => normalizeStationName(node.dataset.station || '') === normalized && Math.abs(parseFloat(node.style.top || '0') - index * V_SPACING) < 2);
+    if (targetNode) {
+      targetNode.classList.add('station-arrive-pulse');
+      setTimeout(() => targetNode.classList.remove('station-arrive-pulse'), 1000);
+    }
+  }));
+}
+
+// 역 이름별 특징 건물 사진. 지도 최초 표시 시 자동으로 역 노드에 배치됩니다.
+// 공식 성신여대 홈페이지에 게시된 돈암수정캠퍼스 사진을 기본값으로 사용합니다.
+// 위치 키: tl/tc/tr/ml/mr/bl/bc/br (역 노드 기준의 위치)
+const FEATURE_PHOTOS_BY_STATION = {
+  '성신여대입구': {
+    mr: 'https://www.sungshin.ac.kr/editorUpload/images/000685/001.jpg'
+  }
+};
+function getFeaturePhotoConfig(stationName = ''){
+  const normalizePhotoStation = value => String(value || '').replace(/역$/,'').replace(/\s+/g,'').trim();
+  const key = Object.keys(FEATURE_PHOTOS_BY_STATION).find(name => normalizePhotoStation(name) === normalizePhotoStation(stationName));
+  return key ? { name:key, photos:FEATURE_PHOTOS_BY_STATION[key] } : null;
+}
+function renderFeaturePhotos(){
+  // 사진은 별도 화면 레이어가 아니라 해당 역 노드 안에 생성되어 노선도와 함께 이동합니다.
+  const layer = $('featurePhotoLayer');
+  if (layer) layer.replaceChildren();
+}
+renderFeaturePhotos();
+
+function renderBranchTracks(lineName){
+  const old = vMapContainer.querySelector('.branch-overlay');
+  if(old) old.remove();
+  vMapContainer.querySelectorAll('.branch-station').forEach(n=>n.remove());
+  const line = lineData[lineName];
+  if(!line || !line.branches || lineName !== '2호선') return;
+  const ns='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('class','branch-overlay');
+  svg.setAttribute('viewBox',`0 0 520 ${Math.max(1,parseFloat(vMapContainer.style.height)||500)}`);
+  svg.setAttribute('preserveAspectRatio','none');
+  const centerX=260;
+  const baseStations=line.stations.slice(0,-1);
+  const branchDefs=[
+    {key:'성수',side:'right',x:365,color:line.color,stations:['성수','용답','신답','용두','신설동']},
+    {key:'신도림',side:'left',x:155,color:line.color,stations:['신도림','도림천','양천구청','신정네거리','까치산']}
+  ];
+  branchDefs.forEach(def=>{
+    const index=baseStations.indexOf(def.key);
+    if(index<0) return;
+    const y=index*V_SPACING;
+    const dir=def.side==='left'?-1:1;
+    const path=document.createElementNS(ns,'path');
+    path.setAttribute('d',`M ${centerX} ${y} C ${centerX+dir*24} ${y+10}, ${def.x-dir*24} ${y+38}, ${def.x} ${y+58} L ${def.x} ${y+58+V_SPACING*(def.stations.length-1)}`);
+    path.style.setProperty('--branch-color',def.color);
+    svg.appendChild(path);
+    def.stations.forEach((station,j)=>{
+      const node=document.createElement('button');
+      node.type='button'; node.className=`branch-station ${def.side}`;
+      node.style.left=`calc(50% + ${def.x-260}px)`;
+      node.style.top=`${y+58+j*V_SPACING}px`;
+      node.style.setProperty('--branch-color',def.color);
+      node.innerHTML=`<span>${escapeHtml(station)}</span>`;
+      node.setAttribute('aria-label',`${station}역 팝업 열기`);
+      node.addEventListener('click',e=>{e.stopPropagation();openFullPopup(station);});
+      vMapContainer.appendChild(node);
+    });
+  });
+  vMapContainer.insertBefore(svg,vStationNodes);
+}
+
+function initMaps(lineName) {
+  if (refreshInterval) clearInterval(refreshInterval);
+  mapRequestId++;
+  currentLine = lineName;
+  renderFeaturePhotos();
+  const line = lineData[currentLine];
+  if (!line) return;
+  updateActiveLineButton();
+  vStationNodes.innerHTML = '';
+  vTrainsContainer.innerHTML = '';
+  const isCircular = Boolean(line.circular);
+  const baseStations = isCircular ? line.stations.slice(0, -1) : line.stations;
+  const stations = isCircular ? [...baseStations, ...baseStations, ...baseStations] : baseStations;
+  circularCycleHeight = baseStations.length * V_SPACING;
+  vMapContainer.style.height = `${Math.max(1, stations.length - 1) * V_SPACING + 60}px`;
+  const stationFragment = document.createDocumentFragment();
+  stations.forEach((station, index) => {
+    const node = document.createElement('div');
+    const connections = getStationLineConnections(station);
+    node.className = `v-station-node${connections.length ? ' is-transfer' : ''}`;
+    node.style.top = `${index * V_SPACING}px`;
+    node.dataset.station = station;
+    const transferArms = connections.map((connection, armIndex) =>
+      `<button type="button" class="transfer-arm arm-${armIndex % 3}" data-transfer-line="${escapeHtml(connection.name)}" style="--arm-color:${connection.color}" aria-label="${escapeHtml(connection.name)}으로 이동" title="끌어서 ${escapeHtml(connection.name)}으로 이동"><span>${escapeHtml(connection.name.replace('호선',''))}</span></button>`
+    ).join('');
+    const featureConfig = getFeaturePhotoConfig(station);
+    const featureEntries = featureConfig ? Object.entries(featureConfig.photos).filter(([position, url]) => /^(tl|tc|tr|ml|mr|bl|bc|br)$/.test(position) && typeof url === 'string' && url.trim()) : [];
+    const featurePhotoMarkup = featureEntries.length
+      ? `<div class="station-feature-photo-positioner" aria-label="${escapeHtml(featureConfig.name)} 주변 건물">${featureEntries.map(([position, url]) => `<img class="station-feature-photo pos-${position}" src="${escapeHtml(url.trim())}" alt="${escapeHtml(featureConfig.name)} 주변 건물 사진 ${position}" loading="eager" decoding="async" onerror="this.remove()">`).join('')}</div>`
+      : '';
+    node.innerHTML = `<div class="v-station-name">${escapeHtml(station)}</div>${featurePhotoMarkup}${connections.length ? `<div class="transfer-hub" aria-label="환승 노선 선택"><span class="transfer-hub-core"></span>${transferArms}</div>` : ''}`;
+    // 역 노드 클릭은 언제나 역 팝업을 연다. 노선 막대는 드래그로만 노선 이동.
+    node.addEventListener('click', () => openFullPopup(station));
+    node.querySelectorAll('[data-transfer-line]').forEach(handle => {
+      let startX=0, startY=0, dragged=false, pointerId=null, lastY=0;
+      const resetHandle=()=>{handle.style.height=''; const label=handle.querySelector('span'); if(label) label.style.top='';};
+      handle.addEventListener('pointerdown', event=>{
+        event.preventDefault(); event.stopPropagation();
+        startX=event.clientX; startY=event.clientY; lastY=event.clientY; dragged=false; pointerId=event.pointerId;
+        handle.dataset.dragCompleted='0';
+        try{handle.setPointerCapture(event.pointerId);}catch(_){}
+      }, {passive:false});
+      handle.addEventListener('pointermove', event=>{
+        if(pointerId!==event.pointerId) return;
+        event.preventDefault(); event.stopPropagation(); lastY=event.clientY;
+        const dx=event.clientX-startX, dy=event.clientY-startY;
+        if(Math.hypot(dx,dy)>=12) dragged=true;
+        if(dragged){
+          // 막대 방향(아래쪽)으로 당긴 거리만 반영하고 최대 길이를 고정한다.
+          const pull=Math.max(0,dy);
+          const extended=Math.min(92,62+pull*.45);
+          handle.style.height=`${extended}px`;
+          const label=handle.querySelector('span'); if(label) label.style.top=`${extended+2}px`;
+        }
+      }, {passive:false});
+      const finishDrag=event=>{
+        if(pointerId!==event.pointerId) return;
+        event.preventDefault(); event.stopPropagation();
+        const didDrag=dragged && Math.max(0,lastY-startY)>=18;
+        pointerId=null; resetHandle();
+        if(didDrag){
+          handle.dataset.dragCompleted='1';
+          navigateToLineStation(handle.dataset.transferLine,station);
+          setTimeout(()=>{handle.dataset.dragCompleted='0';},600);
+        }
+        dragged=false;
+      };
+      handle.addEventListener('pointerup',finishDrag,{passive:false});
+      handle.addEventListener('pointercancel',event=>{if(pointerId===event.pointerId){pointerId=null;dragged=false;resetHandle();}},{passive:true});
+      handle.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();},{capture:true});
+      handle.addEventListener('keydown',event=>{
+        if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();showToastMessage?.('막대를 아래쪽으로 18px 이상 끌어 해당 노선으로 이동하세요.');}
+      });
+    });
+    stationFragment.appendChild(node);
+  });
+  vStationNodes.appendChild(stationFragment);
+  renderBranchTracks(lineName);
+  const main = $('mainContent');
+  main.onscroll = null;
+  if (isCircular) {
+    requestAnimationFrame(() => { main.scrollTop = circularCycleHeight; });
+    let loopFramePending = false;
+    main.onscroll = () => {
+      if (isLoopAdjusting || loopFramePending) return;
+      loopFramePending = true;
+      requestAnimationFrame(() => {
+        loopFramePending = false;
+        if (isLoopAdjusting) return;
+        const y = main.scrollTop;
+        if (y < circularCycleHeight * 0.45) {
+          isLoopAdjusting = true; main.scrollTop = y + circularCycleHeight;
+          requestAnimationFrame(() => { isLoopAdjusting = false; });
+        } else if (y > circularCycleHeight * 1.55) {
+          isLoopAdjusting = true; main.scrollTop = y - circularCycleHeight;
+          requestAnimationFrame(() => { isLoopAdjusting = false; });
+        }
+      });
+    };
+  } else {
+    requestAnimationFrame(() => { main.scrollTop = 0; });
+  }
+  refreshAll();
+  refreshInterval = setInterval(refreshAll, 10000);
+}
+
+/* ========================================
+   전체 새로고침
+======================================== */
+
+async function refreshAll() {
+  if (isRefreshing) return;
+
+  isRefreshing = true;
+  refreshButton.classList.add('loading');
+
+  try {
+    await fetchTrainPositions();
+
+    if (!fullPopup.classList.contains('hidden') && currentStation) {
+      const requestId = popupRequestId;
+
+      await fetchStationDetails(
+        currentStation,
+        true,
+        requestId
+      );
+    }
+
+    markRefreshed();
+  } finally {
+    isRefreshing = false;
+    refreshButton.classList.remove('loading');
+  }
+}
+
+refreshButton.addEventListener('click', () => {
+  refreshAll();
+});
+
+
+/* ========================================
+   역 상세 팝업
+======================================== */
+
+function openFullPopup(station) {
+  currentStation = station;
+
+  popupRequestId++;
+  const requestId = popupRequestId;
+
+  fullPopup.classList.remove('hidden');
+  document.body.classList.add('popup-open');
+
+  pName.textContent = `${station}역`;
+  pBadge.textContent = currentLine;
+
+  [
+    'arrLoading',
+    'statLoading',
+    'ttLoading'
+  ].forEach(id => setLoading(id, true));
+
+  timeRideNum.textContent = '-';
+  timeAlightNum.textContent = '-';
+
+  arrUpList.innerHTML = '';
+  arrDownList.innerHTML = '';
+  ttUpList.innerHTML = '';
+  ttDownList.innerHTML = '';
+
+  const stations = lineData[currentLine].stations;
+  const centerIndex = getStationIndex(stations, station);
+
+  currentPopupStations = [];
+
+  if (centerIndex !== -1) {
+    const start = Math.max(0, centerIndex - 3);
+    const end = Math.min(stations.length - 1, centerIndex + 3);
+
+    currentPopupStations = stations.slice(start, end + 1);
+
+    hStationNodes.innerHTML = '';
+    hTrainsContainer.innerHTML = '';
+
+    hTrackWrapper.style.width =
+      `${Math.max(1, currentPopupStations.length - 1) * H_SPACING + 60}px`;
+
+    currentPopupStations.forEach((stn, index) => {
+      const node = document.createElement('div');
+
+      node.className = 'h-station-node';
+      node.style.left = `${index * H_SPACING}px`;
+
+      const isCurrent =
+        normalizeStationName(stn) === normalizeStationName(station);
+
+      node.innerHTML =
+        `<div class="h-station-name"
+          style="${isCurrent ? 'color:#1d1d1f;font-size:15px;font-weight:800;top:-30px;background:#fff;padding:4px 7px;border-radius:7px;box-shadow:0 1px 5px rgba(0,0,0,.14);z-index:10;' : ''}">
+          ${escapeHtml(stn)}
+        </div>`;
+
+      hStationNodes.appendChild(node);
+    });
+
+    const scroll = $('hTrackScroll');
+    const centerPosition = centerIndex - start;
+
+    requestAnimationFrame(() => {
+      // Track wrapper begins after the scroll container's 40px horizontal padding.
+      // Center the selected station itself in the visible viewport.
+      const stationX = 40 + centerPosition * H_SPACING;
+      scroll.scrollTo({ left: Math.max(0, stationX - scroll.clientWidth / 2), behavior: 'smooth' });
+
+    });
+  }
+
+  if (popupRefreshTimer) {
+    clearInterval(popupRefreshTimer);
+  }
+
+  fetchStationDetails(station, false, requestId);
+  fetchTrainPositions();
+
+  popupRefreshTimer = setInterval(() => {
+    if (
+      fullPopup.classList.contains('hidden') ||
+      requestId !== popupRequestId
+    ) {
+      clearInterval(popupRefreshTimer);
+      popupRefreshTimer = null;
+      return;
+    }
+
+    fetchStationDetails(station, true, requestId);
+    fetchTrainPositions();
+  }, 10000);
+}
+
+closePopupBtn.addEventListener('click', () => {
+  fullPopup.classList.add('hidden');
+  document.body.classList.remove('popup-open');
+  popupRequestId++;
+
+  if (popupRefreshTimer) {
+    clearInterval(popupRefreshTimer);
+    popupRefreshTimer = null;
+  }
+});
+
+
+/* ========================================
+   실시간 열차 위치
+======================================== */
+
+// Latest live positions keyed by train number, used to cross-check distance labels.
+let latestPositionByTrainNo = new Map();
+
+async function fetchTrainPositions() {
+  const requestLine = currentLine;
+  const requestId = mapRequestId;
+  const line = lineData[requestLine];
+
+  if (!line) return;
+
+  try {
+    const apiLine = line.apiName || requestLine;
+
+    const url =
+      `${BASE_SW}/${REALTIME_API_KEY}` +
+      `/json/realtimePosition/0/100/` +
+      `${encodeURIComponent(apiLine)}`;
+
+    const response = await fetch(url, {
+      cache:'no-store'
+    });
+
+    if (!response.ok) throw new Error('열차 위치 조회 실패');
+
+    const data = await response.json();
+
+    if (
+      requestLine !== currentLine ||
+      requestId !== mapRequestId
+    ) return;
+
+    if (data.errorMessage && data.errorMessage.code !== 'INFO-000') {
+      throw new Error(data.errorMessage.message || 'API 오류');
+    }
+
+    const activeVertical = new Set();
+    const activeHorizontal = new Set();
+
+    const trains = Array.isArray(data.realtimePositionList)
+      ? data.realtimePositionList
+      : [];
+
+    const positionCache = new Map();
+    trains.forEach(train => {
+      if (String(train.subwayId || '') !== String(line.id)) return;
+      const no = String(train.trainNo || '').trim();
+      const stationName = String(train.statnNm || '').trim();
+      if (no && stationName) {
+        positionCache.set(no, {
+          stationName,
+          stationIndex: getStationIndex(line.circular ? line.stations.slice(0, -1) : line.stations, stationName),
+          direction: String(train.updnLine || '')
+        });
+      }
+    });
+    latestPositionByTrainNo = positionCache;
+
+    trains.forEach(train => {
+      // Selected-line isolation: missing IDs are not safe to display as this line.
+      if (String(train.subwayId || '') !== String(line.id)) return;
+
+      const trainNo = String(train.trainNo || '').trim();
+
+      if (!trainNo) return;
+
+      const isUp = String(train.updnLine) === '0';
+      const direction = isUp ? 1 : -1;
+      const status = String(train.trainSttus ?? '');
+
+      let offset = 0;
+
+      if (status === '0' || status === '3') {
+        offset = -35 * direction;
+      } else if (status === '2') {
+        offset = 35 * direction;
+      }
+
+      const domKey =
+        `${line.id}-${train.updnLine}-${trainNo}`
+          .replace(/[^a-zA-Z0-9_-]/g, '_');
+
+      const statusText = getTrainStatusText(status);
+
+      /* 세로 지도 */
+      // Circular route nodes are repeated three times and the initial viewport
+      // starts on the middle cycle. Place live trains on that same cycle.
+      const baseStations = line.circular ? line.stations.slice(0, -1) : line.stations;
+      const stationIndexInLine = getStationIndex(baseStations, train.statnNm);
+      const stationIndex = line.circular && stationIndexInLine >= 0
+        ? stationIndexInLine + baseStations.length
+        : stationIndexInLine;
+
+      if (stationIndexInLine !== -1) {
+        // 2호선은 세 번 반복된 지도에 열차도 세 벌 배치한다.
+        // 가운데 복제본에만 배치하면 스크롤 루프 경계/일부 구간에서 열차가 사라진 것처럼 보인다.
+        const cycleIndexes = line.circular ? [0, 1, 2] : [0];
+        cycleIndexes.forEach(cycleIndex => {
+          const verticalKey = line.circular
+            ? `${domKey}-cycle${cycleIndex}`
+            : domKey;
+          activeVertical.add(verticalKey);
+
+          let element = document.getElementById(`v-train-${verticalKey}`);
+
+          if (!element) {
+            element = document.createElement('div');
+            element.id = `v-train-${verticalKey}`;
+            vTrainsContainer.appendChild(element);
+            element.addEventListener('click', event => {
+              event.stopPropagation();
+              showTrainDetail(element._trainData);
+            });
+          }
+
+          const trainType = String(train.btrainSttus || train.trainType || '');
+          const isExpress = String(train.directAt ?? '') === '1' || trainType.includes('급행');
+          const isSpecial = String(train.directAt ?? '') === '7' || trainType.includes('특급');
+          element.className = `v-train ${isUp ? 'up' : 'down'}${isExpress ? ' express' : ''}${isSpecial ? ' special' : ''}`;
+          element._trainData = {
+            trainNo, status, statusText,
+            station: train.statnNm || '현재 정보 없음',
+            destination: train.bstatnNm || train.statnTnm || '현재 정보 없음',
+            isUp, stationIndex: stationIndexInLine, lineName: requestLine
+          };
+
+          element.innerHTML =
+            `<span>${escapeHtml(trainNo)}</span>` +
+            `<div class="v-train-status">${statusText}</div>`;
+
+          const repeatedIndex = line.circular
+            ? cycleIndex * baseStations.length + stationIndexInLine
+            : stationIndexInLine;
+          element.style.top = `${repeatedIndex * V_SPACING + offset}px`;
+        });
+      }
+
+      /* 팝업 가로 지도 */
+      if (
+        !fullPopup.classList.contains('hidden') &&
+        currentPopupStations.length > 0
+      ) {
+        const horizontalIndex = getStationIndex(
+          currentPopupStations,
+          train.statnNm
+        );
+
+        if (horizontalIndex !== -1) {
+          activeHorizontal.add(domKey);
+
+          let element = document.getElementById(`h-train-${domKey}`);
+
+          if (!element) {
+            element = document.createElement('div');
+            element.id = `h-train-${domKey}`;
+            hTrainsContainer.appendChild(element);
+          }
+
+          const trainType = String(train.btrainSttus || train.trainType || '');
+          const isExpress = String(train.directAt ?? '') === '1' || trainType.includes('급행');
+          const isSpecial = String(train.directAt ?? '') === '7' || trainType.includes('특급');
+          element.className = `h-train ${isUp ? 'up' : 'down'}${isExpress ? ' express' : ''}${isSpecial ? ' special' : ''}`;
+
+          element.innerHTML =
+            `<span>${escapeHtml(trainNo)}</span>` +
+            `<div class="h-train-status">${statusText}</div>`;
+
+          element.style.left =
+            `${horizontalIndex * H_SPACING + offset}px`;
+        }
+      }
+    });
+
+    Array.from(vTrainsContainer.children).forEach(element => {
+      const key = element.id.replace('v-train-', '');
+
+      if (!activeVertical.has(key)) element.remove();
+    });
+
+    Array.from(hTrainsContainer.children).forEach(element => {
+      const key = element.id.replace('h-train-', '');
+
+      if (!activeHorizontal.has(key)) element.remove();
+    });
+
+  } catch (error) {
+    console.error('실시간 열차 위치 오류:', error);
+  }
+}
+
+
+
+/* ETA 표시를 초 단위로 감소시켜 API 갱신 사이에도 숫자가 멈춰 보이지 않게 함. */
+function tickArrivalCountdowns() {
+  document.querySelectorAll('.arr-item[data-eta-seconds]').forEach(item => {
+    const raw = item.dataset.etaSeconds;
+    if (raw === '') return;
+    const base = Number(raw);
+    const updatedAt = Number(item.dataset.etaUpdated || Date.now());
+    const elapsed = Math.floor((Date.now() - updatedAt) / 1000);
+    const remaining = Math.max(0, base - elapsed);
+    const label = item.querySelector('[data-eta-label]');
+    if (!label) return;
+    if (remaining <= 0) {
+      label.textContent = '도착';
+    } else {
+      label.textContent = `약 ${Math.floor(remaining / 60)}분 ${remaining % 60}초 후`;
+    }
+  });
+}
+setInterval(tickArrivalCountdowns, 1000);
+
+/* ========================================
+   실시간 도착 정보
+======================================== */
+
+async function fetchArrivalInfo(station, requestId) {
+  try {
+    const stationName = normalizeStationName(station);
+
+    const url =
+      `${BASE_SW}/${REALTIME_API_KEY}` +
+      `/json/realtimeStationArrival/0/30/` +
+      `${encodeURIComponent(stationName)}`;
+
+    const response = await fetch(url, {
+      cache:'no-store'
+    });
+
+    if (!response.ok) throw new Error('도착 정보 조회 실패');
+
+    const data = await response.json();
+
+    if (requestId !== popupRequestId) return;
+
+    const all = Array.isArray(data.realtimeArrivalList)
+      ? data.realtimeArrivalList
+      : [];
+
+    const targetId = String(lineData[currentLine].id);
+
+    // 환승역에서 다른 노선은 제외하고, 같은 열차가 중복 반환된 경우 한 번만 표시.
+    const lineTrains = all.filter(train =>
+      String(train.subwayId || '') === targetId
+    );
+    const seenTrainKeys = new Set();
+    const trains = lineTrains.filter(train => {
+      const direction = String(train.updnLine || '');
+      const trainNo = String(train.btrainNo || '').trim();
+      // 열차번호가 있으면 방향+열차번호로 중복 제거. 번호가 없을 때만 API 순번과 메시지 조합 사용.
+      const key = trainNo
+        ? `${direction}|train:${trainNo}`
+        : `${direction}|ord:${String(train.ordkey || '')}|dest:${String(train.bstatnNm || '')}|msg:${String(train.arvlMsg2 || '')}|${String(train.arvlMsg3 || '')}`;
+      if (seenTrainKeys.has(key)) return false;
+      seenTrainKeys.add(key);
+      return true;
+    });
+
+    const getEtaSeconds = train => {
+      const message = String(train.arvlMsg2 || '');
+      const code = String(train.arvlCd ?? '');
+      const raw = Number.parseInt(train.barvlDt, 10);
+
+      // barvlDt가 0인 것만으로 '도착'으로 판단하지 않는다.
+      // API가 0/빈 값으로 주는 경우 메시지와 도착코드를 우선 확인한다.
+      if (Number.isFinite(raw) && raw > 0) return raw;
+      if (code === '1' || /도착/.test(message)) return 0;
+      if (code === '0' || /진입/.test(message)) return 5;
+      if (code === '2' || /출발/.test(message)) return 15;
+
+      const match = message.match(/(\d+)\s*분(?:\s*(\d+)\s*초)?/);
+      if (match) return Number(match[1]) * 60 + Number(match[2] || 0);
+
+      const secondsMatch = message.match(/(\d+)\s*초/);
+      if (secondsMatch) return Number(secondsMatch[1]);
+
+      return Number.POSITIVE_INFINITY;
+    };
+
+    // Sort by the numeric ETA whenever the API provides it, not by message wording.
+    trains.sort((a, b) => getEtaSeconds(a) - getEtaSeconds(b));
+
+    // Show the nearest few trains per direction, rather than flooding the popup with 30 records.
+    const upTrains = [];
+    const downTrains = [];
+    trains.forEach(train => {
+      const dir = String(train.updnLine || '');
+      const isUp = dir === '상행' || dir === '내선' || dir === '0';
+      const bucket = isUp ? upTrains : downTrains;
+      if (bucket.length < 5) bucket.push(train);
+    });
+
+    let upHTML = '';
+    let downHTML = '';
+
+    [...upTrains, ...downTrains].forEach(train => {
+      const directionText = String(train.updnLine || '');
+
+      const isUp =
+        directionText === '상행' ||
+        directionText === '내선' ||
+        directionText === '0';
+
+      const rawMessage = String(train.arvlMsg2 || '');
+      const etaSeconds = getEtaSeconds(train);
+      const etaIsKnown = Number.isFinite(etaSeconds);
+      let status = '운행 중';
+
+      if (/진입/.test(rawMessage)) status = '진입';
+      else if (/도착/.test(rawMessage)) status = '도착';
+      else if (/출발/.test(rawMessage)) status = '출발';
+
+      const trainType = String(train.btrainSttus || '');
+      const badgeText = trainType.includes('급행')
+        ? '급행'
+        : trainType.includes('특급') || trainType.includes('ITX')
+          ? '특급'
+          : '일반';
+
+      const badgeClass = badgeText === '급행'
+        ? 'exp-express'
+        : badgeText === '특급'
+          ? 'exp-special'
+          : '';
+
+      // API의 '[20]번째 전역' 문구는 오래된 수신 시각/순번으로 실제 위치와 어긋날 수 있다.
+      // 열차번호가 실시간 위치 API와 매칭될 때만 노선 역순서로 가까운 위치를 계산해 표시한다.
+      const arrivalTrainNo = String(train.btrainNo || '').trim();
+      const livePosition = arrivalTrainNo ? latestPositionByTrainNo.get(arrivalTrainNo) : null;
+      const routeStations = lineData[currentLine].circular
+        ? lineData[currentLine].stations.slice(0, -1)
+        : lineData[currentLine].stations;
+      const targetStationIndex = getStationIndex(routeStations, station);
+      let distanceMessage = '';
+      if (livePosition && livePosition.stationIndex >= 0 && targetStationIndex >= 0) {
+        const distance = Math.abs(targetStationIndex - livePosition.stationIndex);
+        // 가까운 경우만 계산된 위치를 보여준다. 방향/분기 노선이 애매하거나 멀면 API의 오래된 숫자를 쓰지 않는다.
+        if (distance === 0) distanceMessage = `현재 역 (${livePosition.stationName})`;
+        else if (distance <= 5) distanceMessage = `${distance}개 역 전 (${livePosition.stationName})`;
+      }
+      let initialEtaText;
+      if (status === '도착' || /도착/.test(rawMessage)) {
+        initialEtaText = '도착';
+      } else if (status === '진입' || /진입/.test(rawMessage)) {
+        initialEtaText = '진입';
+      } else if (status === '출발' || /출발/.test(rawMessage)) {
+        initialEtaText = '출발';
+      } else if (etaIsKnown && etaSeconds > 0) {
+        initialEtaText = `약 ${Math.floor(etaSeconds / 60)}분 ${etaSeconds % 60}초 후`;
+      } else {
+        // Never show an unverified API distance like '[20]번째 전역' as if it were current.
+        const apiDistanceOnly = /\d+\s*번째\s*전역/.test(rawMessage);
+        initialEtaText = distanceMessage || (apiDistanceOnly ? '현재 정보 없음' : rawMessage || '현재 정보 없음');
+      }
+      const extraLocation = distanceMessage && distanceMessage !== initialEtaText
+        ? `<br>위치 정보: ${escapeHtml(distanceMessage)}`
+        : '';
+
+      const html = `
+        <div class="arr-item ${isUp ? 'up' : 'down'}" data-eta-seconds="${etaIsKnown && !/도착|진입|출발/.test(rawMessage) ? etaSeconds : ''}" data-eta-updated="${Date.now()}">
+          <div class="arr-top-row">
+            <span class="arr-time" data-eta-label>${escapeHtml(initialEtaText)}</span>
+            <span class="exp-badge ${badgeClass}">${escapeHtml(badgeText)}</span>
+          </div>
+          <div class="arr-desc">
+            ${escapeHtml(train.bstatnNm || train.statnTnm || '방면')}행
+            <br>
+            현재: ${escapeHtml(train.arvlMsg3 || train.statnNm || '운행 중')}
+            (${escapeHtml(status)})${extraLocation}
+          </div>
+        </div>
+      `;
+
+      if (isUp) upHTML += html;
+      else downHTML += html;
+    });
+
+    arrUpList.innerHTML =
+      upHTML ||
+      '<div class="arr-item">현재 정보 없음</div>';
+
+    arrDownList.innerHTML =
+      downHTML ||
+      '<div class="arr-item">현재 정보 없음</div>';
+
+  } catch (error) {
+    if (requestId === popupRequestId) {
+      arrUpList.innerHTML =
+        '<div class="arr-item">현재 정보 없음</div>';
+
+      arrDownList.innerHTML =
+        '<div class="arr-item">현재 정보 없음</div>';
+    }
+  } finally {
+    if (requestId === popupRequestId) {
+      setLoading('arrLoading', false);
+    }
+  }
+}
+
+
+/* ========================================
+   승하차 통계
+======================================== */
+
+async function fetchStatistics(station, requestId) {
+  try {
+    const date = new Date();
+
+    date.setDate(date.getDate() - 3);
+
+    const dateString =
+      `${date.getFullYear()}` +
+      `${String(date.getMonth() + 1).padStart(2, '0')}` +
+      `${String(date.getDate()).padStart(2, '0')}`;
+
+    const url =
+      `${BASE_OPEN}/${OPEN_API_KEY}` +
+      `/json/CardSubwayStatsNew/1/1000/${dateString}`;
+
+    const response = await fetch(url, {
+      cache:'no-store'
+    });
+
+    if (!response.ok) throw new Error('통계 조회 실패');
+
+    const data = await response.json();
+
+    if (requestId !== popupRequestId) return;
+
+    const rows = data.CardSubwayStatsNew?.row || [];
+
+    const target = normalizeStationName(station);
+
+    const match = rows.find(row =>
+      normalizeStationName(row.SUB_STA_NM) === target
+    );
+
+    if (!match) throw new Error('통계 없음');
+
+    timeRideNum.textContent =
+      `${Number(match.RIDE_PASGR_NUM).toLocaleString()}명`;
+
+    timeAlightNum.textContent =
+      `${Number(match.ALIGHT_PASGR_NUM).toLocaleString()}명`;
+
+  } catch (error) {
+    if (requestId === popupRequestId) {
+      timeRideNum.textContent = '현재 정보 없음';
+      timeAlightNum.textContent = '현재 정보 없음';
+    }
+  } finally {
+    if (requestId === popupRequestId) {
+      setLoading('statLoading', false);
+    }
+  }
+}
+
+
+/* ========================================
+   시간표 조회
+======================================== */
+
+async function fetchTimetable(station, requestId) {
+  const week = getWeekTag();
+
+  ttDateType.textContent = week.name;
+
+  try {
+    const stationName = normalizeStationName(station);
+
+    const searchURL =
+      `${BASE_OPEN}/${OPEN_API_KEY}` +
+      `/json/SearchInfoBySubwayNameService/1/50/` +
+      `${encodeURIComponent(stationName)}`;
+
+    const searchResponse = await fetch(searchURL, {
+      cache:'no-store'
+    });
+
+    if (!searchResponse.ok) throw new Error('역 조회 실패');
+
+    const searchData = await searchResponse.json();
+
+    const rows =
+      searchData.SearchInfoBySubwayNameService?.row || [];
+
+    const lineName = currentLine;
+
+    const match = rows.find(row => {
+      const value = String(row.LINE_NUM || '');
+
+      if (lineName === 'GTX-A') {
+        return value.includes('GTX');
+      }
+
+      if (lineName === '경의중앙선') {
+        return value.includes('경의') || value.includes('중앙');
+      }
+
+      const number = lineName.match(/\d+/)?.[0];
+
+      return number ? value.includes(number) : false;
+    });
+
+    if (!match) {
+      throw new Error('노선별 역 코드 없음');
+    }
+
+    const stationCode = match.STATION_CD;
+
+    const upURL =
+      `${BASE_OPEN}/${OPEN_API_KEY}` +
+      `/json/SearchSTTimeTableByIDService/1/500/` +
+      `${stationCode}/${week.tag}/1/`;
+
+    const downURL =
+      `${BASE_OPEN}/${OPEN_API_KEY}` +
+      `/json/SearchSTTimeTableByIDService/1/500/` +
+      `${stationCode}/${week.tag}/2/`;
+
+    const [upResponse, downResponse] = await Promise.all([
+      fetch(upURL, {cache:'no-store'}),
+      fetch(downURL, {cache:'no-store'})
+    ]);
+
+    if (!upResponse.ok || !downResponse.ok) {
+      throw new Error('시간표 조회 실패');
+    }
+
+    const [upData, downData] = await Promise.all([
+      upResponse.json(),
+      downResponse.json()
+    ]);
+
+    if (requestId !== popupRequestId) return;
+
+    const upRows =
+      upData.SearchSTTimeTableByIDService?.row || [];
+
+    const downRows =
+      downData.SearchSTTimeTableByIDService?.row || [];
+
+    ttUpList.innerHTML = renderTimetable(upRows, true);
+    ttDownList.innerHTML = renderTimetable(downRows, false);
+
+  } catch (error) {
+    if (requestId === popupRequestId) {
+      ttUpList.innerHTML =
+        '<div class="tt-item">시간표 현재 정보 없음</div>';
+
+      ttDownList.innerHTML =
+        '<div class="tt-item">시간표 현재 정보 없음</div>';
+    }
+  } finally {
+    if (requestId === popupRequestId) {
+      setLoading('ttLoading', false);
+    }
+  }
+}
+
+function renderTimetable(rows, isUp) {
+  if (!rows.length) {
+    return '<div class="tt-item">시간표 현재 정보 없음</div>';
+  }
+
+  const now = new Date();
+
+  let hour = now.getHours();
+
+  if (hour < 4) hour += 24;
+
+  const currentSeconds =
+    hour * 3600 +
+    now.getMinutes() * 60 +
+    now.getSeconds();
+
+  function getTime(row) {
+    if (row.ARRIVETIME && row.ARRIVETIME !== '00:00:00') {
+      return row.ARRIVETIME;
+    }
+
+    if (row.LEFTTIME && row.LEFTTIME !== '00:00:00') {
+      return row.LEFTTIME;
+    }
+
+    return '';
+  }
+
+  const valid = rows
+    .filter(row => {
+      const time = getTime(row);
+
+      return time && timeToSeconds(time) >= currentSeconds;
+    })
+    .sort((a, b) =>
+      timeToSeconds(getTime(a)) - timeToSeconds(getTime(b))
+    )
+    .slice(0, 10);
+
+  if (!valid.length) {
+    return '<div class="tt-item">금일 운행 종료</div>';
+  }
+
+  return valid.map(row => {
+    const time = getTime(row).substring(0, 5);
+
+    const express =
+      ['G','D','E'].includes(String(row.EXPRESS_YN)) ||
+      String(row.FL_FLAG || '').includes('급행');
+
+    const special =
+      row.EXPRESS_YN === 'S' ||
+      String(row.FL_FLAG || '').includes('특급');
+
+    const badge = express
+      ? '급행'
+      : special
+        ? '특급'
+        : '일반';
+
+    const badgeClass = express
+      ? 'exp-express'
+      : special
+        ? 'exp-special'
+        : '';
+
+    return `
+      <div class="tt-item ${isUp ? 'up' : 'down'}">
+        <div class="arr-top-row">
+          <strong>${escapeHtml(time)}</strong>
+          <span class="exp-badge ${badgeClass}">${badge}</span>
+        </div>
+        <div class="arr-desc">
+          ${escapeHtml(
+            row.SUBWAYENAME ||
+            row.SUBWAYSNAME ||
+            row.DESTSTATION ||
+            '방면'
+          )}행
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+
+/* ========================================
+   통합 상세 정보 조회
+======================================== */
+
+function fetchStationDetails(
+  station,
+  isSilent = false,
+  requestId = popupRequestId
+) {
+  if (!isSilent) {
+    [
+      'arrLoading',
+      'statLoading',
+      'ttLoading'
+    ].forEach(id => setLoading(id, true));
+  }
+
+  fetchArrivalInfo(station, requestId);
+  fetchStatistics(station, requestId);
+  fetchTimetable(station, requestId);
+}
+
+
+function showTrainDetail(train) {
+  if (!train) return;
+  selectedTrainData = train;
+  const line = lineData[train.lineName] || lineData[currentLine];
+  $('trainCardLineNum').textContent = (train.lineName.match(/\\d+/) || ['↻'])[0];
+  $('trainCardLineNum').style.background = line.color;
+  $('trainCardNo').textContent = train.trainNo || '현재 정보 없음';
+  $('trainCardStatus').textContent = train.statusText || '현재 정보 없음';
+  $('trainCardLocation').textContent = `현재 위치: ${train.station || '현재 정보 없음'} · ${train.destination || '현재 정보 없음'}행`;
+  const stations = line.circular ? line.stations.slice(0,-1) : line.stations;
+  const idx = train.stationIndex;
+  const progress = idx >= 0 && stations.length > 1 ? Math.round(idx / (stations.length - 1) * 100) : null;
+  $('trainCardProgressText').textContent = progress === null ? '현재 정보 없음' : `${progress}%`;
+  $('trainCardProgress').style.width = progress === null ? '0%' : `${progress}%`;
+  $('trainCardStart').textContent = stations[0] || '현재 정보 없음';
+  $('trainCardMid').textContent = stations[Math.floor(stations.length/2)] || '현재 정보 없음';
+  $('trainCardEnd').textContent = stations[stations.length-1] || '현재 정보 없음';
+  $('trainDetailCard').classList.remove('hidden');
+}
+$('trainCardRefresh').addEventListener('click', () => refreshAll());
+$('trainCardMap').addEventListener('click', () => {
+  if (selectedTrainData?.station) {
+    $('trainDetailCard').classList.add('hidden');
+    openFullPopup(selectedTrainData.station);
+  }
+});
+$('trainCardAlert').addEventListener('click', async () => {
+  const btn = $('trainCardAlert');
+  if ('Notification' in window && Notification.permission === 'default') await Notification.requestPermission();
+  btn.textContent = '✓ 알림 기능 선택됨';
+});
+
+/* ========================================
+   상단 노선 선택 / 더보기 메뉴
+======================================== */
+const topControls = $('topControls');
+const linePickerTrigger = $('linePickerTrigger');
+const currentLineLabel = $('currentLineLabel');
+const menuTrigger = $('menuTrigger');
+const menuStack = $('menuStack');
+menuTrigger.innerHTML = '☰';
+let lineMenuOpen = false;
+let moreMenuOpen = false;
+function syncCurrentLineLabel() { currentLineLabel.textContent = currentLine || '노선 선택'; }
+menuTrigger.addEventListener('click', () => {
+  moreMenuOpen = !moreMenuOpen;
+  menuTrigger.classList.toggle('menu-open', moreMenuOpen);
+  menuTrigger.setAttribute('aria-expanded', String(moreMenuOpen));
+  menuTrigger.innerHTML = '☰';
+  menuStack.classList.toggle('menu-visible', moreMenuOpen);
+  menuStack.setAttribute('aria-hidden', String(!moreMenuOpen));
+});
+menuStack.querySelectorAll('.menu-card').forEach(card => card.addEventListener('click', () => {
+  const label = card.querySelector('strong').textContent;
+  if (card.dataset.menu === 'login') alert('로그인 기능은 아직 준비 중이에요.');
+  else if (card.dataset.menu === 'developer') alert('서울 지하철 대시보드 개발자 정보');
+  else alert('연결된 실시간 열차 위치 API 및 데이터 제공 정보를 표시합니다.');
+}));
+// 노선 목록과 퀵 버튼은 같은 자리를 교체하며, 더보기 버튼은 항상 표시합니다.
+const mainContent = $('mainContent');
+let lastScrollY = mainContent.scrollTop;
+let compactMode = false;
+function setCompactMode(compact) {
+  compactMode = compact;
+  topControls.classList.toggle('compact-mode', compact);
+  lineSelector.classList.toggle('compact-hidden', compact && !lineMenuOpen);
+  lineSelector.classList.toggle('picker-open', compact && lineMenuOpen);
+  linePickerTrigger.classList.toggle('trigger-visible', compact && !lineMenuOpen);
+  linePickerTrigger.setAttribute('aria-expanded', String(compact && !lineMenuOpen));
+}
+mainContent.addEventListener('scroll', () => {
+  const y = mainContent.scrollTop;
+  if (y > lastScrollY + 2 && y > 45) {
+    setCompactMode(true);
+  } else if (y < lastScrollY - 2 || y <= 45) {
+    lineMenuOpen = false;
+    setCompactMode(false);
+  }
+  lastScrollY = y;
+}, {passive:true});
+linePickerTrigger.addEventListener('click', () => {
+  // 누르면 버튼 자리에 노선 칩이 들어옵니다. 버튼 아래로 펼치지 않습니다.
+  lineMenuOpen = !lineMenuOpen;
+  linePickerTrigger.classList.toggle('trigger-visible', compactMode && !lineMenuOpen);
+  linePickerTrigger.setAttribute('aria-expanded', String(compactMode && !lineMenuOpen));
+  lineSelector.classList.toggle('compact-hidden', compactMode && !lineMenuOpen);
+  lineSelector.classList.toggle('picker-open', compactMode && lineMenuOpen);
+});
+// 노선을 고르면 컴팩트 모드에서는 노선 칩을 접고 '노선 선택' 버튼으로 돌아갑니다.
+lineSelector.addEventListener('click', (event) => {
+  if (event.target.closest('.line-button') && compactMode) {
+    lineMenuOpen = false;
+    setCompactMode(true);
+  }
+});
+
+
+/* ========================================
+   앱 시작
+======================================== */
+
+let mapZoom = 1;
+const applyMapZoom = () => { vMapContainer.style.setProperty('--map-zoom', String(mapZoom)); };
+$('zoomIn')?.addEventListener('click',()=>{mapZoom=Math.min(1.8,Math.round((mapZoom+0.1)*10)/10);applyMapZoom();});
+$('zoomOut')?.addEventListener('click',()=>{mapZoom=Math.max(0.6,Math.round((mapZoom-0.1)*10)/10);applyMapZoom();});
+renderLineButtons();
+initMaps('2호선');
+
+elapsedTimer = setInterval(updateRefreshLabel, 1000);
+</script>
 </body>
 </html>
+<style id="v10-train-corrections">
+/* 급행은 빨강, 일반 열차는 흰색. 특급은 중립색으로 구분 */
+.v-train.express, .h-train.express {
+  background: #e53935 !important;
+  border-color: #c62828 !important;
+  color: #fff !important;
+}
+.v-train.special, .h-train.special {
+  background: #f5f5f7 !important;
+  border-color: #a1a1aa !important;
+  color: #252525 !important;
+}
+.v-train-status, .h-train-status { color: inherit !important; }
+
+/* 상세 팝업의 방향별 카드 색은 노선도 열차 색상과 일치시킴 */
+.exp-badge.exp-express { background: #e53935 !important; color: #fff !important; }
+</style>
+
+<style id="v11-line-isolation">
+/* Make the selected line's trains visually clear; express only is red. */
+.v-train:not(.express):not(.special),
+.h-train:not(.express):not(.special) {
+  background: #fff !important;
+  color: #202124 !important;
+}
+.v-train.express, .h-train.express {
+  background: #e53935 !important;
+  border-color: #c62828 !important;
+  color: #fff !important;
+}
+.v-train.special, .h-train.special {
+  background: #f5f5f7 !important;
+  border-color: #a1a1aa !important;
+  color: #202124 !important;
+}
+</style>
+
+
